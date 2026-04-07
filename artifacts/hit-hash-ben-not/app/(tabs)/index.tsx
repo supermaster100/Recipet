@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AppHeader } from "@/components/ui/AppHeader";
 import { useAppContext } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -53,13 +52,23 @@ export default function AddScreen() {
       color: colors.purple,
       onPress: () => router.push("/add-exchange"),
     },
+    {
+      icon: "user",
+      label: "Client",
+      color: colors.destructive,
+      onPress: () => router.push("/add-client-transfer"),
+    },
+    {
+      icon: "send",
+      label: "Teammate",
+      color: colors.success,
+      onPress: () => router.push("/add-money-transfer"),
+    },
   ];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={{ paddingTop: topInset }}>
-        <AppHeader title="Add" />
-      </View>
+      <View style={{ paddingTop: topInset }} />
 
       <ScrollView
         contentContainerStyle={[
