@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router, useNavigation } from "expo-router";
+import { router, useNavigation, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -175,32 +175,73 @@ function PickerModal({
   );
 }
 
+function AutoFilledBadge({ colors }: { colors: ReturnType<typeof useColors> }) {
+  return (
+    <View style={[autoFillStyles.badge, { backgroundColor: colors.primary + "18" }]}>
+      <Feather name="zap" size={10} color={colors.primary} />
+      <Text style={[autoFillStyles.badgeText, { color: colors.primary }]}>Auto-detected</Text>
+    </View>
+  );
+}
+
+const autoFillStyles = StyleSheet.create({
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 99,
+  },
+  badgeText: { fontSize: 10, fontFamily: "Inter_500Medium" },
+});
+
 export default function AddExpenseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { refreshReceipts, general, budgets, refreshCashWallet } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
+  const params = useLocalSearchParams<{
+    photo?: string;
+    currency?: string;
+    amount?: string;
+    date?: string;
+    autoFilled?: string;
+  }>();
+
+  const isFromScan = params.autoFilled === "true";
 
   const [type, setType] = useState<ReceiptType>("HOSTING_MYSELF");
-  const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<Currency>("ILS");
-  const [date, setDate] = useState(today());
+  const [amount, setAmount] = useState(params.amount ?? "");
+  const [currency, setCurrency] = useState<Currency>((params.currency as Currency) ?? "ILS");
+  const [date, setDate] = useState(params.date ?? today());
   const [numberOfPeople, setNumberOfPeople] = useState("1");
   const [costCenter, setCostCenter] = useState("");
-  const [photo, setPhoto] = useState("");
+  const [photo, setPhoto] = useState(params.photo ?? "");
   const [selfDeclaration, setSelfDeclaration] = useState(true);
   const [note, setNote] = useState("");
   const [budgetId, setBudgetId] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+
+  const [autoFilledFields] = useState<Set<string>>(() => {
+    const fields = new Set<string>();
+    if (isFromScan) {
+      if (params.currency) fields.add("currency");
+      if (params.amount) fields.add("amount");
+      if (params.date) fields.add("date");
+      if (params.photo) fields.add("photo");
+    }
+    return fields;
+  });
 
   const imageFieldRef = useRef<ImageFieldHandle>(null);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [dirty, setDirty] = useState(isFromScan);
+  const [draftLoaded, setDraftLoaded] = useState(isFromScan);
 
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
@@ -465,7 +506,7 @@ export default function AddExpenseScreen() {
   }
 
   function resetForm() {
-    setType("MEALS");
+    setType("HOSTING_MYSELF");
     setAmount("");
     setCurrency("ILS");
     setDate(today());
@@ -546,6 +587,15 @@ export default function AddExpenseScreen() {
         </TouchableOpacity>
       </View>
 
+      {isFromScan && autoFilledFields.size > 0 && (
+        <View style={[styles.autoFillBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
+          <Feather name="zap" size={14} color={colors.primary} />
+          <Text style={[styles.autoFillBannerText, { color: colors.primary }]}>
+            Highlighted fields were auto-detected from your receipt. Please review before saving.
+          </Text>
+        </View>
+      )}
+
       <ScrollView
         contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
@@ -597,34 +647,70 @@ export default function AddExpenseScreen() {
         )}
 
         <View style={styles.field}>
-          <FieldLabel text="Amount" required />
+          <View style={styles.labelRow}>
+            <FieldLabel text="Amount" required />
+            {autoFilledFields.has("amount") && (
+              <AutoFilledBadge colors={colors} />
+            )}
+          </View>
           <View style={styles.amountRow}>
-            <StyledInput
+            <TextInput
               value={amount}
-              onChangeText={(v) => { setAmount(v); markDirty(); if (errors.amount) setErrors((e) => ({ ...e, amount: undefined })); }}
+              onChangeText={(v) => { setAmount(v); markDirty(); if (errors.amount) setErrors((e) => ({ ...e, amount: undefined })); autoFilledFields.delete("amount"); }}
               placeholder="0.00"
+              placeholderTextColor={colors.mutedForeground}
               keyboardType="decimal-pad"
-              error={errors.amount}
+              style={[
+                formStyles.input,
+                {
+                  color: colors.foreground,
+                  backgroundColor: autoFilledFields.has("amount") ? colors.primary + "10" : colors.card,
+                  borderColor: errors.amount ? colors.destructive : autoFilledFields.has("amount") ? colors.primary + "60" : colors.border,
+                },
+              ]}
             />
             <TouchableOpacity
               onPress={() => setShowCurrencyPicker(true)}
-              style={[styles.currencyBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              style={[
+                styles.currencyBtn,
+                {
+                  backgroundColor: colors.primary,
+                  borderColor: autoFilledFields.has("currency") ? colors.primary : colors.primary,
+                },
+              ]}
             >
               <Text style={styles.currencyBtnText}>{currency}</Text>
               <Feather name="chevron-down" size={12} color="#fff" />
+              {autoFilledFields.has("currency") && (
+                <View style={styles.autoFilledDot} />
+              )}
             </TouchableOpacity>
           </View>
           <FieldError msg={errors.amount} />
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Date" required />
-          <StyledInput
+          <View style={styles.labelRow}>
+            <FieldLabel text="Date" required />
+            {autoFilledFields.has("date") && (
+              <AutoFilledBadge colors={colors} />
+            )}
+          </View>
+          <TextInput
             value={date}
-            onChangeText={(v) => { setDate(v); markDirty(); if (errors.date) setErrors((e) => ({ ...e, date: undefined })); }}
+            onChangeText={(v) => { setDate(v); markDirty(); if (errors.date) setErrors((e) => ({ ...e, date: undefined })); autoFilledFields.delete("date"); }}
             placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.mutedForeground}
             autoCapitalize="none"
-            error={errors.date}
+            style={[
+              formStyles.input,
+              {
+                flex: 1,
+                color: colors.foreground,
+                backgroundColor: autoFilledFields.has("date") ? colors.primary + "10" : colors.card,
+                borderColor: errors.date ? colors.destructive : autoFilledFields.has("date") ? colors.primary + "60" : colors.border,
+              },
+            ]}
           />
           <FieldError msg={errors.date} />
         </View>
@@ -784,6 +870,25 @@ const styles = StyleSheet.create({
   saveBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   form: { padding: 16, gap: 16 },
   field: { gap: 6 },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  autoFillBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  autoFillBannerText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  autoFilledDot: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FFD700",
+  },
   amountRow: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
   pickerBtn: {
     flexDirection: "row",
