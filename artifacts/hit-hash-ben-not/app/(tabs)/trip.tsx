@@ -28,14 +28,14 @@ function LegCard({ leg, onPress }: { leg: Leg; onPress: () => void }) {
         styles.card,
         {
           backgroundColor: colors.card,
-          borderColor: colors.border,
-          opacity: pressed ? 0.8 : 1,
+          shadowColor: colors.shadowColor,
+          opacity: pressed ? 0.85 : 1,
         },
       ]}
     >
       <View style={styles.cardHeader}>
-        <View style={[styles.iconBox, { backgroundColor: colors.primary + "22" }]}>
-          <Feather name="map" size={18} color={colors.primary} />
+        <View style={[styles.iconBox, { backgroundColor: colors.warning + "18" }]}>
+          <Feather name="map" size={18} color={colors.warning} />
         </View>
         <View style={styles.cardInfo}>
           <Text
@@ -53,7 +53,9 @@ function LegCard({ leg, onPress }: { leg: Leg; onPress: () => void }) {
             </Text>
           ) : null}
         </View>
-        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        <View style={[styles.chevronBox, { backgroundColor: colors.secondary }]}>
+          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+        </View>
       </View>
     </Pressable>
   );
@@ -69,13 +71,14 @@ export default function TripScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={{ paddingTop: topInset }}>
         <AppHeader
-          title="Trip"
+          title="Trips"
           right={
             <TouchableOpacity
               onPress={() => router.push("/add-trip")}
               hitSlop={8}
+              style={[styles.addButton, { backgroundColor: colors.warning + "18" }]}
             >
-              <Feather name="plus" size={22} color={colors.primary} />
+              <Feather name="plus" size={18} color={colors.warning} />
             </TouchableOpacity>
           }
         />
@@ -107,15 +110,25 @@ export default function TripScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  addButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   list: {
-    padding: 16,
+    padding: 20,
     gap: 10,
     flexGrow: 1,
   },
   card: {
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
@@ -123,9 +136,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -140,5 +153,12 @@ const styles = StyleSheet.create({
   cardStatus: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+  },
+  chevronBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

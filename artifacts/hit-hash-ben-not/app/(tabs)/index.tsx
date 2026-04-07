@@ -32,25 +32,25 @@ export default function AddScreen() {
     {
       icon: "file-text",
       label: "General Expense",
-      color: "#3077FF",
+      color: colors.primary,
       onPress: () => router.push("/add-expense"),
     },
     {
       icon: "camera",
       label: "Scan Receipt",
-      color: "#34C759",
+      color: colors.success,
       onPress: () => router.push("/scan-receipt"),
     },
     {
       icon: "map",
       label: "New Trip",
-      color: "#FF9500",
+      color: colors.warning,
       onPress: () => router.push("/add-trip"),
     },
     {
       icon: "refresh-cw",
       label: "Currency Exchange",
-      color: "#5856D6",
+      color: colors.purple,
       onPress: () => router.push("/add-exchange"),
     },
   ];
@@ -80,15 +80,15 @@ export default function AddScreen() {
                 styles.actionButton,
                 {
                   backgroundColor: colors.card,
-                  borderColor: colors.border,
+                  shadowColor: colors.shadowColor,
                 },
               ]}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
             >
               <View
                 style={[
                   styles.actionIcon,
-                  { backgroundColor: action.color + "22" },
+                  { backgroundColor: action.color + "18" },
                 ]}
               >
                 <Feather name={action.icon} size={22} color={action.color} />
@@ -113,11 +113,14 @@ export default function AddScreen() {
         <View
           style={[
             styles.statsRow,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              shadowColor: colors.shadowColor,
+            },
           ]}
         >
           <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>
+            <Text style={[styles.statValue, { color: colors.foreground }]}>
               {receipts.length}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
@@ -126,7 +129,7 @@ export default function AddScreen() {
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>
+            <Text style={[styles.statValue, { color: colors.foreground }]}>
               {travels.length}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
@@ -135,7 +138,7 @@ export default function AddScreen() {
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>
+            <Text style={[styles.statValue, { color: colors.foreground }]}>
               {exchanges.length}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
@@ -151,14 +154,14 @@ export default function AddScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: {
-    padding: 16,
-    gap: 12,
+    padding: 20,
+    gap: 14,
   },
   sectionLabel: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.8,
-    marginBottom: -4,
+    letterSpacing: 1,
+    marginBottom: -2,
   },
   actionsGrid: {
     flexDirection: "row",
@@ -167,41 +170,49 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     width: "47%",
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-    gap: 12,
+    borderRadius: 16,
+    padding: 18,
+    gap: 14,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
   actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 46,
+    height: 46,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
   actionLabel: {
     fontSize: 14,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 20,
   },
   statsRow: {
     flexDirection: "row",
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
   stat: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 20,
     alignItems: "center",
     gap: 4,
   },
   statDivider: {
-    width: StyleSheet.hairlineWidth,
-    marginVertical: 12,
+    width: 1,
+    marginVertical: 16,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 26,
     fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: 12,

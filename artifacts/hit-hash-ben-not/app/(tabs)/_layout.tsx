@@ -19,11 +19,11 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="trip">
         <Icon sf={{ default: "airplane", selected: "airplane" }} />
-        <Label>Trip</Label>
+        <Label>Trips</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "plus.circle.fill", selected: "plus.circle.fill" }} />
-        <Label>Add Receipt</Label>
+        <Label>Add</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="exchanges">
         <Icon sf={{ default: "arrow.left.arrow.right", selected: "arrow.left.arrow.right" }} />
@@ -51,25 +51,40 @@ function ClassicTabLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontFamily: "Inter_500Medium",
+          marginBottom: 2,
+        },
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: colors.border,
+          backgroundColor: isIOS ? "transparent" : colors.card,
+          borderTopWidth: 0,
           elevation: 0,
           paddingBottom: safeAreaInsets.bottom,
+          shadowColor: colors.shadowColor,
+          shadowOffset: { width: 0, height: -1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
           ...(isWeb ? { height: 84 } : {}),
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={100}
+              intensity={80}
               tint={isDark ? "dark" : "light"}
               style={StyleSheet.absoluteFill}
             />
           ) : isWeb ? (
             <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: colors.card,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: colors.border,
+                },
+              ]}
             />
           ) : null,
       }}
@@ -80,7 +95,7 @@ function ClassicTabLayout() {
           title: "Expenses",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="list.bullet.rectangle" tintColor={color} size={24} />
+              <SymbolView name="list.bullet.rectangle" tintColor={color} size={22} />
             ) : (
               <Feather name="list" size={22} color={color} />
             ),
@@ -89,10 +104,10 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="trip"
         options={{
-          title: "Trip",
+          title: "Trips",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="airplane" tintColor={color} size={24} />
+              <SymbolView name="airplane" tintColor={color} size={22} />
             ) : (
               <Feather name="map" size={22} color={color} />
             ),
@@ -101,12 +116,12 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Add Receipt",
+          title: "Add",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="plus.circle.fill" tintColor={color} size={28} />
+              <SymbolView name="plus.circle.fill" tintColor={color} size={26} />
             ) : (
-              <Feather name="plus-circle" size={26} color={color} />
+              <Feather name="plus-circle" size={24} color={color} />
             ),
         }}
       />
@@ -116,7 +131,7 @@ function ClassicTabLayout() {
           title: "Exchange",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="arrow.left.arrow.right" tintColor={color} size={24} />
+              <SymbolView name="arrow.left.arrow.right" tintColor={color} size={22} />
             ) : (
               <Feather name="refresh-cw" size={22} color={color} />
             ),
@@ -128,7 +143,7 @@ function ClassicTabLayout() {
           title: "More",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="ellipsis.circle" tintColor={color} size={24} />
+              <SymbolView name="ellipsis.circle" tintColor={color} size={22} />
             ) : (
               <Feather name="more-horizontal" size={22} color={color} />
             ),

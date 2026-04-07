@@ -61,8 +61,8 @@ function ExpenseCard({
         styles.card,
         {
           backgroundColor: colors.card,
-          borderColor: colors.border,
-          opacity: pressed ? 0.75 : 1,
+          shadowColor: colors.shadowColor,
+          opacity: pressed ? 0.85 : 1,
         },
       ]}
     >
@@ -169,8 +169,8 @@ export default function ExpensesScreen() {
                 style={[
                   styles.filterBtn,
                   {
-                    backgroundColor: hasFilters ? colors.primary + "20" : "transparent",
-                    borderColor: hasFilters ? colors.primary : colors.border,
+                    backgroundColor: hasFilters ? colors.primary + "18" : colors.secondary,
+                    borderColor: hasFilters ? colors.primary : "transparent",
                   },
                 ]}
               >
@@ -180,8 +180,12 @@ export default function ExpensesScreen() {
                   color={hasFilters ? colors.primary : colors.mutedForeground}
                 />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push("/add-expense")} hitSlop={8}>
-                <Feather name="plus" size={22} color={colors.primary} />
+              <TouchableOpacity
+                onPress={() => router.push("/add-expense")}
+                hitSlop={8}
+                style={[styles.addButton, { backgroundColor: colors.primary }]}
+              >
+                <Feather name="plus" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
           }
@@ -199,7 +203,7 @@ export default function ExpensesScreen() {
                   styles.chip,
                   {
                     backgroundColor: !hasFilters ? colors.primary : colors.secondary,
-                    borderColor: !hasFilters ? colors.primary : colors.border,
+                    borderColor: !hasFilters ? colors.primary : "transparent",
                   },
                 ]}
               >
@@ -217,7 +221,7 @@ export default function ExpensesScreen() {
                       styles.chip,
                       {
                         backgroundColor: active ? colors.primary : colors.secondary,
-                        borderColor: active ? colors.primary : colors.border,
+                        borderColor: active ? colors.primary : "transparent",
                       },
                     ]}
                   >
@@ -231,20 +235,36 @@ export default function ExpensesScreen() {
           </View>
         )}
 
-        <View style={[styles.monthNav, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={prevMonth} hitSlop={12}>
-            <Feather name="chevron-left" size={22} color={colors.foreground} />
+        <View
+          style={[
+            styles.monthNav,
+            {
+              backgroundColor: colors.card,
+              shadowColor: colors.shadowColor,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={prevMonth}
+            hitSlop={12}
+            style={[styles.navBtn, { backgroundColor: colors.secondary }]}
+          >
+            <Feather name="chevron-left" size={18} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.monthLabel, { color: colors.foreground }]}>
             {MONTHS[selectedMonth - 1]} {selectedYear}
           </Text>
-          <TouchableOpacity onPress={nextMonth} hitSlop={12}>
-            <Feather name="chevron-right" size={22} color={colors.foreground} />
+          <TouchableOpacity
+            onPress={nextMonth}
+            hitSlop={12}
+            style={[styles.navBtn, { backgroundColor: colors.secondary }]}
+          >
+            <Feather name="chevron-right" size={18} color={colors.foreground} />
           </TouchableOpacity>
         </View>
 
         {Object.keys(total).length > 0 && (
-          <View style={[styles.summary, { backgroundColor: colors.secondary }]}>
+          <View style={[styles.summary, { backgroundColor: colors.background }]}>
             {Object.entries(total).map(([cur, amt]) => (
               <AmountBadge key={cur} amount={amt} currency={cur} size="lg" />
             ))}
@@ -286,12 +306,19 @@ export default function ExpensesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 12 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   filterBtn: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -306,11 +333,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     letterSpacing: 0.5,
     textTransform: "uppercase",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   filterChips: {
     flexDirection: "row",
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     gap: 8,
   },
   chip: {
@@ -329,18 +356,29 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  navBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   monthLabel: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
+    letterSpacing: -0.2,
   },
   summary: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 10,
     flexWrap: "wrap",
   },
   summaryLabel: {
@@ -349,22 +387,25 @@ const styles = StyleSheet.create({
     marginLeft: "auto",
   },
   list: {
-    padding: 12,
-    gap: 8,
+    padding: 16,
+    gap: 10,
     flexGrow: 1,
   },
   card: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 12,
+    borderRadius: 16,
+    padding: 14,
     gap: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
   thumb: {
     width: 48,
     height: 48,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   thumbPlaceholder: {
     alignItems: "center",
@@ -378,11 +419,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
+    gap: 10,
   },
   cardType: {
     fontSize: 15,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Inter_600SemiBold",
     flex: 1,
   },
   cardDate: {
@@ -396,7 +437,7 @@ const styles = StyleSheet.create({
   selfDeclBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   selfDeclText: {
     fontSize: 10,
@@ -408,7 +449,7 @@ const styles = StyleSheet.create({
     gap: 3,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   noPhotoText: {
     fontSize: 10,

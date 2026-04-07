@@ -25,6 +25,8 @@ function SettingsRow({
   onPress,
   color,
   destructive,
+  isFirst,
+  isLast,
 }: {
   icon: keyof typeof Feather.glyphMap;
   label: string;
@@ -32,6 +34,8 @@ function SettingsRow({
   onPress: () => void;
   color?: string;
   destructive?: boolean;
+  isFirst?: boolean;
+  isLast?: boolean;
 }) {
   const colors = useColors();
   const tint = destructive ? colors.destructive : color ?? colors.primary;
@@ -39,14 +43,21 @@ function SettingsRow({
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.75}
       style={[
         styles.row,
-        { backgroundColor: colors.card, borderColor: colors.border },
+        {
+          backgroundColor: colors.card,
+          borderBottomColor: isLast ? "transparent" : colors.border,
+          borderTopLeftRadius: isFirst ? 16 : 0,
+          borderTopRightRadius: isFirst ? 16 : 0,
+          borderBottomLeftRadius: isLast ? 16 : 0,
+          borderBottomRightRadius: isLast ? 16 : 0,
+        },
       ]}
     >
       <View
-        style={[styles.rowIcon, { backgroundColor: tint + "22" }]}
+        style={[styles.rowIcon, { backgroundColor: tint + "18" }]}
       >
         <Feather name={icon} size={18} color={tint} />
       </View>
@@ -69,7 +80,9 @@ function SettingsRow({
           </Text>
         )}
       </View>
-      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+      <View style={[styles.chevronBox, { backgroundColor: colors.secondary }]}>
+        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -100,7 +113,7 @@ function AboutModal({
           <View
             style={[
               styles.appIconContainer,
-              { backgroundColor: colors.primary + "22" },
+              { backgroundColor: colors.primary + "18" },
             ]}
           >
             <Feather name="file-text" size={40} color={colors.primary} />
@@ -122,17 +135,24 @@ function AboutModal({
           <View
             style={[styles.divider, { backgroundColor: colors.border }]}
           />
-          <View style={styles.infoRow}>
-            <Text
-              style={[styles.infoKey, { color: colors.mutedForeground }]}
-            >
-              Data storage
-            </Text>
-            <Text
-              style={[styles.infoVal, { color: colors.foreground }]}
-            >
-              Local (offline only)
-            </Text>
+          <View
+            style={[
+              styles.infoCard,
+              { backgroundColor: colors.card, shadowColor: colors.shadowColor },
+            ]}
+          >
+            <View style={styles.infoRow}>
+              <Text
+                style={[styles.infoKey, { color: colors.mutedForeground }]}
+              >
+                Data storage
+              </Text>
+              <Text
+                style={[styles.infoVal, { color: colors.foreground }]}
+              >
+                Local (offline only)
+              </Text>
+            </View>
           </View>
         </View>
         <TouchableOpacity
@@ -171,27 +191,29 @@ export default function MoreScreen() {
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
           DATA
         </Text>
-        <View style={styles.group}>
+        <View style={[styles.group, { shadowColor: colors.shadowColor }]}>
           <SettingsRow
             icon="user"
             label="General Data"
             subtitle="Worker number, division, cost center"
-            color="#3077FF"
+            color={colors.primary}
             onPress={() => router.push("/general-data")}
+            isFirst
           />
           <SettingsRow
             icon="pie-chart"
             label="Budgets"
             subtitle="Manage budget codes"
-            color="#FF9500"
+            color={colors.warning}
             onPress={() => router.push("/budgets")}
           />
           <SettingsRow
             icon="download"
             label="Export to CSV"
             subtitle="Export all expenses and trips"
-            color="#34C759"
+            color={colors.success}
             onPress={() => router.push("/export")}
+            isLast
           />
         </View>
 
@@ -203,12 +225,14 @@ export default function MoreScreen() {
         >
           APP
         </Text>
-        <View style={styles.group}>
+        <View style={[styles.group, { shadowColor: colors.shadowColor }]}>
           <SettingsRow
             icon="info"
             label="About"
             subtitle={`Version ${APP_VERSION}`}
             onPress={() => setShowAbout(true)}
+            isFirst
+            isLast
           />
         </View>
       </ScrollView>
@@ -221,31 +245,35 @@ export default function MoreScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: {
-    padding: 16,
-    gap: 8,
+    padding: 20,
+    gap: 10,
   },
   sectionLabel: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.8,
+    letterSpacing: 1,
     marginBottom: 4,
+    paddingHorizontal: 4,
   },
   group: {
-    gap: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    gap: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    padding: 16,
+    gap: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   rowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -260,6 +288,13 @@ const styles = StyleSheet.create({
   rowSubtitle: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
+  },
+  chevronBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
   },
   modal: {
     flex: 1,
@@ -282,9 +317,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   appIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+    width: 84,
+    height: 84,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -292,6 +327,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 22,
     fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3,
   },
   appVersion: {
     fontSize: 14,
@@ -301,19 +337,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 21,
     paddingHorizontal: 16,
-    marginTop: 8,
+    marginTop: 4,
   },
   divider: {
     width: "100%",
     height: StyleSheet.hairlineWidth,
     marginVertical: 8,
   },
+  infoCard: {
+    width: "100%",
+    borderRadius: 14,
+    padding: 16,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    width: "100%",
+    alignItems: "center",
   },
   infoKey: {
     fontSize: 14,

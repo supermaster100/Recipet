@@ -22,7 +22,7 @@ export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: Emp
           { backgroundColor: colors.secondary },
         ]}
       >
-        <Feather name={icon} size={28} color={colors.mutedForeground} />
+        <Feather name={icon} size={26} color={colors.mutedForeground} />
       </View>
       <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
       {subtitle && (
@@ -50,15 +50,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 40,
-    gap: 12,
+    gap: 10,
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   title: {
     fontSize: 17,
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 21,
   },
   actionBtn: {
     flexDirection: "row",

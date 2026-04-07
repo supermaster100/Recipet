@@ -34,21 +34,23 @@ function ExchangeCard({
         styles.card,
         {
           backgroundColor: colors.card,
-          borderColor: colors.border,
-          opacity: pressed ? 0.8 : 1,
+          shadowColor: colors.shadowColor,
+          opacity: pressed ? 0.85 : 1,
         },
       ]}
     >
       <View style={styles.cardRow}>
         <View style={styles.currencyPair}>
           <View
-            style={[styles.currencyBadge, { backgroundColor: colors.primary + "22" }]}
+            style={[styles.currencyBadge, { backgroundColor: colors.primary + "18" }]}
           >
             <Text style={[styles.currencyCode, { color: colors.primary }]}>
               {exchange.spentCurrency}
             </Text>
           </View>
-          <Feather name="arrow-right" size={14} color={colors.mutedForeground} />
+          <View style={[styles.arrowBox, { backgroundColor: colors.secondary }]}>
+            <Feather name="arrow-right" size={12} color={colors.mutedForeground} />
+          </View>
           <View
             style={[styles.currencyBadge, { backgroundColor: colors.secondary }]}
           >
@@ -65,15 +67,16 @@ function ExchangeCard({
         <Text style={[styles.fromAmount, { color: colors.mutedForeground }]}>
           {exchange.amountSpent.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {exchange.spentCurrency}
         </Text>
-        <Text style={[styles.arrow, { color: colors.mutedForeground }]}>→</Text>
+        <Feather name="arrow-right" size={14} color={colors.mutedForeground} style={styles.amountArrow} />
         <Text style={[styles.toAmount, { color: colors.foreground }]}>
           {exchange.amountReceived.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {exchange.receivedCurrency}
         </Text>
       </View>
-      <Text style={[styles.rate, { color: colors.mutedForeground }]}>
-        {exchange.spentCurrency} → {exchange.receivedCurrency}
-        {exchange.note ? ` · ${exchange.note}` : ""}
-      </Text>
+      {exchange.note ? (
+        <Text style={[styles.note, { color: colors.mutedForeground }]}>
+          {exchange.note}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -93,8 +96,9 @@ export default function ExchangesScreen() {
             <TouchableOpacity
               onPress={() => router.push("/add-exchange")}
               hitSlop={8}
+              style={[styles.addButton, { backgroundColor: colors.primary + "18" }]}
             >
-              <Feather name="plus" size={22} color={colors.primary} />
+              <Feather name="plus" size={18} color={colors.primary} />
             </TouchableOpacity>
           }
         />
@@ -130,15 +134,25 @@ export default function ExchangesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  addButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   list: {
-    padding: 16,
+    padding: 20,
     gap: 10,
   },
   card: {
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-    gap: 8,
+    borderRadius: 16,
+    padding: 16,
+    gap: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardRow: {
     flexDirection: "row",
@@ -151,9 +165,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   currencyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  arrowBox: {
+    width: 24,
+    height: 24,
     borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
   },
   currencyCode: {
     fontSize: 12,
@@ -167,21 +188,22 @@ const styles = StyleSheet.create({
   amounts: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   fromAmount: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
-  arrow: {
-    fontSize: 14,
+  amountArrow: {
+    opacity: 0.6,
   },
   toAmount: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
   },
-  rate: {
+  note: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
+    fontStyle: "italic",
   },
 });
