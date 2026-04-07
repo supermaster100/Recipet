@@ -173,7 +173,7 @@ export default function ExchangesScreen() {
         text: "Clear",
         style: "destructive",
         onPress: async () => {
-          for (const e of exchanges) await ExchangeDB.softDelete(e.id);
+          for (const e of exchanges) await ExchangeDB.hardDelete(e.id);
           for (const a of atmWithdrawals) await ATMDB.delete(a.id);
           setSelectedIds(new Set());
           await Promise.all([refreshExchanges(), refreshATM()]);

@@ -165,13 +165,6 @@ export default function AddATMScreen() {
           </ScrollView>
         </View>
 
-        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Feather name="info" size={14} color={colors.primary} />
-          <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
-            ATM withdrawal amount will be credited to your cash wallet for {currency}.
-          </Text>
-        </View>
-
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>SLIP PHOTO</Text>
           <ImageField ref={imageFieldRef} value={photo} onChange={setPhoto} />
@@ -209,18 +202,4 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: "row", gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  infoCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 12,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-  },
 });
