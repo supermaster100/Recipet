@@ -95,7 +95,11 @@ export default function AddHotelNightScreen() {
       });
       void refreshTravels();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(tabs)/trip");
+      }
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to save hotel night. Please try again.");

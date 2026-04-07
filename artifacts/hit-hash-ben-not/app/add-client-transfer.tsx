@@ -77,12 +77,24 @@ export default function AddClientTransferScreen() {
       await refreshClientTransfers();
       await refreshCashWallet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(tabs)/client-transfers");
+      }
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to save client transfer. Please try again.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function goBack() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)/client-transfers");
     }
   }
 
@@ -120,7 +132,7 @@ export default function AddClientTransferScreen() {
           { paddingTop: topInset + 8, borderBottomColor: colors.border },
         ]}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+        <TouchableOpacity onPress={goBack} hitSlop={8} accessibilityLabel="close">
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>

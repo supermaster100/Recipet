@@ -64,7 +64,11 @@ export default function AddATMScreen() {
       await refreshATM();
       await refreshCashWallet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/(tabs)/exchanges");
+      }
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to save ATM withdrawal. Please try again.");

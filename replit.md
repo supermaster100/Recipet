@@ -76,10 +76,23 @@ ILS, USD, EUR, GBP, JPY, CHF, CAD, AUD, CNY, AED
 - Border radius: 10px standard, 12-16px for cards
 
 ## Development Notes
-- Web preview shows light theme (system default); mobile will use dark theme (#1C1C1C)
-- expo-sqlite only works on native (Android/iOS); web uses empty stubs
-- No backend — fully offline, data lives in local SQLite on device
+- Web preview shows dark theme; mobile follows system preference
+- expo-sqlite only works on native (Android/iOS); web uses `database.web.ts` with localStorage
+- `database.web.ts` is a full localStorage implementation (not stubs) — includes all DB entities including CashWalletDB
+- No backend — fully offline, data lives in local SQLite on device (localStorage on web)
 - Tab bar uses NativeTabs (liquid glass) on iOS 26+, classic Tabs on Android/older iOS
+- All add-* forms use `accessibilityLabel="close"` on the X button for testability
+- `confirmDiscard()` in add-expense.tsx and edit-expense/[id].tsx uses `window.confirm()` on web (Alert.alert is a no-op stub on web)
+- `handleDelete()` in edit-expense/[id].tsx uses `window.confirm()` on web
+- Export screen uses `window.alert()` on web for "not supported" message (Alert.alert is a no-op stub on web)
+- Delete button in edit-expense/[id].tsx has `accessibilityLabel="delete"` for testability
+
+## Testing
+- End-to-end test suite in `artifacts/hit-hash-ben-not/tests/full-user-flow.spec.ts`
+- 32 tests covering all 6 expense subjects (receipts, hotel nights, exchanges, ATM, transfers, client transfers) + export flow + form validation + cancel/delete flows
+- Run from repo root: `pnpm test` (runs `pnpm --filter @workspace/hit-hash-ben-not run test`)
+- Uses system Chromium at `/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium-browser`
+- All 32 tests pass in ~2 minutes
 
 ## Task Status
 - [x] Task 1: Expo Scaffold & Branding — COMPLETE

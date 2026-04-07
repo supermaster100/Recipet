@@ -1,8 +1,9 @@
-import type { ATMWithdrawal, CostCenter, ClientTransfer, Exchange, General, Leg, MoneyTransfer, Receipt, Travel, TrashItem } from "./types";
+import type { ATMWithdrawal, Budget, CashWalletEntry, CostCenter, ClientTransfer, Exchange, General, Leg, MoneyTransfer, Receipt, Travel, TrashItem } from "./types";
 
 const KEYS = {
   general: "hhbn_general",
   receipts: "hhbn_receipts",
+  cashWallet: "hhbn_cash_wallet",
   exchanges: "hhbn_exchanges",
   legs: "hhbn_legs",
   travels: "hhbn_travels",
@@ -340,6 +341,41 @@ export const ClientTransferDB = {
   async delete(id: number): Promise<void> {
     const rows = load<ClientTransfer>(KEYS.clientTransfers).filter((x) => x.id !== id);
     save(KEYS.clientTransfers, rows);
+  },
+};
+
+export const CashWalletDB = {
+  async getAll(): Promise<CashWalletEntry[]> {
+    return load<CashWalletEntry>(KEYS.cashWallet);
+  },
+  async insert(entry: Omit<CashWalletEntry, "id">): Promise<number> {
+    const rows = load<CashWalletEntry>(KEYS.cashWallet);
+    const id = nextId("cashWallet");
+    rows.push({ id, ...entry });
+    save(KEYS.cashWallet, rows);
+    return id;
+  },
+  async deleteByRef(refId: number, refTable: string): Promise<void> {
+    const rows = load<CashWalletEntry>(KEYS.cashWallet).filter(
+      (e) => !(e.refId === refId && e.refTable === refTable)
+    );
+    save(KEYS.cashWallet, rows);
+  },
+  async delete(id: number): Promise<void> {
+    const rows = load<CashWalletEntry>(KEYS.cashWallet).filter((e) => e.id !== id);
+    save(KEYS.cashWallet, rows);
+  },
+  async getBalances(): Promise<Record<string, number>> {
+    const rows = load<CashWalletEntry>(KEYS.cashWallet);
+    const balances: Record<string, number> = {};
+    for (const row of rows) {
+      balances[row.currency] = (balances[row.currency] ?? 0) + row.amount;
+    }
+    return balances;
+  },
+  async clearAll(): Promise<void> {
+    save(KEYS.cashWallet, []);
+    localStorage.removeItem(KEYS.seq("cashWallet"));
   },
 };
 

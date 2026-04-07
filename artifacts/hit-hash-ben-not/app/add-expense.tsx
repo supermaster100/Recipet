@@ -321,6 +321,11 @@ export default function AddExpenseScreen() {
   }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, division, selectedCostCenter, photo, selfDeclaration, note, paymentMethod]);
 
   const confirmDiscard = useCallback(() => {
+    if (Platform.OS === "web") {
+      const ok = window.confirm("You have unsaved changes. Are you sure you want to go back?");
+      if (ok) clearDraft(DRAFT_KEY);
+      return Promise.resolve(ok);
+    }
     return new Promise<boolean>((resolve) => {
       Alert.alert(
         "Discard changes?",
@@ -569,7 +574,7 @@ export default function AddExpenseScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={[styles.header, { paddingTop: topInset + 8, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={handleBack} hitSlop={8}>
+        <TouchableOpacity onPress={handleBack} hitSlop={8} accessibilityLabel="close">
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>New Receipt</Text>

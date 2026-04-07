@@ -92,7 +92,7 @@ export default function ExportScreen() {
 
   function handleYes() {
     if (Platform.OS === "web") {
-      Alert.alert("Not Supported", "Email export requires a real device with an email app.");
+      window.alert("Not Supported: Email export requires a real device with an email app.");
       return;
     }
 

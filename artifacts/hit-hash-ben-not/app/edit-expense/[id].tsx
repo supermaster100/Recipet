@@ -193,6 +193,10 @@ export default function EditExpenseScreen() {
   }, [receipt?.photo, receipt?.photo_checksum]);
 
   const confirmDiscard = useCallback(() => {
+    if (Platform.OS === "web") {
+      const ok = window.confirm("You have unsaved changes. Are you sure you want to go back?");
+      return Promise.resolve(ok);
+    }
     return new Promise<boolean>((resolve) => {
       Alert.alert(
         "Discard changes?",
@@ -309,6 +313,16 @@ export default function EditExpenseScreen() {
 
   async function handleDelete() {
     if (!receipt) return;
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to delete this receipt?");
+      if (!confirmed) return;
+      await CashWalletDB.deleteByRef(receipt.id, "Receipts");
+      await ReceiptDB.softDelete(receipt.id);
+      await refreshReceipts();
+      await refreshCashWallet();
+      if (router.canGoBack()) router.back(); else router.replace("/(tabs)/expenses");
+      return;
+    }
     Alert.alert("Delete Receipt", "Are you sure you want to delete this receipt?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -364,7 +378,7 @@ export default function EditExpenseScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Edit Receipt</Text>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={handleDelete} hitSlop={8}>
+          <TouchableOpacity onPress={handleDelete} hitSlop={8} accessibilityLabel="delete">
             <Feather name="trash-2" size={20} color={colors.destructive} />
           </TouchableOpacity>
           <TouchableOpacity
