@@ -26,25 +26,37 @@ function CheckRow({
   subtitle,
   checked,
   onToggle,
+  disabled,
 }: {
   label: string;
   subtitle?: string;
   checked: boolean;
   onToggle: () => void;
+  disabled?: boolean;
 }) {
   const colors = useColors();
   return (
-    <TouchableOpacity onPress={onToggle} style={styles.checkRow} activeOpacity={0.7}>
+    <TouchableOpacity
+      onPress={onToggle}
+      style={styles.checkRow}
+      activeOpacity={disabled ? 1 : 0.7}
+      disabled={disabled}
+    >
       <View style={[
         styles.checkbox,
-        { borderColor: checked ? colors.primary : colors.mutedForeground },
-        checked && { backgroundColor: colors.primary },
+        { borderColor: disabled ? colors.mutedForeground + "50" : (checked ? colors.primary : colors.mutedForeground) },
+        checked && !disabled && { backgroundColor: colors.primary },
       ]}>
         {checked && <Feather name="check" size={13} color="#fff" />}
       </View>
       <View style={styles.checkText}>
-        <Text style={[styles.checkLabel, { color: colors.foreground }]}>{label}</Text>
-        {subtitle && <Text style={[styles.checkSub, { color: colors.mutedForeground }]}>{subtitle}</Text>}
+        <Text style={[
+          styles.checkLabel,
+          { color: disabled ? colors.mutedForeground : colors.foreground },
+        ]}>{label}</Text>
+        {subtitle && (
+          <Text style={[styles.checkSub, { color: colors.mutedForeground }]}>{subtitle}</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -53,10 +65,14 @@ function CheckRow({
 export default function ExportScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { general, receipts, travels, legs, exchanges, atmWithdrawals, moneyTransfers, clientTransfers, refreshAll } = useAppContext();
+  const {
+    general, receipts, travels, legs, exchanges,
+    atmWithdrawals, moneyTransfers, clientTransfers, refreshAll,
+  } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [exportAll, setExportAll] = useState(false);
   const [clearAfter, setClearAfter] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
@@ -74,45 +90,24 @@ export default function ExportScreen() {
     receipts.length + travels.length + exchanges.length +
     atmWithdrawals.length + moneyTransfers.length + clientTransfers.length;
 
-  function handleExport() {
+  function handleYes() {
     if (Platform.OS === "web") {
       Alert.alert("Not Supported", "Email export requires a real device with an email app.");
       return;
     }
 
     const data = {
-      general,
-      legs,
-      travels,
-      receipts,
-      exchanges,
-      atmWithdrawals,
-      moneyTransfers,
-      clientTransfers,
+      general, legs, travels, receipts,
+      exchanges, atmWithdrawals, moneyTransfers, clientTransfers,
     };
 
     const err = validateExportData(data);
     if (err) {
-      Alert.alert(
-        "Cannot Export",
-        `${err.message}\n\nGo to: ${err.screen}`,
-        [{ text: "OK" }]
-      );
+      Alert.alert("Cannot Export", `${err.message}\n\nGo to: ${err.screen}`, [{ text: "OK" }]);
       return;
     }
 
-    const clearLine = clearAfter
-      ? "\n\nAll trip data will be cleared after the email is sent."
-      : "";
-
-    Alert.alert(
-      "Export all?",
-      `${totalItems} item${totalItems !== 1 ? "s" : ""} will be exported to CSV & Excel and attached to an email.${clearLine}`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Yes", onPress: () => doExport(data) },
-      ]
-    );
+    doExport(data);
   }
 
   async function doExport(data: Parameters<typeof runExport>[0]) {
@@ -124,8 +119,6 @@ export default function ExportScreen() {
         if (clearAfter) await refreshAll();
         Alert.alert("Export Complete", "Your expense report was sent successfully.");
         router.back();
-      } else if (result === "error") {
-        setProgress("");
       }
     } finally {
       setRunning(false);
@@ -133,7 +126,7 @@ export default function ExportScreen() {
     }
   }
 
-  const canExport = !running && receipts.length > 0;
+  const canExport = !running && exportAll && receipts.length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -146,14 +139,14 @@ export default function ExportScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.sectionHeader}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeader}>
             <Feather name="mail" size={16} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recipient Email</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Recipient Email</Text>
           </View>
           <TextInput
             style={[styles.input, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
@@ -165,46 +158,47 @@ export default function ExportScreen() {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-            Optional. Saved automatically.
-          </Text>
+          <Text style={[styles.hint, { color: colors.mutedForeground }]}>Saved automatically. Pre-fills the To: field.</Text>
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.sectionHeader}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeader}>
             <Feather name="settings" size={16} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Options</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Export Options</Text>
           </View>
+
+          <Text style={[styles.summaryText, { color: colors.mutedForeground }]}>
+            {totalItems} item{totalItems !== 1 ? "s" : ""} across all categories will be exported to CSV & Excel and attached to an email.
+          </Text>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <CheckRow
+            label="Export all?"
+            subtitle={`${receipts.length} expense${receipts.length !== 1 ? "s" : ""}, ${travels.length} hotel night${travels.length !== 1 ? "s" : ""}, ${exchanges.length} exchange${exchanges.length !== 1 ? "s" : ""}, and more`}
+            checked={exportAll}
+            onToggle={() => setExportAll((v) => !v)}
+          />
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
           <CheckRow
             label="Clear all trip data after export"
-            subtitle="Receipts, hotels, exchanges, transfers. General data and budgets are kept."
+            subtitle="Receipts, hotels, exchanges, ATM & transfers are soft-deleted. General data and budgets are kept."
             checked={clearAfter}
-            onToggle={() => setClearAfter(!clearAfter)}
+            onToggle={() => setClearAfter((v) => !v)}
+            disabled={!exportAll}
           />
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.sectionHeader}>
-            <Feather name="info" size={16} color={colors.mutedForeground} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>What's Included</Text>
+        {receipts.length === 0 && !running && (
+          <View style={[styles.warningCard, { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "40" }]}>
+            <Feather name="alert-circle" size={15} color={colors.destructive} />
+            <Text style={[styles.warningText, { color: colors.destructive }]}>
+              At least one expense receipt is required before exporting.
+            </Text>
           </View>
-          {[
-            { icon: "file-text" as const, label: "Expenses", count: receipts.length },
-            { icon: "map" as const, label: "Hotel Nights", count: travels.length },
-            { icon: "repeat" as const, label: "Exchanges", count: exchanges.length },
-            { icon: "credit-card" as const, label: "ATM Withdrawals", count: atmWithdrawals.length },
-            { icon: "send" as const, label: "Money Transfers", count: moneyTransfers.length },
-            { icon: "users" as const, label: "Client Transfers", count: clientTransfers.length },
-          ].map(({ icon, label, count }) => (
-            <View key={label} style={styles.summaryRow}>
-              <Feather name={icon} size={14} color={colors.mutedForeground} />
-              <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{label}</Text>
-              <Text style={[styles.summaryCount, { color: count > 0 ? colors.foreground : colors.mutedForeground }]}>
-                {count}
-              </Text>
-            </View>
-          ))}
-        </View>
+        )}
 
         {running ? (
           <View style={[styles.progressCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -212,28 +206,29 @@ export default function ExportScreen() {
             <Text style={[styles.progressText, { color: colors.foreground }]}>{progress}</Text>
           </View>
         ) : (
-          <TouchableOpacity
-            onPress={handleExport}
-            disabled={!canExport}
-            style={[
-              styles.exportBtn,
-              { backgroundColor: canExport ? colors.primary : colors.primary + "50" },
-            ]}
-            activeOpacity={0.85}
-          >
-            <Feather name="send" size={18} color="#fff" />
-            <Text style={styles.exportBtnText}>Export & Email</Text>
-          </TouchableOpacity>
-        )}
+          <View style={styles.actions}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={[styles.cancelBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
+            </TouchableOpacity>
 
-        {receipts.length === 0 && !running && (
-          <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
-            No expenses found. Add at least one expense receipt before exporting.
-          </Text>
+            <TouchableOpacity
+              onPress={handleYes}
+              disabled={!canExport}
+              style={[styles.yesBtn, { backgroundColor: canExport ? colors.primary : colors.primary + "50" }]}
+              activeOpacity={0.85}
+            >
+              <Feather name="send" size={16} color="#fff" />
+              <Text style={styles.yesBtnText}>Yes, Export</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <Text style={[styles.footerHint, { color: colors.mutedForeground }]}>
-          Generates a .csv and .xlsx file with all your data. Receipt photos are automatically compressed and attached. Your email app opens for you to review and send.
+          Photos are automatically compressed before attaching. Your email app opens so you can review and send.
         </Text>
       </ScrollView>
     </View>
@@ -251,15 +246,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  form: { padding: 16, gap: 16 },
-  section: {
+  body: { padding: 16, gap: 16 },
+  card: {
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     padding: 16,
     gap: 12,
   },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  sectionTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 },
+  cardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   input: {
     borderRadius: 10,
     borderWidth: 1,
@@ -269,6 +264,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   hint: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  summaryText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
+  },
+  divider: { height: StyleSheet.hairlineWidth },
   checkRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 2 },
   checkbox: {
     width: 22,
@@ -282,15 +283,20 @@ const styles = StyleSheet.create({
   checkText: { flex: 1, gap: 2 },
   checkLabel: { fontSize: 14, fontFamily: "Inter_500Medium" },
   checkSub: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
-  divider: { height: StyleSheet.hairlineWidth },
-  summaryRow: {
+  warningCard: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 3,
+    alignItems: "flex-start",
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
   },
-  summaryLabel: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
-  summaryCount: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
   progressCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -300,21 +306,29 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   progressText: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  exportBtn: {
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  cancelBtn: {
+    flex: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  yesBtn: {
+    flex: 2,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 8,
     borderRadius: 14,
-    paddingVertical: 16,
+    paddingVertical: 15,
   },
-  exportBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  emptyHint: {
-    textAlign: "center",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    fontStyle: "italic",
-  },
+  yesBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
   footerHint: {
     textAlign: "center",
     fontSize: 12,

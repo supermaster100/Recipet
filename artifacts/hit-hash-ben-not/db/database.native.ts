@@ -204,6 +204,9 @@ async function runSchemaMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
     }
     await db.execAsync(`ALTER TABLE Travels ADD COLUMN photo_checksum TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE Travels ADD COLUMN deleted_at TEXT`).catch(() => {});
+    await db.execAsync(`ALTER TABLE ATMWithdrawals ADD COLUMN deleted_at TEXT`).catch(() => {});
+    await db.execAsync(`ALTER TABLE MoneyTransfers ADD COLUMN deleted_at TEXT`).catch(() => {});
+    await db.execAsync(`ALTER TABLE ClientTransfers ADD COLUMN deleted_at TEXT`).catch(() => {});
   });
 }
 
@@ -681,6 +684,7 @@ function toMoneyTransfer(r: Record<string, unknown>): MoneyTransfer {
     currency: r["currency"] as MoneyTransfer["currency"],
     photo: r["photo"] as string | null,
     createdAt: r["createdAt"] as string,
+    deleted_at: (r["deleted_at"] as string | null) ?? null,
   };
 }
 
@@ -694,6 +698,7 @@ function toClientTransfer(r: Record<string, unknown>): ClientTransfer {
     currency: r["currency"] as ClientTransfer["currency"],
     photo: r["photo"] as string | null,
     createdAt: r["createdAt"] as string,
+    deleted_at: (r["deleted_at"] as string | null) ?? null,
   };
 }
 
@@ -701,11 +706,11 @@ export const MoneyTransferDB = {
   async getAll(): Promise<MoneyTransfer[]> {
     const db = await getDatabase();
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM MoneyTransfers ORDER BY date DESC, id DESC"
+      "SELECT * FROM MoneyTransfers WHERE deleted_at IS NULL ORDER BY date DESC, id DESC"
     );
     return rows.map(toMoneyTransfer);
   },
-  async insert(m: Omit<MoneyTransfer, "id">): Promise<number> {
+  async insert(m: Omit<MoneyTransfer, "id" | "deleted_at">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
       `INSERT INTO MoneyTransfers (receiptName, giverName, workerNumber, date, amount, currency, photo, createdAt)
@@ -714,9 +719,12 @@ export const MoneyTransferDB = {
     );
     return res.lastInsertRowId;
   },
-  async delete(id: number): Promise<void> {
+  async softDelete(id: number): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync("DELETE FROM MoneyTransfers WHERE id = ?", [id]);
+    await db.runAsync("UPDATE MoneyTransfers SET deleted_at=? WHERE id=?", [new Date().toISOString(), id]);
+  },
+  async delete(id: number): Promise<void> {
+    return MoneyTransferDB.softDelete(id);
   },
 };
 
@@ -724,11 +732,11 @@ export const ClientTransferDB = {
   async getAll(): Promise<ClientTransfer[]> {
     const db = await getDatabase();
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM ClientTransfers ORDER BY date DESC, id DESC"
+      "SELECT * FROM ClientTransfers WHERE deleted_at IS NULL ORDER BY date DESC, id DESC"
     );
     return rows.map(toClientTransfer);
   },
-  async insert(c: Omit<ClientTransfer, "id">): Promise<number> {
+  async insert(c: Omit<ClientTransfer, "id" | "deleted_at">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
       `INSERT INTO ClientTransfers (clientName, giverName, date, amount, currency, photo, createdAt)
@@ -737,9 +745,12 @@ export const ClientTransferDB = {
     );
     return res.lastInsertRowId;
   },
-  async delete(id: number): Promise<void> {
+  async softDelete(id: number): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync("DELETE FROM ClientTransfers WHERE id = ?", [id]);
+    await db.runAsync("UPDATE ClientTransfers SET deleted_at=? WHERE id=?", [new Date().toISOString(), id]);
+  },
+  async delete(id: number): Promise<void> {
+    return ClientTransferDB.softDelete(id);
   },
 };
 
@@ -752,6 +763,7 @@ function toATMWithdrawal(r: Record<string, unknown>): ATMWithdrawal {
     currency: r["currency"] as Currency,
     photo: r["photo"] as string | null,
     createdAt: r["createdAt"] as string,
+    deleted_at: (r["deleted_at"] as string | null) ?? null,
   };
 }
 
@@ -759,7 +771,7 @@ export const ATMDB = {
   async getAll(): Promise<ATMWithdrawal[]> {
     const db = await getDatabase();
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM ATMWithdrawals ORDER BY date DESC, id DESC"
+      "SELECT * FROM ATMWithdrawals WHERE deleted_at IS NULL ORDER BY date DESC, id DESC"
     );
     return rows.map(toATMWithdrawal);
   },
@@ -771,7 +783,7 @@ export const ATMDB = {
     );
     return row ? toATMWithdrawal(row) : null;
   },
-  async insert(a: Omit<ATMWithdrawal, "id">): Promise<number> {
+  async insert(a: Omit<ATMWithdrawal, "id" | "deleted_at">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
       `INSERT INTO ATMWithdrawals (date, cardLastFour, amount, currency, photo, createdAt)
@@ -787,9 +799,12 @@ export const ATMDB = {
       [a.date, a.cardLastFour, a.amount, a.currency, a.photo ?? null, a.createdAt, a.id]
     );
   },
-  async delete(id: number): Promise<void> {
+  async softDelete(id: number): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync("DELETE FROM ATMWithdrawals WHERE id = ?", [id]);
+    await db.runAsync("UPDATE ATMWithdrawals SET deleted_at=? WHERE id=?", [new Date().toISOString(), id]);
+  },
+  async delete(id: number): Promise<void> {
+    return ATMDB.softDelete(id);
   },
 };
 

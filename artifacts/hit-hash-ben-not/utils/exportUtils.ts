@@ -259,9 +259,9 @@ async function clearAllData(snapshot: ExportData): Promise<void> {
   for (const x of snapshot.exchanges) await ExchangeDB.softDelete(x.id).catch(() => {});
   for (const t of snapshot.travels) await TravelDB.softDelete(t.id).catch(() => {});
   for (const l of snapshot.legs) await LegDB.softDelete(l.id).catch(() => {});
-  for (const a of snapshot.atmWithdrawals) await ATMDB.delete(a.id).catch(() => {});
-  for (const m of snapshot.moneyTransfers) await MoneyTransferDB.delete(m.id).catch(() => {});
-  for (const c of snapshot.clientTransfers) await ClientTransferDB.delete(c.id).catch(() => {});
+  for (const a of snapshot.atmWithdrawals) await ATMDB.softDelete(a.id).catch(() => {});
+  for (const m of snapshot.moneyTransfers) await MoneyTransferDB.softDelete(m.id).catch(() => {});
+  for (const c of snapshot.clientTransfers) await ClientTransferDB.softDelete(c.id).catch(() => {});
 
   for (const uri of photoUris) {
     await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});

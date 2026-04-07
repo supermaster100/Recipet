@@ -90,6 +90,7 @@ export interface ATMWithdrawal {
   currency: Currency;
   photo: string | null;
   createdAt: string;
+  deleted_at: string | null;
 }
 
 export interface Leg {
@@ -159,6 +160,7 @@ export interface MoneyTransfer {
   currency: Currency;
   photo: string | null;
   createdAt: string;
+  deleted_at: string | null;
 }
 
 export interface ClientTransfer {
@@ -170,4 +172,5 @@ export interface ClientTransfer {
   currency: Currency;
   photo: string | null;
   createdAt: string;
+  deleted_at: string | null;
 }
