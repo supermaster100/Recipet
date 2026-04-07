@@ -51,6 +51,7 @@ export interface Receipt {
   selfDeclaration: boolean;
   note: string;
   photo: string | null;
+  budget: string;
   status: string;
   export: boolean;
 }

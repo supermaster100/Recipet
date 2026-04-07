@@ -4,13 +4,12 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  BackHandler,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -166,9 +165,11 @@ export default function EditExpenseScreen() {
   const [numberOfPeople, setNumberOfPeople] = useState(String(receipt?.numberOfPeople ?? "1"));
   const [division, setDivision] = useState(receipt?.division ?? "");
   const [costCenter, setCostCenter] = useState(receipt?.costCenter ?? "");
-  const [selfDeclaration, setSelfDeclaration] = useState(receipt?.selfDeclaration ?? true);
+  const [photo, setPhoto] = useState(receipt?.photo ?? "");
   const [note, setNote] = useState(receipt?.note ?? "");
-  const [budgetId, setBudgetId] = useState("");
+  const [budgetId, setBudgetId] = useState(receipt?.budget ?? "");
+
+  const selfDeclaration = (photo ?? "").trim().length === 0;
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -177,6 +178,15 @@ export default function EditExpenseScreen() {
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [showBudgetPicker, setShowBudgetPicker] = useState(false);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      handleBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [dirty]);
 
   function markDirty() {
     if (!dirty) setDirty(true);
@@ -224,7 +234,8 @@ export default function EditExpenseScreen() {
         costCenter: costCenter.trim(),
         selfDeclaration,
         note: note.trim(),
-        photo: receipt.photo,
+        photo: photo.trim() || null,
+        budget: budgetId,
         status: receipt.status,
         export: receipt.export,
       });
@@ -247,7 +258,7 @@ export default function EditExpenseScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await ReceiptDB.delete(receipt.id);
+          await ReceiptDB.softDelete(receipt.id);
           await refreshReceipts();
           router.back();
         },
@@ -436,23 +447,18 @@ export default function EditExpenseScreen() {
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Self Declaration" />
-          <View style={[styles.toggleRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.toggleInfo}>
-              <Text style={[styles.toggleTitle, { color: colors.foreground }]}>
-                Self declaration receipt
-              </Text>
-              <Text style={[styles.toggleSubtitle, { color: colors.mutedForeground }]}>
-                No photo attached — manually entered
-              </Text>
-            </View>
-            <Switch
-              value={selfDeclaration}
-              onValueChange={(v) => { setSelfDeclaration(v); markDirty(); }}
-              trackColor={{ false: colors.border, true: colors.primary + "80" }}
-              thumbColor={selfDeclaration ? colors.primary : colors.mutedForeground}
-            />
-          </View>
+          <FieldLabel text="Photo URI (optional)" />
+          <StyledInput
+            value={photo}
+            onChangeText={(v) => { setPhoto(v); markDirty(); }}
+            placeholder="file://... or leave blank for self-declaration"
+            autoCapitalize="none"
+          />
+          <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+            {selfDeclaration
+              ? "No photo — self declaration will be enabled"
+              : "Photo attached — self declaration disabled"}
+          </Text>
         </View>
 
         <View style={styles.field}>
@@ -542,19 +548,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   currencyBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  toggleInfo: { flex: 1, gap: 2 },
-  toggleTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  toggleSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  hintText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4 },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   notFoundText: { fontSize: 15, fontFamily: "Inter_400Regular" },
 });

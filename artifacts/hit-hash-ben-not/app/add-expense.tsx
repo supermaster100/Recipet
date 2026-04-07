@@ -1,13 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
+  BackHandler,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -167,9 +167,11 @@ export default function AddExpenseScreen() {
   const [numberOfPeople, setNumberOfPeople] = useState("1");
   const [division, setDivision] = useState("");
   const [costCenter, setCostCenter] = useState("");
-  const [selfDeclaration, setSelfDeclaration] = useState(true);
+  const [photo, setPhoto] = useState("");
   const [note, setNote] = useState("");
   const [budgetId, setBudgetId] = useState<string>("");
+
+  const selfDeclaration = photo.trim().length === 0;
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -186,6 +188,15 @@ export default function AddExpenseScreen() {
       setCostCenter(general.costCenter);
     }
   }, [general]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      handleBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [dirty, saved]);
 
   function markDirty() {
     if (!dirty) setDirty(true);
@@ -232,7 +243,8 @@ export default function AddExpenseScreen() {
         costCenter: costCenter.trim(),
         selfDeclaration,
         note: note.trim(),
-        photo: null,
+        photo: photo.trim() || null,
+        budget: budgetId,
         status: "",
         export: false,
       });
@@ -270,7 +282,7 @@ export default function AddExpenseScreen() {
     setNumberOfPeople("1");
     setDivision(general?.division ?? "");
     setCostCenter(general?.costCenter ?? "");
-    setSelfDeclaration(true);
+    setPhoto("");
     setNote("");
     setBudgetId("");
     setErrors({});
@@ -462,23 +474,18 @@ export default function AddExpenseScreen() {
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Self Declaration" />
-          <View style={[styles.toggleRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.toggleInfo}>
-              <Text style={[styles.toggleTitle, { color: colors.foreground }]}>
-                Self declaration receipt
-              </Text>
-              <Text style={[styles.toggleSubtitle, { color: colors.mutedForeground }]}>
-                No photo attached — manually entered
-              </Text>
-            </View>
-            <Switch
-              value={selfDeclaration}
-              onValueChange={(v) => { setSelfDeclaration(v); markDirty(); }}
-              trackColor={{ false: colors.border, true: colors.primary + "80" }}
-              thumbColor={selfDeclaration ? colors.primary : colors.mutedForeground}
-            />
-          </View>
+          <FieldLabel text="Photo URI (optional)" />
+          <StyledInput
+            value={photo}
+            onChangeText={(v) => { setPhoto(v); markDirty(); }}
+            placeholder="file://... or leave blank for self-declaration"
+            autoCapitalize="none"
+          />
+          <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+            {selfDeclaration
+              ? "No photo — self declaration will be enabled"
+              : "Photo attached — self declaration disabled"}
+          </Text>
         </View>
 
         <View style={styles.field}>
@@ -568,19 +575,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   currencyBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  toggleInfo: { flex: 1, gap: 2 },
-  toggleTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  toggleSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  hintText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4 },
   successContainer: {
     flex: 1,
     alignItems: "center",

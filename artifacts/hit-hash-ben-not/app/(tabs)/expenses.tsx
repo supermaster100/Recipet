@@ -271,6 +271,8 @@ export default function ExpensesScreen() {
                   ? "Try changing your filters or adding a new receipt"
                   : `No expenses recorded for ${MONTHS[selectedMonth - 1]} ${selectedYear}`
               }
+              actionLabel={!hasFilters ? "Add Receipt" : undefined}
+              onAction={!hasFilters ? () => router.push("/add-expense") : undefined}
             />
           ) : null
         }

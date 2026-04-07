@@ -13,6 +13,7 @@ export const ReceiptDB = {
   getAll: (): Promise<Receipt[]> => Promise.resolve([]),
   insert: (_r: Omit<Receipt, "id">): Promise<number> => Promise.resolve(0),
   update: (_r: Receipt): Promise<void> => Promise.resolve(),
+  softDelete: (_id: number): Promise<void> => Promise.resolve(),
   delete: (_id: number): Promise<void> => Promise.resolve(),
 };
 

@@ -57,6 +57,7 @@ export default function AddTripReceiptScreen() {
         selfDeclaration,
         note: note ? `[Trip #${id}] ${note}` : `[Trip #${id}]`,
         photo: null,
+        budget: "",
         status: "",
         export: false,
       });

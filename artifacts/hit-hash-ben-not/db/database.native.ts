@@ -54,10 +54,14 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
       selfDeclaration INTEGER NOT NULL DEFAULT 0,
       note TEXT NOT NULL DEFAULT '',
       photo TEXT,
+      budget TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT '',
       export INTEGER NOT NULL DEFAULT 0
     );
   `);
+  await db.execAsync(
+    `ALTER TABLE Receipts ADD COLUMN budget TEXT NOT NULL DEFAULT ''`
+  ).catch(() => {});  
 
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS Exchanges (
@@ -139,6 +143,7 @@ function toReceipt(r: Record<string, unknown>): Receipt {
     selfDeclaration: (r["selfDeclaration"] as number) === 1,
     note: r["note"] as string,
     photo: r["photo"] as string | null,
+    budget: (r["budget"] as string) ?? "",
     status: r["status"] as string,
     export: (r["export"] as number) === 1,
   };
@@ -235,27 +240,31 @@ export const ReceiptDB = {
   async getAll(): Promise<Receipt[]> {
     const db = await getDatabase();
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM Receipts ORDER BY date DESC, id DESC"
+      "SELECT * FROM Receipts WHERE status != 'deleted' ORDER BY date DESC, id DESC"
     );
     return rows.map(toReceipt);
   },
   async insert(r: Omit<Receipt, "id">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
-      `INSERT INTO Receipts (type, amount, currency, date, numberOfPeople, division, costCenter, selfDeclaration, note, photo, status, export)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO Receipts (type, amount, currency, date, numberOfPeople, division, costCenter, selfDeclaration, note, photo, budget, status, export)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.division, r.costCenter,
-       r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.status, r.export ? 1 : 0]
+       r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.budget ?? "", r.status, r.export ? 1 : 0]
     );
     return res.lastInsertRowId;
   },
   async update(r: Receipt): Promise<void> {
     const db = await getDatabase();
     await db.runAsync(
-      `UPDATE Receipts SET type=?, amount=?, currency=?, date=?, numberOfPeople=?, division=?, costCenter=?, selfDeclaration=?, note=?, photo=?, status=?, export=? WHERE id=?`,
+      `UPDATE Receipts SET type=?, amount=?, currency=?, date=?, numberOfPeople=?, division=?, costCenter=?, selfDeclaration=?, note=?, photo=?, budget=?, status=?, export=? WHERE id=?`,
       [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.division, r.costCenter,
-       r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.status, r.export ? 1 : 0, r.id]
+       r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.budget ?? "", r.status, r.export ? 1 : 0, r.id]
     );
+  },
+  async softDelete(id: number): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync("UPDATE Receipts SET status='deleted' WHERE id = ?", [id]);
   },
   async delete(id: number): Promise<void> {
     const db = await getDatabase();
