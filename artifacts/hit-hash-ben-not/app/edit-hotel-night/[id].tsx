@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -242,29 +243,18 @@ export default function EditHotelNightScreen() {
         </FormField>
 
         <FormField label="Payment">
-          <View style={[styles.chipRow, arbitraryLocation && { opacity: 0.4 }]}>
-            {PAYMENT_METHODS.map((pm) => (
-              <Pressable
-                key={pm}
-                onPress={arbitraryLocation ? undefined : () => setPaymentMethod(pm)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: paymentMethod === pm ? colors.primary : colors.card,
-                    borderColor: paymentMethod === pm ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    { color: paymentMethod === pm ? colors.primaryForeground : colors.foreground },
-                  ]}
-                >
-                  {pm}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={[styles.pickerWrap, { borderColor: colors.border, backgroundColor: colors.card }, arbitraryLocation && { opacity: 0.4 }]}>
+            <Picker
+              selectedValue={paymentMethod}
+              onValueChange={arbitraryLocation ? undefined : setPaymentMethod}
+              enabled={!arbitraryLocation}
+              dropdownIconColor={colors.mutedForeground}
+              style={{ color: colors.foreground }}
+            >
+              {PAYMENT_METHODS.map((pm) => (
+                <Picker.Item key={pm} label={pm} value={pm} />
+              ))}
+            </Picker>
           </View>
         </FormField>
 
@@ -362,6 +352,7 @@ const styles = StyleSheet.create({
   disabledSection: { opacity: 0.4 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  pickerWrap: { borderRadius: 10, borderWidth: 1, overflow: "hidden" },
   switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   switchLabel: { fontSize: 15, fontFamily: "Inter_400Regular" },
   deleteBtn: {
