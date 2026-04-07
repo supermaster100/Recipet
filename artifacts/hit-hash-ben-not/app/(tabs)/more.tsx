@@ -21,10 +21,12 @@ import { useColors } from "@/hooks/useColors";
 
 const EMAIL_KEY = "@export_recipient_email";
 
-// Version is read from app.json via expo-constants at runtime.
-// To bump the version, update only the "version" field in app.json — the About popup reflects it automatically.
-// Do NOT hard-code the version here; expo-constants.expoConfig.version always reflects the compiled build.
-const APP_VERSION: string = Constants.expoConfig?.version ?? "";
+// Version is read from the compiled native build via expo-constants.
+// - nativeAppVersion: the actual versionName/CFBundleShortVersionString from the compiled APK/IPA (most accurate).
+// - expoConfig.version: fallback for Expo Go / managed workflow dev runs.
+// To bump the version, update only the "version" field in app.json. Do NOT hard-code a version number here.
+const APP_VERSION: string =
+  Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? "";
 
 function SettingsRow({
   icon,
