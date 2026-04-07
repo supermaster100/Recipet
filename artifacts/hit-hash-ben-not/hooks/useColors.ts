@@ -1,8 +1,6 @@
-import { useColorScheme } from "react-native";
-
 import colors from "@/constants/colors";
 
-type ColorTheme = typeof colors.light;
+type ColorTheme = typeof colors.dark;
 
 export function useColors(): ColorTheme & {
   radius: number;
@@ -10,10 +8,8 @@ export function useColors(): ColorTheme & {
   radiusMd: number;
   radiusLg: number;
 } {
-  const scheme = useColorScheme();
-  const palette: ColorTheme = scheme === "dark" ? colors.dark : colors.light;
   return {
-    ...palette,
+    ...colors.dark,
     radius: colors.radius,
     radiusSm: colors.radiusSm,
     radiusMd: colors.radiusMd,
