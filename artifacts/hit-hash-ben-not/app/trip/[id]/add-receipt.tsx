@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Platform,
@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ImageField } from "@/components/ui/ImageField";
+import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { ReceiptDB } from "@/db/database";
 import {
   CURRENCIES,
@@ -46,13 +46,16 @@ export default function AddTripReceiptScreen() {
   const [selfDeclaration, setSelfDeclaration] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const imageFieldRef = useRef<ImageFieldHandle>(null);
+
   useEffect(() => {
     setSelfDeclaration(photo.trim().length === 0);
   }, [photo]);
 
-  async function doSave(photoPath: string) {
+  async function doSave(photoPath: string, forceNoPhoto: boolean) {
     if (!id || !amount || isNaN(Number(amount))) return;
     setSaving(true);
+    const effectiveSelfDecl = forceNoPhoto ? true : selfDeclaration;
     try {
       await ReceiptDB.insert({
         type,
@@ -62,7 +65,7 @@ export default function AddTripReceiptScreen() {
         numberOfPeople: 1,
         division,
         costCenter,
-        selfDeclaration,
+        selfDeclaration: effectiveSelfDecl,
         note: note ? `[Trip #${id}] ${note}` : `[Trip #${id}]`,
         photo: photoPath || null,
         budget: "",
@@ -86,14 +89,14 @@ export default function AddTripReceiptScreen() {
         "No Receipt Photo",
         "Do you want to add a photo of the receipt?",
         [
-          { text: "Add Photo", style: "default", onPress: () => {} },
-          { text: "Save Without Photo", style: "destructive", onPress: () => doSave("") },
+          { text: "Add Photo", style: "default", onPress: () => imageFieldRef.current?.show() },
+          { text: "Save Without Photo", style: "destructive", onPress: () => doSave("", true) },
           { text: "Cancel", style: "cancel" },
         ]
       );
       return;
     }
-    doSave(photo);
+    doSave(photo, false);
   }
 
   return (
@@ -206,7 +209,7 @@ export default function AddTripReceiptScreen() {
         </View>
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>PHOTO</Text>
-          <ImageField value={photo} onChange={setPhoto} />
+          <ImageField ref={imageFieldRef} value={photo} onChange={setPhoto} />
         </View>
         <View style={[styles.field, styles.toggleRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={{ flex: 1, gap: 2 }}>

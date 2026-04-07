@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useNavigation } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   BackHandler,
@@ -22,7 +22,7 @@ import { useAppContext } from "@/context/AppContext";
 import { ReceiptDB } from "@/db/database";
 import { CURRENCIES, RECEIPT_TYPES, type Currency, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
-import { ImageField } from "@/components/ui/ImageField";
+import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 
 function today(): string {
   return new Date().toISOString().split("T")[0] ?? "";
@@ -174,6 +174,8 @@ export default function AddExpenseScreen() {
   const [note, setNote] = useState("");
   const [budgetId, setBudgetId] = useState<string>("");
 
+  const imageFieldRef = useRef<ImageFieldHandle>(null);
+
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -260,35 +262,33 @@ export default function AddExpenseScreen() {
   async function handleSave() {
     if (!validate()) return;
     if (!photo.trim()) {
-      await new Promise<void>((resolve) => {
-        Alert.alert(
-          "No Photo",
-          "Would you like to add a receipt photo?",
-          [
-            {
-              text: "Add Photo",
-              onPress: () => resolve(),
-            },
-            {
-              text: "Save Without Photo",
-              style: "destructive",
-              onPress: () => { doSave(); resolve(); },
-            },
-            {
-              text: "Cancel",
-              style: "cancel",
-              onPress: () => resolve(),
-            },
-          ]
-        );
-      });
+      Alert.alert(
+        "No Photo",
+        "Would you like to add a receipt photo?",
+        [
+          {
+            text: "Add Photo",
+            onPress: () => { imageFieldRef.current?.show(); },
+          },
+          {
+            text: "Save Without Photo",
+            style: "destructive",
+            onPress: () => doSave(true),
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+        ]
+      );
       return;
     }
-    doSave();
+    doSave(false);
   }
 
-  async function doSave() {
+  async function doSave(forceNoPhoto: boolean) {
     setSaving(true);
+    const effectiveSelfDecl = forceNoPhoto ? true : selfDeclaration;
     try {
       await ReceiptDB.insert({
         type,
@@ -298,7 +298,7 @@ export default function AddExpenseScreen() {
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
         division: division.trim(),
         costCenter: costCenter.trim(),
-        selfDeclaration,
+        selfDeclaration: effectiveSelfDecl,
         note: note.trim(),
         photo: photo.trim() || null,
         budget: budgetId,
@@ -526,6 +526,7 @@ export default function AddExpenseScreen() {
         <View style={styles.field}>
           <FieldLabel text="Photo" />
           <ImageField
+            ref={imageFieldRef}
             value={photo}
             onChange={(p) => { setPhoto(p); markDirty(); }}
           />

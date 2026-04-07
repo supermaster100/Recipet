@@ -3,7 +3,7 @@ import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as Linking from "expo-linking";
-import React, { useRef, useState } from "react";
+import React, { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -20,18 +20,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { deletePhotoFromLocal, getPhotoUri, savePhotoToLocal } from "@/utils/photoUtils";
 
+export interface ImageFieldHandle {
+  show: () => void;
+}
+
 interface ImageFieldProps {
   value: string;
   onChange: (path: string) => void;
   label?: string;
 }
 
-export function ImageField({ value, onChange, label = "Receipt Photo" }: ImageFieldProps) {
+export const ImageField = forwardRef<ImageFieldHandle, ImageFieldProps>(
+  function ImageField({ value, onChange, label = "Receipt Photo" }, ref) {
   const colors = useColors();
   const [showCamera, setShowCamera] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   const photoUri = getPhotoUri(value);
+
+  useImperativeHandle(ref, () => ({ show: openActionSheet }));
 
   async function pickFromGallery() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -156,7 +163,7 @@ export function ImageField({ value, onChange, label = "Receipt Photo" }: ImageFi
       </Modal>
     </View>
   );
-}
+});
 
 function CameraModal({
   onConfirm,
