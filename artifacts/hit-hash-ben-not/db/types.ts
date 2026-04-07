@@ -4,23 +4,44 @@ export type Currency =
   | "RUB" | "TRY" | "INR" | "SGD" | "NZD" | "BRL" | "MXN" | "ZAR" | "ISK" | "RSD" | "THB";
 
 export type ReceiptType =
-  | "MEALS"
-  | "ACCOMMODATION"
-  | "TRANSPORT"
-  | "OFFICE_SUPPLIES"
-  | "ENTERTAINMENT"
-  | "COMMUNICATION"
-  | "OTHER";
+  | "HOSTING_CLIENTS"
+  | "HOSTING_MYSELF"
+  | "HOSTING_TEAMMATES"
+  | "HANGING_OUT_CLIENT"
+  | "OVERHEAD"
+  | "TAXI"
+  | "TRAIN"
+  | "FLIGHT"
+  | "GIFT"
+  | "HOTEL";
 
 export const RECEIPT_TYPES: { key: ReceiptType; label: string }[] = [
-  { key: "MEALS", label: "Meals & Food" },
-  { key: "ACCOMMODATION", label: "Accommodation" },
-  { key: "TRANSPORT", label: "Transport" },
-  { key: "OFFICE_SUPPLIES", label: "Office Supplies" },
-  { key: "ENTERTAINMENT", label: "Entertainment" },
-  { key: "COMMUNICATION", label: "Communication" },
-  { key: "OTHER", label: "Other" },
+  { key: "HOSTING_CLIENTS", label: "Hosting Clients" },
+  { key: "HOSTING_MYSELF", label: "Hosting Myself" },
+  { key: "HOSTING_TEAMMATES", label: "Hosting Teammates" },
+  { key: "HANGING_OUT_CLIENT", label: "Hanging Out with Client" },
+  { key: "OVERHEAD", label: "Overhead" },
+  { key: "TAXI", label: "Taxi" },
+  { key: "TRAIN", label: "Train" },
+  { key: "FLIGHT", label: "Flight" },
+  { key: "GIFT", label: "Gift" },
+  { key: "HOTEL", label: "Hotel" },
 ];
+
+const OLD_TO_NEW_TYPE: Record<string, ReceiptType> = {
+  MEALS: "HOSTING_MYSELF",
+  ACCOMMODATION: "HOTEL",
+  TRANSPORT: "TAXI",
+  OFFICE_SUPPLIES: "OVERHEAD",
+  ENTERTAINMENT: "HANGING_OUT_CLIENT",
+  COMMUNICATION: "OVERHEAD",
+  OTHER: "OVERHEAD",
+};
+
+export function migrateReceiptType(raw: string): ReceiptType {
+  if (RECEIPT_TYPES.some((r) => r.key === raw)) return raw as ReceiptType;
+  return OLD_TO_NEW_TYPE[raw] ?? "OVERHEAD";
+}
 
 export const CURRENCIES: Currency[] = [
   "ILS", "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "CNY", "AED",

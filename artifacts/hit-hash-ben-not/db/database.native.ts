@@ -16,6 +16,7 @@ import type {
   Travel,
   TrashItem,
 } from "./types";
+import { migrateReceiptType } from "./types";
 import { runMigrationWithRollback, takeBackup } from "./dataProtection";
 
 let _db: SQLite.SQLiteDatabase | null = null;
@@ -52,7 +53,7 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS Receipts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL DEFAULT 'OTHER',
+      type TEXT NOT NULL DEFAULT 'OVERHEAD',
       amount REAL NOT NULL DEFAULT 0,
       currency TEXT NOT NULL DEFAULT 'ILS',
       date TEXT NOT NULL DEFAULT '',
@@ -239,7 +240,7 @@ function toGeneral(r: Record<string, unknown>): General {
 function toReceipt(r: Record<string, unknown>): Receipt {
   return {
     id: r["id"] as number,
-    type: r["type"] as ReceiptType,
+    type: migrateReceiptType(r["type"] as string),
     amount: r["amount"] as number,
     currency: r["currency"] as Receipt["currency"],
     date: r["date"] as string,

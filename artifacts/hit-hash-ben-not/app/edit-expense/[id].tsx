@@ -162,7 +162,7 @@ export default function EditExpenseScreen() {
 
   const receipt = receipts.find((e) => e.id === Number(id));
 
-  const [type, setType] = useState<ReceiptType>(receipt?.type ?? "MEALS");
+  const [type, setType] = useState<ReceiptType>(receipt?.type ?? "HOSTING_MYSELF");
   const [amount, setAmount] = useState(receipt ? String(receipt.amount) : "");
   const [currency, setCurrency] = useState<Currency>(receipt?.currency ?? "ILS");
   const [date, setDate] = useState(receipt?.date ?? "");

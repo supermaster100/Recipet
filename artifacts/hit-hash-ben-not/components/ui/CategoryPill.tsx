@@ -5,13 +5,16 @@ import { RECEIPT_TYPES } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
 const RECEIPT_TYPE_COLORS: Record<ReceiptType, string> = {
-  MEALS: "#D97706",
-  ACCOMMODATION: "#7C3AED",
-  TRANSPORT: "#16A34A",
-  OFFICE_SUPPLIES: "#2563EB",
-  ENTERTAINMENT: "#DB2777",
-  COMMUNICATION: "#0891B2",
-  OTHER: "#6B7280",
+  HOSTING_CLIENTS: "#D97706",
+  HOSTING_MYSELF: "#EA580C",
+  HOSTING_TEAMMATES: "#B45309",
+  HANGING_OUT_CLIENT: "#DB2777",
+  OVERHEAD: "#6B7280",
+  TAXI: "#16A34A",
+  TRAIN: "#0891B2",
+  FLIGHT: "#2563EB",
+  GIFT: "#7C3AED",
+  HOTEL: "#0F766E",
 };
 
 interface CategoryPillProps {

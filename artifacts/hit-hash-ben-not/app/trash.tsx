@@ -19,13 +19,23 @@ import type { TrashItem } from "@/db/types";
 
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
-    MEALS: "Meals & Food",
-    ACCOMMODATION: "Accommodation",
-    TRANSPORT: "Transport",
-    OFFICE_SUPPLIES: "Office Supplies",
-    ENTERTAINMENT: "Entertainment",
-    COMMUNICATION: "Communication",
-    OTHER: "Other",
+    HOSTING_CLIENTS: "Hosting Clients",
+    HOSTING_MYSELF: "Hosting Myself",
+    HOSTING_TEAMMATES: "Hosting Teammates",
+    HANGING_OUT_CLIENT: "Hanging Out with Client",
+    OVERHEAD: "Overhead",
+    TAXI: "Taxi",
+    TRAIN: "Train",
+    FLIGHT: "Flight",
+    GIFT: "Gift",
+    HOTEL: "Hotel",
+    MEALS: "Hosting Myself",
+    ACCOMMODATION: "Hotel",
+    TRANSPORT: "Taxi",
+    OFFICE_SUPPLIES: "Overhead",
+    ENTERTAINMENT: "Hanging Out with Client",
+    COMMUNICATION: "Overhead",
+    OTHER: "Overhead",
     EXCHANGE: "Currency Exchange",
   };
   return map[type] ?? type;

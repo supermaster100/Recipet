@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppContext } from "@/context/AppContext";
 import { CashWalletDB, ReceiptDB } from "@/db/database";
-import { CURRENCIES, RECEIPT_TYPES, type Currency, type PaymentMethod, type ReceiptType } from "@/db/types";
+import { CURRENCIES, RECEIPT_TYPES, migrateReceiptType, type Currency, type PaymentMethod, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { saveDraft, loadDraft, clearDraft } from "@/db/draftManager";
@@ -182,7 +182,7 @@ export default function AddExpenseScreen() {
   const { refreshReceipts, general, budgets, refreshCashWallet } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
-  const [type, setType] = useState<ReceiptType>("MEALS");
+  const [type, setType] = useState<ReceiptType>("HOSTING_MYSELF");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<Currency>("ILS");
   const [date, setDate] = useState(today());
@@ -231,7 +231,7 @@ export default function AddExpenseScreen() {
           {
             text: "Resume",
             onPress: () => {
-              setType(draft.type);
+              setType(migrateReceiptType(draft.type));
               setAmount(draft.amount);
               setCurrency(draft.currency);
               setDate(draft.date);
