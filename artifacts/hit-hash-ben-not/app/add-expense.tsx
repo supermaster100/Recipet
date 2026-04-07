@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { router, useNavigation } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   BackHandler,
@@ -157,6 +157,7 @@ function PickerModal({
 export default function AddExpenseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { refreshReceipts, general, budgets } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
@@ -168,10 +169,9 @@ export default function AddExpenseScreen() {
   const [division, setDivision] = useState("");
   const [costCenter, setCostCenter] = useState("");
   const [photo, setPhoto] = useState("");
+  const [selfDeclaration, setSelfDeclaration] = useState(true);
   const [note, setNote] = useState("");
   const [budgetId, setBudgetId] = useState<string>("");
-
-  const selfDeclaration = photo.trim().length === 0;
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -190,13 +190,40 @@ export default function AddExpenseScreen() {
   }, [general]);
 
   useEffect(() => {
-    if (!dirty) return;
+    setSelfDeclaration(photo.trim().length === 0);
+  }, [photo]);
+
+  const confirmDiscard = useCallback(() => {
+    return new Promise<boolean>((resolve) => {
+      Alert.alert(
+        "Discard changes?",
+        "You have unsaved changes. Are you sure you want to go back?",
+        [
+          { text: "Keep Editing", style: "cancel", onPress: () => resolve(false) },
+          { text: "Discard", style: "destructive", onPress: () => resolve(true) },
+        ]
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!dirty || saved) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      handleBack();
+      confirmDiscard().then((ok) => { if (ok) router.back(); });
       return true;
     });
     return () => sub.remove();
-  }, [dirty, saved]);
+  }, [dirty, saved, confirmDiscard]);
+
+  useEffect(() => {
+    if (!dirty || saved) return;
+    type BeforeRemoveEvent = { preventDefault: () => void; data: { action: Parameters<typeof navigation.dispatch>[0] } };
+    const unsubscribe = navigation.addListener("beforeRemove" as never, (e: BeforeRemoveEvent) => {
+      e.preventDefault();
+      confirmDiscard().then((ok) => { if (ok) navigation.dispatch(e.data.action); });
+    });
+    return unsubscribe;
+  }, [dirty, saved, navigation, confirmDiscard]);
 
   function markDirty() {
     if (!dirty) setDirty(true);
@@ -261,14 +288,7 @@ export default function AddExpenseScreen() {
 
   function handleBack() {
     if (dirty && !saved) {
-      Alert.alert(
-        "Discard changes?",
-        "You have unsaved changes. Are you sure you want to go back?",
-        [
-          { text: "Keep Editing", style: "cancel" },
-          { text: "Discard", style: "destructive", onPress: () => router.back() },
-        ]
-      );
+      confirmDiscard().then((ok) => { if (ok) router.back(); });
     } else {
       router.back();
     }
@@ -478,14 +498,29 @@ export default function AddExpenseScreen() {
           <StyledInput
             value={photo}
             onChangeText={(v) => { setPhoto(v); markDirty(); }}
-            placeholder="file://... or leave blank for self-declaration"
+            placeholder="file://... or leave blank"
             autoCapitalize="none"
           />
-          <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-            {selfDeclaration
-              ? "No photo — self declaration will be enabled"
-              : "Photo attached — self declaration disabled"}
-          </Text>
+        </View>
+
+        <View style={styles.field}>
+          <FieldLabel text="Self Declaration" />
+          <View style={[styles.toggleRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.toggleInfo}>
+              <Text style={[styles.toggleTitle, { color: colors.foreground }]}>
+                Self declaration receipt
+              </Text>
+              <Text style={[styles.toggleSubtitle, { color: colors.mutedForeground }]}>
+                {photo.trim() ? "Auto-disabled — photo attached" : "Auto-enabled — no photo"}
+              </Text>
+            </View>
+            <Switch
+              value={selfDeclaration}
+              onValueChange={(v) => { setSelfDeclaration(v); markDirty(); }}
+              trackColor={{ false: colors.border, true: colors.primary + "80" }}
+              thumbColor={selfDeclaration ? colors.primary : colors.mutedForeground}
+            />
+          </View>
         </View>
 
         <View style={styles.field}>
@@ -575,7 +610,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   currencyBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  hintText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4 },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  toggleInfo: { flex: 1, gap: 2 },
+  toggleTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  toggleSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
   successContainer: {
     flex: 1,
     alignItems: "center",

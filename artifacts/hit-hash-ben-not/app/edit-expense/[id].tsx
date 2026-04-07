@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   BackHandler,
@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -153,6 +154,7 @@ export default function EditExpenseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { refreshReceipts, receipts, budgets } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
@@ -166,10 +168,9 @@ export default function EditExpenseScreen() {
   const [division, setDivision] = useState(receipt?.division ?? "");
   const [costCenter, setCostCenter] = useState(receipt?.costCenter ?? "");
   const [photo, setPhoto] = useState(receipt?.photo ?? "");
+  const [selfDeclaration, setSelfDeclaration] = useState(receipt?.selfDeclaration ?? true);
   const [note, setNote] = useState(receipt?.note ?? "");
   const [budgetId, setBudgetId] = useState(receipt?.budget ?? "");
-
-  const selfDeclaration = (photo ?? "").trim().length === 0;
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -180,13 +181,40 @@ export default function EditExpenseScreen() {
   const [showBudgetPicker, setShowBudgetPicker] = useState(false);
 
   useEffect(() => {
+    setSelfDeclaration((photo ?? "").trim().length === 0);
+  }, [photo]);
+
+  const confirmDiscard = useCallback(() => {
+    return new Promise<boolean>((resolve) => {
+      Alert.alert(
+        "Discard changes?",
+        "You have unsaved changes. Are you sure you want to go back?",
+        [
+          { text: "Keep Editing", style: "cancel", onPress: () => resolve(false) },
+          { text: "Discard", style: "destructive", onPress: () => resolve(true) },
+        ]
+      );
+    });
+  }, []);
+
+  useEffect(() => {
     if (!dirty) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      handleBack();
+      confirmDiscard().then((ok) => { if (ok) router.back(); });
       return true;
     });
     return () => sub.remove();
-  }, [dirty]);
+  }, [dirty, confirmDiscard]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    type BeforeRemoveEvent = { preventDefault: () => void; data: { action: Parameters<typeof navigation.dispatch>[0] } };
+    const unsubscribe = navigation.addListener("beforeRemove" as never, (e: BeforeRemoveEvent) => {
+      e.preventDefault();
+      confirmDiscard().then((ok) => { if (ok) navigation.dispatch(e.data.action); });
+    });
+    return unsubscribe;
+  }, [dirty, navigation, confirmDiscard]);
 
   function markDirty() {
     if (!dirty) setDirty(true);
@@ -268,14 +296,7 @@ export default function EditExpenseScreen() {
 
   function handleBack() {
     if (dirty) {
-      Alert.alert(
-        "Discard changes?",
-        "You have unsaved changes. Are you sure you want to go back?",
-        [
-          { text: "Keep Editing", style: "cancel" },
-          { text: "Discard", style: "destructive", onPress: () => router.back() },
-        ]
-      );
+      confirmDiscard().then((ok) => { if (ok) router.back(); });
     } else {
       router.back();
     }
@@ -451,14 +472,29 @@ export default function EditExpenseScreen() {
           <StyledInput
             value={photo}
             onChangeText={(v) => { setPhoto(v); markDirty(); }}
-            placeholder="file://... or leave blank for self-declaration"
+            placeholder="file://... or leave blank"
             autoCapitalize="none"
           />
-          <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-            {selfDeclaration
-              ? "No photo — self declaration will be enabled"
-              : "Photo attached — self declaration disabled"}
-          </Text>
+        </View>
+
+        <View style={styles.field}>
+          <FieldLabel text="Self Declaration" />
+          <View style={[styles.toggleRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.toggleInfo}>
+              <Text style={[styles.toggleTitle, { color: colors.foreground }]}>
+                Self declaration receipt
+              </Text>
+              <Text style={[styles.toggleSubtitle, { color: colors.mutedForeground }]}>
+                {photo.trim() ? "Auto-disabled — photo attached" : "Auto-enabled — no photo"}
+              </Text>
+            </View>
+            <Switch
+              value={selfDeclaration}
+              onValueChange={(v) => { setSelfDeclaration(v); markDirty(); }}
+              trackColor={{ false: colors.border, true: colors.primary + "80" }}
+              thumbColor={selfDeclaration ? colors.primary : colors.mutedForeground}
+            />
+          </View>
         </View>
 
         <View style={styles.field}>
@@ -548,7 +584,19 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   currencyBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  hintText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4 },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  toggleInfo: { flex: 1, gap: 2 },
+  toggleTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  toggleSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   notFoundText: { fontSize: 15, fontFamily: "Inter_400Regular" },
 });
