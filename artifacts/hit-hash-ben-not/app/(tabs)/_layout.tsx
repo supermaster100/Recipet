@@ -15,36 +15,56 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="expenses">
-        <Icon sf={{ default: "list.bullet.rectangle", selected: "list.bullet.rectangle.fill" }} />
-        <Label>Expenses</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="trip">
-        <Icon sf={{ default: "airplane", selected: "airplane" }} />
-        <Label>Trips</Label>
+        <Icon sf={{ default: "square.grid.2x2", selected: "square.grid.2x2.fill" }} />
+        <Label>Overview</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "plus.circle.fill", selected: "plus.circle.fill" }} />
+        <Icon sf={{ default: "plus.circle", selected: "plus.circle.fill" }} />
         <Label>Add</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="exchanges">
-        <Icon sf={{ default: "arrow.left.arrow.right", selected: "arrow.left.arrow.right" }} />
-        <Label>Exchange</Label>
+      <NativeTabs.Trigger name="camera">
+        <Icon sf={{ default: "camera.fill", selected: "camera.fill" }} />
+        <Label>Camera</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="export">
+        <Icon sf={{ default: "square.and.arrow.up", selected: "square.and.arrow.up.fill" }} />
+        <Label>Export</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="more">
         <Icon sf={{ default: "ellipsis.circle", selected: "ellipsis.circle.fill" }} />
         <Label>More</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="money-transfers">
-        <Icon sf={{ default: "banknote", selected: "banknote.fill" }} />
-        <Label>Transfers</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="client-transfers">
-        <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
-        <Label>Client</Label>
-      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
+
+function CameraTabIcon({ focused }: { focused: boolean }) {
+  const colors = useColors();
+  return (
+    <View style={[
+      cameraIconStyles.wrapper,
+      { backgroundColor: focused ? colors.primary : colors.primary + "CC" },
+    ]}>
+      <Feather name="camera" size={22} color="#fff" />
+    </View>
+  );
+}
+
+const cameraIconStyles = StyleSheet.create({
+  wrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+});
 
 function ClassicTabLayout() {
   const colors = useColors();
@@ -101,24 +121,12 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="expenses"
         options={{
-          title: "Expenses",
+          title: "Overview",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="list.bullet.rectangle" tintColor={color} size={22} />
+              <SymbolView name="square.grid.2x2" tintColor={color} size={22} />
             ) : (
-              <Feather name="list" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="trip"
-        options={{
-          title: "Trips",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="airplane" tintColor={color} size={22} />
-            ) : (
-              <Feather name="map" size={22} color={color} />
+              <Feather name="grid" size={22} color={color} />
             ),
         }}
       />
@@ -128,21 +136,29 @@ function ClassicTabLayout() {
           title: "Add",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="plus.circle.fill" tintColor={color} size={26} />
+              <SymbolView name="plus.circle" tintColor={color} size={22} />
             ) : (
-              <Feather name="plus-circle" size={24} color={color} />
+              <Feather name="plus-circle" size={22} color={color} />
             ),
         }}
       />
       <Tabs.Screen
-        name="exchanges"
+        name="camera"
         options={{
-          title: "Exchange",
+          title: "Camera",
+          tabBarLabel: () => null,
+          tabBarIcon: ({ focused }) => <CameraTabIcon focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="export"
+        options={{
+          title: "Export",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="arrow.left.arrow.right" tintColor={color} size={22} />
+              <SymbolView name="square.and.arrow.up" tintColor={color} size={22} />
             ) : (
-              <Feather name="refresh-cw" size={22} color={color} />
+              <Feather name="send" size={22} color={color} />
             ),
         }}
       />
@@ -158,20 +174,10 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      <Tabs.Screen
-        name="money-transfers"
-        options={{
-          title: "Money Transfers",
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="client-transfers"
-        options={{
-          title: "Client Transfers",
-          href: null,
-        }}
-      />
+      <Tabs.Screen name="trip" options={{ href: null }} />
+      <Tabs.Screen name="exchanges" options={{ href: null }} />
+      <Tabs.Screen name="money-transfers" options={{ href: null }} />
+      <Tabs.Screen name="client-transfers" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -47,6 +47,7 @@ export default function AddExchangeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { refreshExchanges, exchangeRates } = useAppContext();
+  const params = useLocalSearchParams<{ photo?: string }>();
 
   const [date, setDate] = useState(today());
   const [spentCurrency, setSpentCurrency] = useState<(typeof EXCHANGE_CURRENCIES)[number]>("USD");
@@ -54,7 +55,7 @@ export default function AddExchangeScreen() {
   const [amountSpent, setAmountSpent] = useState("");
   const [amountReceived, setAmountReceived] = useState("");
   const [note, setNote] = useState("");
-  const [photo, setPhoto] = useState("");
+  const [photo, setPhoto] = useState(params.photo ?? "");
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 

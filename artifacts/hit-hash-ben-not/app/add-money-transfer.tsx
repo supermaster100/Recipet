@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Alert,
@@ -33,6 +33,7 @@ export default function AddMoneyTransferScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { refreshMoneyTransfers, general, refreshCashWallet } = useAppContext();
+  const params = useLocalSearchParams<{ photo?: string }>();
 
   const [receiptName, setReceiptName] = useState("");
   const [giverName, setGiverName] = useState("");
@@ -40,7 +41,7 @@ export default function AddMoneyTransferScreen() {
   const [date, setDate] = useState(today());
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]>("ILS");
-  const [photo, setPhoto] = useState("");
+  const [photo, setPhoto] = useState(params.photo ?? "");
   const [saving, setSaving] = useState(false);
 
   const imageFieldRef = useRef<ImageFieldHandle>(null);

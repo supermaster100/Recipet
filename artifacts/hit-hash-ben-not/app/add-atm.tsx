@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Alert,
@@ -31,12 +31,13 @@ export default function AddATMScreen() {
   const { refreshATM, refreshCashWallet } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const imageFieldRef = useRef<ImageFieldHandle>(null);
+  const params = useLocalSearchParams<{ photo?: string }>();
 
   const [date, setDate] = useState(today());
   const [cardLastFour, setCardLastFour] = useState("");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<(typeof EXCHANGE_CURRENCIES)[number]>("USD");
-  const [photo, setPhoto] = useState("");
+  const [photo, setPhoto] = useState(params.photo ?? "");
   const [saving, setSaving] = useState(false);
 
   const canSave = !!date && cardLastFour.length === 4 && !!amount && !saving;

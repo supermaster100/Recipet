@@ -151,10 +151,92 @@ function ExpenseCard({
   );
 }
 
-export default function ExpensesScreen() {
+function SummaryStatCard({
+  icon,
+  label,
+  value,
+  subValue,
+  color,
+  onPress,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  value: string;
+  subValue?: string;
+  color: string;
+  onPress?: () => void;
+}) {
+  const colors = useColors();
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={onPress ? 0.75 : 1}
+      style={[styles.statCard, { backgroundColor: colors.card, shadowColor: colors.shadowColor }]}
+    >
+      <View style={[styles.statCardIcon, { backgroundColor: color + "18" }]}>
+        <Feather name={icon} size={18} color={color} />
+      </View>
+      <Text style={[styles.statCardLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      <Text style={[styles.statCardValue, { color: colors.foreground }]} numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
+      {subValue ? (
+        <Text style={[styles.statCardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {subValue}
+        </Text>
+      ) : null}
+    </TouchableOpacity>
+  );
+}
+
+function ActiveTripCard({ legs }: { legs: import("@/db/types").Leg[] }) {
+  const colors = useColors();
+  const activeLeg = useMemo(() => {
+    return legs.find((l) => !l.deleted_at) ?? null;
+  }, [legs]);
+
+  if (!activeLeg) return null;
+
+  const tripId = activeLeg.id;
+  const from = activeLeg.departureCity || activeLeg.departureCountry || "—";
+  const to = activeLeg.arrivalCity || activeLeg.arrivalCountry || "—";
+  const dateRange = activeLeg.departureDate && activeLeg.arrivalDate
+    ? `${activeLeg.departureDate} – ${activeLeg.arrivalDate}`
+    : activeLeg.departureDate || activeLeg.arrivalDate || "";
+
+  return (
+    <View style={[styles.tripCard, { backgroundColor: colors.card, borderColor: colors.primary + "30", shadowColor: colors.shadowColor }]}>
+      <View style={styles.tripCardHeader}>
+        <View style={[styles.tripCardIconWrap, { backgroundColor: colors.primary + "18" }]}>
+          <Feather name="map-pin" size={16} color={colors.primary} />
+        </View>
+        <Text style={[styles.tripCardTitle, { color: colors.mutedForeground }]}>ACTIVE TRIP</Text>
+      </View>
+      <View style={styles.tripRoute}>
+        <Text style={[styles.tripCity, { color: colors.foreground }]}>{from}</Text>
+        <Feather name="arrow-right" size={14} color={colors.mutedForeground} style={{ marginHorizontal: 6 }} />
+        <Text style={[styles.tripCity, { color: colors.foreground }]}>{to}</Text>
+      </View>
+      {dateRange ? (
+        <Text style={[styles.tripDates, { color: colors.mutedForeground }]}>{dateRange}</Text>
+      ) : null}
+      <TouchableOpacity
+        onPress={() => router.push({ pathname: "/trip/[id]/summary", params: { id: String(tripId) } })}
+        style={[styles.tripSummaryBtn, { backgroundColor: colors.primary + "12" }]}
+        activeOpacity={0.75}
+      >
+        <Text style={[styles.tripSummaryBtnText, { color: colors.primary }]}>View Trip Summary →</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+export default function OverviewScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { receipts, isDbReady } = useAppContext();
+  const {
+    receipts, exchanges, atmWithdrawals, cashWalletEntries, legs, isDbReady,
+  } = useAppContext();
   const params = useLocalSearchParams<{
     filterCategory?: string;
     filterDateStart?: string;
@@ -269,6 +351,72 @@ export default function ExpensesScreen() {
     return byCurrency;
   }, [filtered]);
 
+  const exchangesPeriod = useMemo(() => {
+    if (viewMode === "day") return exchanges.filter((e) => e.date === selectedDay);
+    if (viewMode === "week") {
+      const ws = selectedWeekStart;
+      const we = dateToStr(addDays(strToDate(ws), 6));
+      return exchanges.filter((e) => e.date >= ws && e.date <= we);
+    }
+    if (viewMode === "range" && rangeStart && rangeEnd) {
+      return exchanges.filter((e) => e.date >= rangeStart && e.date <= rangeEnd);
+    }
+    const monthStr = String(selectedYear) + "-" + String(selectedMonth).padStart(2, "0");
+    return exchanges.filter((e) => e.date.startsWith(monthStr));
+  }, [exchanges, viewMode, selectedDay, selectedWeekStart, selectedMonth, selectedYear, rangeStart, rangeEnd]);
+
+  const atmPeriod = useMemo(() => {
+    if (viewMode === "day") return atmWithdrawals.filter((a) => a.date === selectedDay);
+    if (viewMode === "week") {
+      const ws = selectedWeekStart;
+      const we = dateToStr(addDays(strToDate(ws), 6));
+      return atmWithdrawals.filter((a) => a.date >= ws && a.date <= we);
+    }
+    if (viewMode === "range" && rangeStart && rangeEnd) {
+      return atmWithdrawals.filter((a) => a.date >= rangeStart && a.date <= rangeEnd);
+    }
+    const monthStr = String(selectedYear) + "-" + String(selectedMonth).padStart(2, "0");
+    return atmWithdrawals.filter((a) => a.date.startsWith(monthStr));
+  }, [atmWithdrawals, viewMode, selectedDay, selectedWeekStart, selectedMonth, selectedYear, rangeStart, rangeEnd]);
+
+  const atmTotalByCurrency = useMemo(() => {
+    const byCurrency: Record<string, number> = {};
+    for (const a of atmPeriod) {
+      byCurrency[a.currency] = (byCurrency[a.currency] ?? 0) + a.amount;
+    }
+    return byCurrency;
+  }, [atmPeriod]);
+
+  const expensesSummaryValue = useMemo(() => {
+    const entries = Object.entries(total);
+    if (entries.length === 0) return `${byPeriod.length} receipts`;
+    if (entries.length === 1) {
+      const [cur, amt] = entries[0]!;
+      return `${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
+    }
+    return entries.map(([cur, amt]) => `${amt.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${cur}`).join(" · ");
+  }, [total, byPeriod.length]);
+
+  const cashSummaryValue = useMemo(() => {
+    const byCurrency: Record<string, number> = {};
+    for (const e of cashWalletEntries) {
+      byCurrency[e.currency] = (byCurrency[e.currency] ?? 0) + e.amount;
+    }
+    const entries = Object.entries(byCurrency).slice(0, 2);
+    if (entries.length === 0) return "No cash";
+    return entries.map(([cur, amt]) => `${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`).join("\n");
+  }, [cashWalletEntries]);
+
+  const atmSummaryValue = useMemo(() => {
+    const entries = Object.entries(atmTotalByCurrency);
+    if (entries.length === 0) return "0";
+    if (entries.length === 1) {
+      const [cur, amt] = entries[0]!;
+      return `${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
+    }
+    return entries.map(([cur, amt]) => `${amt.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${cur}`).join(" · ");
+  }, [atmTotalByCurrency]);
+
   function toggleFilter(t: ReceiptType) {
     setActiveFilters((prev) => {
       const next = new Set(prev);
@@ -301,11 +449,193 @@ export default function ExpensesScreen() {
     return `No expenses recorded for ${MONTHS[selectedMonth - 1]} ${selectedYear}`;
   }, [hasFilters, viewMode, periodLabel, selectedMonth, selectedYear]);
 
+  const ListHeader = useMemo(() => (
+    <View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.summaryStrip}
+      >
+        <SummaryStatCard
+          icon="file-text"
+          label="Expenses"
+          value={expensesSummaryValue}
+          subValue={`${byPeriod.length} receipt${byPeriod.length !== 1 ? "s" : ""}`}
+          color={colors.primary}
+        />
+        <SummaryStatCard
+          icon="dollar-sign"
+          label="Cash"
+          value={cashSummaryValue}
+          color={colors.success}
+          onPress={() => router.push("/cash-wallet")}
+        />
+        <SummaryStatCard
+          icon="refresh-cw"
+          label="Exchanges"
+          value={String(exchangesPeriod.length)}
+          subValue={`this ${viewMode}`}
+          color={colors.purple}
+          onPress={() => router.push("/(tabs)/exchanges")}
+        />
+        <SummaryStatCard
+          icon="credit-card"
+          label="ATM"
+          value={atmSummaryValue}
+          subValue={`${atmPeriod.length} withdrawal${atmPeriod.length !== 1 ? "s" : ""}`}
+          color={colors.warning}
+          onPress={() => router.push("/(tabs)/exchanges")}
+        />
+      </ScrollView>
+
+      <ActiveTripCard legs={legs} />
+
+      <View
+        style={[
+          styles.viewToggleBar,
+          { backgroundColor: colors.card, borderBottomColor: colors.border },
+        ]}
+      >
+        {(["day", "week", "month"] as const).map((mode) => (
+          <Pressable
+            key={mode}
+            onPress={() => {
+              setRangeStart(null);
+              setRangeEnd(null);
+              setViewMode(mode);
+            }}
+            style={[
+              styles.viewToggleBtn,
+              viewMode === mode && { backgroundColor: colors.primary },
+            ]}
+          >
+            <Text
+              style={[
+                styles.viewToggleBtnText,
+                { color: viewMode === mode ? "#fff" : colors.mutedForeground },
+              ]}
+            >
+              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+            </Text>
+          </Pressable>
+        ))}
+        {viewMode === "range" && (
+          <Pressable
+            style={[styles.viewToggleBtn, { backgroundColor: colors.warning, flex: 1.5 }]}
+            onPress={() => {
+              setRangeStart(null);
+              setRangeEnd(null);
+              setViewMode("month");
+            }}
+          >
+            <Text style={[styles.viewToggleBtnText, { color: "#fff" }]}>Trip</Text>
+          </Pressable>
+        )}
+      </View>
+
+      <View
+        style={[
+          styles.monthNav,
+          {
+            backgroundColor: colors.card,
+            shadowColor: colors.shadowColor,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={handlePrev}
+          hitSlop={12}
+          disabled={viewMode === "range"}
+          style={[styles.navBtn, { backgroundColor: colors.secondary, opacity: viewMode === "range" ? 0.3 : 1 }]}
+        >
+          <Feather name="chevron-left" size={18} color={colors.foreground} />
+        </TouchableOpacity>
+        <Text
+          style={[styles.monthLabel, { color: colors.foreground }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {periodLabel}
+        </Text>
+        <TouchableOpacity
+          onPress={handleNext}
+          hitSlop={12}
+          disabled={viewMode === "range"}
+          style={[styles.navBtn, { backgroundColor: colors.secondary, opacity: viewMode === "range" ? 0.3 : 1 }]}
+        >
+          <Feather name="chevron-right" size={18} color={colors.foreground} />
+        </TouchableOpacity>
+      </View>
+
+      {showFilter && (
+        <View style={[styles.filterBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>
+            Filter by type:
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
+            <Pressable
+              onPress={() => setActiveFilters(new Set())}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: !hasFilters ? colors.primary : colors.secondary,
+                  borderColor: !hasFilters ? colors.primary : "transparent",
+                },
+              ]}
+            >
+              <Text style={[styles.chipText, { color: !hasFilters ? "#fff" : colors.foreground }]}>
+                All
+              </Text>
+            </Pressable>
+            {RECEIPT_TYPES.map((rt) => {
+              const active = activeFilters.has(rt.key);
+              return (
+                <Pressable
+                  key={rt.key}
+                  onPress={() => toggleFilter(rt.key)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: active ? colors.primary : colors.secondary,
+                      borderColor: active ? colors.primary : "transparent",
+                    },
+                  ]}
+                >
+                  <Text style={[styles.chipText, { color: active ? "#fff" : colors.foreground }]}>
+                    {rt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {Object.keys(total).length > 0 && (
+        <View style={[styles.summary, { backgroundColor: colors.background }]}>
+          {Object.entries(total).map(([cur, amt]) => (
+            <AmountBadge key={cur} amount={amt} currency={cur} size="lg" />
+          ))}
+          <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
+            {filtered.length} expense{filtered.length !== 1 ? "s" : ""}
+            {hasFilters ? " (filtered)" : ""}
+          </Text>
+        </View>
+      )}
+    </View>
+  ), [
+    expensesSummaryValue, byPeriod.length, cashSummaryValue,
+    exchangesPeriod.length, atmSummaryValue, atmPeriod.length,
+    legs, viewMode, periodLabel, showFilter, hasFilters,
+    activeFilters, filtered.length, total, colors,
+    rangeStart, rangeEnd, selectedDay, selectedWeekStart,
+  ]);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={{ paddingTop: topInset }}>
         <AppHeader
-          title="Expenses"
+          title="Overview"
           right={
             <View style={styles.headerActions}>
               <TouchableOpacity
@@ -335,139 +665,6 @@ export default function ExpensesScreen() {
             </View>
           }
         />
-
-        {showFilter && (
-          <View style={[styles.filterBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-            <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>
-              Filter by type:
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
-              <Pressable
-                onPress={() => setActiveFilters(new Set())}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: !hasFilters ? colors.primary : colors.secondary,
-                    borderColor: !hasFilters ? colors.primary : "transparent",
-                  },
-                ]}
-              >
-                <Text style={[styles.chipText, { color: !hasFilters ? "#fff" : colors.foreground }]}>
-                  All
-                </Text>
-              </Pressable>
-              {RECEIPT_TYPES.map((rt) => {
-                const active = activeFilters.has(rt.key);
-                return (
-                  <Pressable
-                    key={rt.key}
-                    onPress={() => toggleFilter(rt.key)}
-                    style={[
-                      styles.chip,
-                      {
-                        backgroundColor: active ? colors.primary : colors.secondary,
-                        borderColor: active ? colors.primary : "transparent",
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.chipText, { color: active ? "#fff" : colors.foreground }]}>
-                      {rt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
-        <View
-          style={[
-            styles.viewToggleBar,
-            { backgroundColor: colors.card, borderBottomColor: colors.border },
-          ]}
-        >
-          {(["day", "week", "month"] as const).map((mode) => (
-            <Pressable
-              key={mode}
-              onPress={() => {
-                setRangeStart(null);
-                setRangeEnd(null);
-                setViewMode(mode);
-              }}
-              style={[
-                styles.viewToggleBtn,
-                viewMode === mode && { backgroundColor: colors.primary },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.viewToggleBtnText,
-                  { color: viewMode === mode ? "#fff" : colors.mutedForeground },
-                ]}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </Text>
-            </Pressable>
-          ))}
-          {viewMode === "range" && (
-            <Pressable
-              style={[styles.viewToggleBtn, { backgroundColor: colors.warning, flex: 1.5 }]}
-              onPress={() => {
-                setRangeStart(null);
-                setRangeEnd(null);
-                setViewMode("month");
-              }}
-            >
-              <Text style={[styles.viewToggleBtnText, { color: "#fff" }]}>Trip</Text>
-            </Pressable>
-          )}
-        </View>
-
-        <View
-          style={[
-            styles.monthNav,
-            {
-              backgroundColor: colors.card,
-              shadowColor: colors.shadowColor,
-            },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={handlePrev}
-            hitSlop={12}
-            disabled={viewMode === "range"}
-            style={[styles.navBtn, { backgroundColor: colors.secondary, opacity: viewMode === "range" ? 0.3 : 1 }]}
-          >
-            <Feather name="chevron-left" size={18} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text
-            style={[styles.monthLabel, { color: colors.foreground }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {periodLabel}
-          </Text>
-          <TouchableOpacity
-            onPress={handleNext}
-            hitSlop={12}
-            disabled={viewMode === "range"}
-            style={[styles.navBtn, { backgroundColor: colors.secondary, opacity: viewMode === "range" ? 0.3 : 1 }]}
-          >
-            <Feather name="chevron-right" size={18} color={colors.foreground} />
-          </TouchableOpacity>
-        </View>
-
-        {Object.keys(total).length > 0 && (
-          <View style={[styles.summary, { backgroundColor: colors.background }]}>
-            {Object.entries(total).map(([cur, amt]) => (
-              <AmountBadge key={cur} amount={amt} currency={cur} size="lg" />
-            ))}
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
-              {filtered.length} expense{filtered.length !== 1 ? "s" : ""}
-              {hasFilters ? " (filtered)" : ""}
-            </Text>
-          </View>
-        )}
       </View>
 
       <FlatList
@@ -475,6 +672,7 @@ export default function ExpensesScreen() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
         scrollEnabled
+        ListHeaderComponent={ListHeader}
         ListEmptyComponent={
           isDbReady ? (
             <EmptyState
@@ -511,6 +709,99 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+  },
+  summaryStrip: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    flexDirection: "row",
+  },
+  statCard: {
+    width: 130,
+    borderRadius: 16,
+    padding: 14,
+    gap: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statCardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
+  statCardLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  statCardValue: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.2,
+  },
+  statCardSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  tripCard: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  tripCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  tripCardIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tripCardTitle: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  tripRoute: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  tripCity: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3,
+  },
+  tripDates: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  tripSummaryBtn: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    marginTop: 2,
+  },
+  tripSummaryBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
   filterBar: {
     borderBottomWidth: StyleSheet.hairlineWidth,
