@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -139,6 +139,13 @@ export default function ExchangesScreen() {
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshExchanges().catch(() => {});
+      refreshATM().catch(() => {});
+    }, [refreshExchanges, refreshATM])
+  );
 
   function toggleSelected(id: number) {
     setSelectedIds((prev) => {
@@ -383,8 +390,8 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderStyle: "dashed",
     marginBottom: 8,
+    opacity: 0.6,
   },
   emptyRowText: { fontSize: 13, fontFamily: "Inter_400Regular" },
   card: {
