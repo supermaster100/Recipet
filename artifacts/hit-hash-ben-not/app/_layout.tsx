@@ -35,6 +35,7 @@ function RootLayoutNav() {
       <Stack.Screen name="edit-exchange/[id]" options={{ presentation: "modal" }} />
       <Stack.Screen name="export" />
       <Stack.Screen name="budgets" />
+      <Stack.Screen name="general-data" />
       <Stack.Screen name="scan-receipt" options={{ presentation: "modal" }} />
     </Stack>
   );
