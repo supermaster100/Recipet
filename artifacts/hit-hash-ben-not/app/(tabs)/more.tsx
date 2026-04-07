@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -20,7 +21,9 @@ import { useColors } from "@/hooks/useColors";
 
 const EMAIL_KEY = "@export_recipient_email";
 
-const APP_VERSION = "1.0.0";
+// Version is read from app.json via expo-constants.
+// To bump the version, update only the "version" field in app.json — the About popup reflects it automatically.
+const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 
 function SettingsRow({
   icon,
@@ -123,12 +126,7 @@ function AboutModal({
             <Feather name="file-text" size={40} color={colors.primary} />
           </View>
           <Text style={[styles.appName, { color: colors.foreground }]}>
-            Hit-hash-Ben-not
-          </Text>
-          <Text
-            style={[styles.appVersion, { color: colors.mutedForeground }]}
-          >
-            Version {APP_VERSION}
+            Hit-hash-Ben-not app ver. {APP_VERSION}
           </Text>
           <Text
             style={[styles.appDesc, { color: colors.mutedForeground }]}
