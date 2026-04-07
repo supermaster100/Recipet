@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ImageField, ImageFieldHandle } from "@/components/ui/ImageField";
+import { useAppContext } from "@/context/AppContext";
 import { TravelDB } from "@/db/database";
 import { CURRENCIES, type Travel } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
@@ -29,6 +30,7 @@ export default function EditHotelNightScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { refreshTravels } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const imageRef = useRef<ImageFieldHandle>(null);
 
@@ -89,6 +91,7 @@ export default function EditHotelNightScreen() {
         description: note,
         photo: photo ?? null,
       });
+      void refreshTravels();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {
@@ -109,6 +112,7 @@ export default function EditHotelNightScreen() {
         onPress: async () => {
           if (travel.photo) await deletePhotoFromLocal(travel.photo);
           await TravelDB.delete(travel.id);
+          void refreshTravels();
           router.back();
         },
       },

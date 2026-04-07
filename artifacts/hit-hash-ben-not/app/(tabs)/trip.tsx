@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LegDB, TravelDB } from "@/db/database";
 import type { Leg, Travel } from "@/db/types";
+import { useAppContext } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { getCities, getCountries } from "@/utils/countriesData";
 import { deletePhotoFromLocal } from "@/utils/photoUtils";
@@ -304,6 +305,7 @@ export default function TripScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
+  const { refreshLegs, refreshTravels } = useAppContext();
 
   const [legData, setLegData] = useState<Omit<Leg, "id">>(emptyLeg());
   const [legId, setLegId] = useState<number | null>(null);
@@ -380,6 +382,7 @@ export default function TripScreen() {
       const saved = await LegDB.upsertSingleton(legData);
       setLegId(saved.id);
       setIsDirty(false);
+      void refreshLegs();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       console.error(e);
@@ -414,6 +417,7 @@ export default function TripScreen() {
           setSelectedIds(new Set());
           const updated = legId !== null ? await TravelDB.getByLegId(legId) : [];
           setHotels(updated);
+          void refreshTravels();
         },
       },
     ]);
@@ -433,6 +437,7 @@ export default function TripScreen() {
           }
           setSelectedIds(new Set());
           setHotels([]);
+          void refreshTravels();
         },
       },
     ]);
