@@ -119,6 +119,8 @@ export default function ExportScreen() {
         if (clearAfter) await refreshAll();
         Alert.alert("Export Complete", "Your expense report was sent successfully.");
         router.back();
+      } else if (result === "error") {
+        Alert.alert("Not Sent", "The email was not sent. No data was changed.");
       }
     } finally {
       setRunning(false);
