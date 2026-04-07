@@ -33,6 +33,7 @@ export default function EditHotelNightScreen() {
 
   const [travel, setTravel] = useState<Travel | null>(null);
   const [nights, setNights] = useState("1");
+  const [arbitraryLocation, setArbitraryLocation] = useState(false);
   const [ratePerNight, setRatePerNight] = useState("");
   const [currencyPN, setCurrencyPN] = useState<(typeof CURRENCIES)[number]>("USD");
   const [breakfast, setBreakfast] = useState(false);
@@ -48,6 +49,7 @@ export default function EditHotelNightScreen() {
       if (!t) return;
       setTravel(t);
       setNights(String(t.nights || 1));
+      setArbitraryLocation(!!t.arbitraryLocation);
       setRatePerNight(t.ratePerNight > 0 ? String(t.ratePerNight) : "");
       setCurrencyPN(t.currencyPN);
       setBreakfast(t.breakfast);
@@ -60,16 +62,22 @@ export default function EditHotelNightScreen() {
 
   async function handleSave() {
     if (!travel) return;
+    const nightsNum = Number(nights);
+    if (!nights.trim() || isNaN(nightsNum) || nightsNum < 1) {
+      Alert.alert("Required", "Please enter a valid number of nights (minimum 1).");
+      return;
+    }
     setSaving(true);
     try {
       await TravelDB.update({
         ...travel,
-        nights: Number(nights) || 0,
-        ratePerNight: Number(ratePerNight) || 0,
+        nights: nightsNum,
+        arbitraryLocation: arbitraryLocation ? "true" : "",
+        ratePerNight: arbitraryLocation ? 0 : Number(ratePerNight) || 0,
         currencyPN,
-        breakfast,
-        paymentMethod,
-        hotelExtraFees: Number(hotelExtraFees) || 0,
+        breakfast: arbitraryLocation ? false : breakfast,
+        paymentMethod: arbitraryLocation ? "" : paymentMethod,
+        hotelExtraFees: arbitraryLocation ? 0 : Number(hotelExtraFees) || 0,
         description: note,
         photo: photo ?? null,
       });
@@ -149,15 +157,38 @@ export default function EditHotelNightScreen() {
           />
         </FormField>
 
+        <FormField label="Arbitrary Location">
+          <View style={styles.switchRow}>
+            <Text style={[styles.switchLabel, { color: arbitraryLocation ? colors.foreground : colors.mutedForeground }]}>
+              {arbitraryLocation ? "Enabled — hotel rate fields disabled" : "Disabled"}
+            </Text>
+            <Switch
+              value={arbitraryLocation}
+              onValueChange={(v) => {
+                setArbitraryLocation(v);
+                if (v) {
+                  setRatePerNight("");
+                  setBreakfast(false);
+                  setPaymentMethod("Credit Card");
+                  setHotelExtraFees("");
+                }
+              }}
+              trackColor={{ false: colors.border, true: colors.warning }}
+              thumbColor="#FFF"
+            />
+          </View>
+        </FormField>
+
         <FormField label="Rate / Night">
-          <View style={styles.row}>
+          <View style={[styles.row, arbitraryLocation && styles.disabledSection]}>
             <TextInput
-              style={[styles.input, styles.flex1, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[styles.input, styles.flex1, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }, arbitraryLocation && { opacity: 0.4 }]}
               value={ratePerNight}
               onChangeText={setRatePerNight}
               placeholder="0.00"
               placeholderTextColor={colors.mutedForeground}
               keyboardType="decimal-pad"
+              editable={!arbitraryLocation}
             />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.currencyScroll}>
               <View style={styles.chipRow}>
@@ -189,13 +220,14 @@ export default function EditHotelNightScreen() {
         </FormField>
 
         <FormField label="Breakfast">
-          <View style={styles.switchRow}>
+          <View style={[styles.switchRow, arbitraryLocation && { opacity: 0.4 }]}>
             <Text style={[styles.switchLabel, { color: colors.foreground }]}>
               {breakfast ? "Included" : "Not included"}
             </Text>
             <Switch
               value={breakfast}
-              onValueChange={setBreakfast}
+              onValueChange={arbitraryLocation ? undefined : setBreakfast}
+              disabled={arbitraryLocation}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor="#FFF"
             />
@@ -203,11 +235,11 @@ export default function EditHotelNightScreen() {
         </FormField>
 
         <FormField label="Payment">
-          <View style={styles.chipRow}>
+          <View style={[styles.chipRow, arbitraryLocation && { opacity: 0.4 }]}>
             {PAYMENT_METHODS.map((pm) => (
               <Pressable
                 key={pm}
-                onPress={() => setPaymentMethod(pm)}
+                onPress={arbitraryLocation ? undefined : () => setPaymentMethod(pm)}
                 style={[
                   styles.chip,
                   {
@@ -231,12 +263,13 @@ export default function EditHotelNightScreen() {
 
         <FormField label="Extra Fees">
           <TextInput
-            style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
+            style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }, arbitraryLocation && { opacity: 0.4 }]}
             value={hotelExtraFees}
             onChangeText={setHotelExtraFees}
             placeholder="0.00 (optional)"
             placeholderTextColor={colors.mutedForeground}
             keyboardType="decimal-pad"
+            editable={!arbitraryLocation}
           />
         </FormField>
 
@@ -319,6 +352,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   currencyScroll: { flexShrink: 1 },
   chipRow: { flexDirection: "row", gap: 8 },
+  disabledSection: { opacity: 0.4 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

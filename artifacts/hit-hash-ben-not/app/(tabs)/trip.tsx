@@ -328,8 +328,17 @@ export default function TripScreen() {
   }
 
   async function handleSave() {
-    if (!legData.departureCountry || !legData.arrivalCountry) {
-      Alert.alert("Required", "Please select departure and arrival countries.");
+    const missing: string[] = [];
+    if (!legData.departureDate.trim()) missing.push("Departure Date");
+    if (!legData.departureHour.trim()) missing.push("Departure Hour");
+    if (!legData.departureCountry) missing.push("Departure Country");
+    if (!legData.departureCity) missing.push("Departure City");
+    if (!legData.arrivalDate.trim()) missing.push("Arrival Date");
+    if (!legData.arrivalHour.trim()) missing.push("Arrival Hour");
+    if (!legData.arrivalCountry) missing.push("Arrival Country");
+    if (!legData.arrivalCity) missing.push("Arrival City");
+    if (missing.length > 0) {
+      Alert.alert("Required Fields", "Please fill in: " + missing.join(", ") + ".");
       return;
     }
     setSaving(true);
@@ -399,8 +408,7 @@ export default function TripScreen() {
       Alert.alert("Save Trip First", "Please save the trip data before adding hotel nights.");
       return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    router.push(("/add-hotel-night?legId=" + legId) as any);
+    router.push({ pathname: "/add-hotel-night", params: { legId: String(legId) } });
   }
 
   const depCities = getCities(legData.departureCountry);
@@ -637,8 +645,7 @@ export default function TripScreen() {
                   travel={hotel}
                   isSelected={selectedIds.has(hotel.id)}
                   onToggle={() => toggleSelected(hotel.id)}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  onPress={() => router.push(("/edit-hotel-night/" + hotel.id + "?legId=" + legId) as any)}
+                  onPress={() => router.push({ pathname: "/edit-hotel-night/[id]", params: { id: String(hotel.id), legId: String(legId) } })}
                 />
               ))}
             </View>
