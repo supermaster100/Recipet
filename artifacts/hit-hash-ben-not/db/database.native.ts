@@ -108,11 +108,6 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
     try { await db.execAsync(sql); } catch (_) { /* column already exists */ }
   }
 
-  await db.execAsync(`
-    DELETE FROM Legs WHERE id NOT IN (
-      SELECT MIN(id) FROM Legs
-    );
-  `);
 
 
   await db.execAsync(`
