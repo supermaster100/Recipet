@@ -21,9 +21,10 @@ import { useColors } from "@/hooks/useColors";
 
 const EMAIL_KEY = "@export_recipient_email";
 
-// Version is read from app.json via expo-constants.
+// Version is read from app.json via expo-constants at runtime.
 // To bump the version, update only the "version" field in app.json — the About popup reflects it automatically.
-const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
+// Do NOT hard-code the version here; expo-constants.expoConfig.version always reflects the compiled build.
+const APP_VERSION: string = Constants.expoConfig?.version ?? "";
 
 function SettingsRow({
   icon,
@@ -106,67 +107,49 @@ function AboutModal({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="formSheet"
+      animationType="fade"
+      transparent
       onRequestClose={onClose}
     >
-      <View style={[styles.modal, { backgroundColor: colors.background }]}>
-        <View style={styles.modalHandle}>
-          <View
-            style={[styles.handle, { backgroundColor: colors.border }]}
-          />
-        </View>
-        <View style={styles.modalContent}>
-          <View
-            style={[
-              styles.appIconContainer,
-              { backgroundColor: colors.primary + "18" },
-            ]}
-          >
-            <Feather name="file-text" size={40} color={colors.primary} />
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => {}}
+          style={[
+            styles.dialog,
+            { backgroundColor: colors.card, shadowColor: colors.shadowColor },
+          ]}
+        >
+          <View style={[styles.appIconContainer, { backgroundColor: colors.primary + "18" }]}>
+            <Feather name="file-text" size={36} color={colors.primary} />
           </View>
           <Text style={[styles.appName, { color: colors.foreground }]}>
-            Hit-hash-Ben-not app ver. {APP_VERSION}
+            Hit-hash-Ben-not
           </Text>
-          <Text
-            style={[styles.appDesc, { color: colors.mutedForeground }]}
-          >
-            A fully offline expense tracker app for managing business expenses,
-            trips, hotel nights, and currency exchanges.
+          <Text style={[styles.appVersion, { color: colors.mutedForeground }]}>
+            app ver. {APP_VERSION || "—"}
           </Text>
-          <View
-            style={[styles.divider, { backgroundColor: colors.border }]}
-          />
-          <View
-            style={[
-              styles.infoCard,
-              { backgroundColor: colors.card, shadowColor: colors.shadowColor },
-            ]}
-          >
-            <View style={styles.infoRow}>
-              <Text
-                style={[styles.infoKey, { color: colors.mutedForeground }]}
-              >
-                Data storage
-              </Text>
-              <Text
-                style={[styles.infoVal, { color: colors.foreground }]}
-              >
-                Local (offline only)
-              </Text>
-            </View>
+          <Text style={[styles.appDesc, { color: colors.mutedForeground }]}>
+            A fully offline expense tracker for business expenses, trips, hotel nights, and currency exchanges.
+          </Text>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoKey, { color: colors.mutedForeground }]}>Data storage</Text>
+            <Text style={[styles.infoVal, { color: colors.foreground }]}>Local (offline only)</Text>
           </View>
-        </View>
-        <TouchableOpacity
-          onPress={onClose}
-          style={[styles.closeBtn, { backgroundColor: colors.primary }]}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.closeBtnText, { color: colors.primaryForeground }]}>
-            Close
-          </Text>
+          <TouchableOpacity
+            onPress={onClose}
+            style={[styles.closeBtn, { backgroundColor: colors.primary }]}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.closeBtnText, { color: colors.primaryForeground }]}>Close</Text>
+          </TouchableOpacity>
         </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     </Modal>
   );
 }
@@ -369,86 +352,81 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  modal: {
+  overlay: {
     flex: 1,
-    paddingHorizontal: 24,
-  },
-  modalHandle: {
-    alignItems: "center",
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-  },
-  modalContent: {
-    flex: 1,
-    alignItems: "center",
-    paddingTop: 40,
-    gap: 12,
-  },
-  appIconContainer: {
-    width: 84,
-    height: 84,
-    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    paddingHorizontal: 32,
+  },
+  dialog: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 20,
+    alignItems: "center",
+    gap: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  appIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
   appName: {
-    fontSize: 22,
+    fontSize: 18,
     fontFamily: "Inter_700Bold",
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
+    textAlign: "center",
   },
   appVersion: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
   appDesc: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 21,
-    paddingHorizontal: 16,
-    marginTop: 4,
+    lineHeight: 20,
+    marginTop: 2,
   },
   divider: {
     width: "100%",
     height: StyleSheet.hairlineWidth,
-    marginVertical: 8,
-  },
-  infoCard: {
-    width: "100%",
-    borderRadius: 14,
-    padding: 16,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
+    marginVertical: 6,
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    width: "100%",
   },
   infoKey: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
   infoVal: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_500Medium",
   },
   closeBtn: {
-    marginBottom: 32,
-    borderRadius: 14,
-    paddingVertical: 16,
+    marginTop: 12,
+    width: "100%",
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: "center",
   },
   closeBtnText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
   },
   emailField: {
