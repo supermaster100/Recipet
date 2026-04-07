@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Hit-hash-Ben-not"
+version = "1.0.0"
+id = "artifacts/hit-hash-ben-not"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 19499
+
+[services.development]
+run = "pnpm --filter @workspace/hit-hash-ben-not run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hit-hash-ben-not", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/hit-hash-ben-not", "run", "serve" ]
+
+[services.env]
+PORT = "19499"
+BASE_PATH = "/"
