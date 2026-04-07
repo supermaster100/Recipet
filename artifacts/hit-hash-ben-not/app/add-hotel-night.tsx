@@ -170,7 +170,7 @@ export default function AddHotelNightScreen() {
                 {CURRENCIES.map((c) => (
                   <Pressable
                     key={c}
-                    onPress={() => setCurrencyPN(c)}
+                    onPress={arbitraryLocation ? undefined : () => setCurrencyPN(c)}
                     style={[
                       styles.chip,
                       {
