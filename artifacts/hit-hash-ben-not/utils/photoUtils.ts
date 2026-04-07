@@ -43,3 +43,17 @@ export async function getAllLocalPhotos(): Promise<string[]> {
     .filter((f) => /\.(jpg|jpeg|png)$/i.test(f))
     .map((f) => `${PHOTO_DIR}${f}`);
 }
+
+export async function getImageDate(path: string): Promise<string | null> {
+  if (!path) return null;
+  try {
+    const info = await FileSystem.getInfoAsync(path, { md5: false });
+    if (!info.exists) return null;
+    const modTime = (info as { modificationTime?: number }).modificationTime;
+    if (modTime) {
+      return new Date(modTime * 1000).toISOString().split("T")[0] ?? null;
+    }
+  } catch {
+  }
+  return null;
+}

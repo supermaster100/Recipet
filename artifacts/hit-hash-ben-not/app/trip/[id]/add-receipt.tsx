@@ -1,12 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -14,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ImageField } from "@/components/ui/ImageField";
 import { ReceiptDB } from "@/db/database";
 import {
   CURRENCIES,
@@ -39,10 +42,15 @@ export default function AddTripReceiptScreen() {
   const [type, setType] = useState<ReceiptType>("MEALS");
   const [division, setDivision] = useState("");
   const [costCenter, setCostCenter] = useState("");
-  const [selfDeclaration, setSelfDeclaration] = useState(false);
+  const [photo, setPhoto] = useState("");
+  const [selfDeclaration, setSelfDeclaration] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  async function handleSave() {
+  useEffect(() => {
+    setSelfDeclaration(photo.trim().length === 0);
+  }, [photo]);
+
+  async function doSave(photoPath: string) {
     if (!id || !amount || isNaN(Number(amount))) return;
     setSaving(true);
     try {
@@ -56,7 +64,7 @@ export default function AddTripReceiptScreen() {
         costCenter,
         selfDeclaration,
         note: note ? `[Trip #${id}] ${note}` : `[Trip #${id}]`,
-        photo: null,
+        photo: photoPath || null,
         budget: "",
         status: "",
         export: false,
@@ -65,9 +73,27 @@ export default function AddTripReceiptScreen() {
       router.back();
     } catch (e) {
       console.error(e);
+      Alert.alert("Error", "Failed to save receipt. Please try again.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleSave() {
+    if (!amount || isNaN(Number(amount))) return;
+    if (!photo.trim()) {
+      Alert.alert(
+        "No Receipt Photo",
+        "Do you want to add a photo of the receipt?",
+        [
+          { text: "Add Photo", style: "default", onPress: () => {} },
+          { text: "Save Without Photo", style: "destructive", onPress: () => doSave("") },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+      return;
+    }
+    doSave(photo);
   }
 
   return (
@@ -179,17 +205,22 @@ export default function AddTripReceiptScreen() {
           />
         </View>
         <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>SELF DECLARATION</Text>
-          <Pressable
-            onPress={() => setSelfDeclaration((v) => !v)}
-            style={[
-              styles.toggle,
-              { backgroundColor: selfDeclaration ? colors.primary + "22" : colors.card, borderColor: selfDeclaration ? colors.primary : colors.border },
-            ]}
-          >
-            <Feather name={selfDeclaration ? "check-square" : "square"} size={18} color={selfDeclaration ? colors.primary : colors.mutedForeground} />
-            <Text style={[styles.chipText, { color: colors.foreground }]}>Self declaration receipt</Text>
-          </Pressable>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>PHOTO</Text>
+          <ImageField value={photo} onChange={setPhoto} />
+        </View>
+        <View style={[styles.field, styles.toggleRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[styles.toggleTitle, { color: colors.foreground }]}>Self declaration receipt</Text>
+            <Text style={[styles.toggleSubtitle, { color: colors.mutedForeground }]}>
+              {photo.trim() ? "Auto-disabled — photo attached" : "Auto-enabled — no photo"}
+            </Text>
+          </View>
+          <Switch
+            value={selfDeclaration}
+            onValueChange={setSelfDeclaration}
+            trackColor={{ false: colors.border, true: colors.primary + "80" }}
+            thumbColor={selfDeclaration ? colors.primary : colors.mutedForeground}
+          />
         </View>
       </ScrollView>
     </View>
@@ -215,5 +246,15 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: "row", gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  toggle: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12 },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  toggleTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  toggleSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
 });

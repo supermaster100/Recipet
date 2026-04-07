@@ -37,7 +37,6 @@ function RootLayoutNav() {
       <Stack.Screen name="budgets" />
       <Stack.Screen name="general-data" />
       <Stack.Screen name="scan-receipt" options={{ presentation: "modal" }} />
-      <Stack.Screen name="camera" options={{ presentation: "fullScreenModal" }} />
     </Stack>
   );
 }

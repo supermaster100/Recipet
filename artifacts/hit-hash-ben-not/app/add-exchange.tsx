@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -14,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ImageField } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
 import { ExchangeDB } from "@/db/database";
 import { CURRENCIES } from "@/db/types";
@@ -34,12 +36,12 @@ export default function AddExchangeScreen() {
   const [amountSpent, setAmountSpent] = useState("");
   const [amountReceived, setAmountReceived] = useState("");
   const [note, setNote] = useState("");
+  const [photo, setPhoto] = useState("");
   const [saving, setSaving] = useState(false);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
-  async function handleSave() {
-    if (!amountSpent || !amountReceived) return;
+  async function doSave(photoPath: string) {
     setSaving(true);
     try {
       await ExchangeDB.insert({
@@ -49,7 +51,7 @@ export default function AddExchangeScreen() {
         amountReceived: Number(amountReceived),
         receivedCurrency,
         note,
-        photo: null,
+        photo: photoPath || null,
         status: "",
         export: false,
       });
@@ -58,9 +60,27 @@ export default function AddExchangeScreen() {
       router.back();
     } catch (e) {
       console.error(e);
+      Alert.alert("Error", "Failed to save exchange. Please try again.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleSave() {
+    if (!amountSpent || !amountReceived) return;
+    if (!photo.trim()) {
+      Alert.alert(
+        "No Receipt Photo",
+        "Do you want to add a photo of the exchange receipt?",
+        [
+          { text: "Add Photo", style: "default", onPress: () => {} },
+          { text: "Save Without Photo", style: "destructive", onPress: () => doSave("") },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+      return;
+    }
+    doSave(photo);
   }
 
   return (
@@ -233,6 +253,13 @@ export default function AddExchangeScreen() {
             placeholder="Optional note"
             placeholderTextColor={colors.mutedForeground}
           />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+            PHOTO
+          </Text>
+          <ImageField value={photo} onChange={setPhoto} />
         </View>
       </ScrollView>
     </View>
