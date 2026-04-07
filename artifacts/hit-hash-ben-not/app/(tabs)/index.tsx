@@ -62,6 +62,12 @@ export default function AddScreen() {
     },
   ];
 
+  const rows = [
+    [actions[0]!, actions[1]!],
+    [actions[2]!, actions[3]!],
+    [actions[4]!, actions[5]!],
+  ];
+
   return (
     <View
       style={[
@@ -73,27 +79,29 @@ export default function AddScreen() {
         },
       ]}
     >
-      <View style={styles.grid}>
-        {actions.map((action) => {
-          const tint = colors[action.colorKey];
-          return (
-            <TouchableOpacity
-              key={action.label}
-              onPress={action.onPress}
-              style={[
-                styles.card,
-                { backgroundColor: tint + "22" },
-              ]}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.emoji}>{action.emoji}</Text>
-              <Text style={[styles.label, { color: tint }]} numberOfLines={2}>
-                {action.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {rows.map((row, rowIndex) => (
+        <View key={rowIndex} style={styles.row}>
+          {row.map((action) => {
+            const tint = colors[action.colorKey];
+            return (
+              <TouchableOpacity
+                key={action.label}
+                onPress={action.onPress}
+                style={[
+                  styles.card,
+                  { backgroundColor: tint + "22" },
+                ]}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.emoji}>{action.emoji}</Text>
+                <Text style={[styles.label, { color: tint }]} numberOfLines={2}>
+                  {action.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 }
@@ -102,17 +110,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
+    gap: 12,
   },
-  grid: {
+  row: {
     flex: 1,
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 14,
-    alignContent: "center",
   },
   card: {
-    width: "47.5%",
-    aspectRatio: 1,
+    flex: 1,
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",

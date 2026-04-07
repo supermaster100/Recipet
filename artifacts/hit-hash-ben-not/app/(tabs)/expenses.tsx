@@ -462,6 +462,7 @@ export default function OverviewScreen() {
           value={expensesSummaryValue}
           subValue={`${byPeriod.length} receipt${byPeriod.length !== 1 ? "s" : ""}`}
           color={colors.primary}
+          onPress={() => router.push("/(tabs)/expenses")}
         />
         <SummaryStatCard
           icon="dollar-sign"
