@@ -462,13 +462,11 @@ export default function TripScreen() {
           { paddingTop: topInset + 8, borderBottomColor: colors.border },
         ]}
       >
-        {isDirty ? (
-          <TouchableOpacity onPress={load} hitSlop={8}>
-            <Text style={[styles.headerAction, { color: colors.mutedForeground }]}>Cancel</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 60 }} />
-        )}
+        <TouchableOpacity onPress={isDirty ? load : undefined} disabled={!isDirty} hitSlop={8}>
+          <Text style={[styles.headerAction, { color: isDirty ? colors.mutedForeground : colors.border }]}>
+            Cancel
+          </Text>
+        </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Trip</Text>
         <TouchableOpacity
           onPress={handleSave}
