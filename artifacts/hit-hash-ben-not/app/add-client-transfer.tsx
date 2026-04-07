@@ -79,6 +79,15 @@ export default function AddClientTransferScreen() {
   function handleSave() {
     if (!isValid) return;
     if (!photo.trim()) {
+      if (Platform.OS === "web") {
+        const confirmed = window.confirm(
+          "No approval note photo. Save without photo?"
+        );
+        if (confirmed) {
+          doSave("");
+        }
+        return;
+      }
       Alert.alert(
         "No Approval Note Photo",
         "Do you want to add a photo of the approval note?",

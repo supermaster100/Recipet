@@ -243,6 +243,10 @@ export default function GeneralDataScreen() {
         costCenter: costCenter.trim(),
       });
       await refreshGeneral();
+      if (Platform.OS === "web") {
+        router.back();
+        return;
+      }
       Alert.alert("Saved", "General data saved successfully.", [
         { text: "OK", onPress: () => router.back() },
       ]);

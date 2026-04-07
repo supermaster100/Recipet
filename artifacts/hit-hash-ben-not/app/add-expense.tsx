@@ -354,6 +354,15 @@ export default function AddExpenseScreen() {
   async function handleSave() {
     if (!validate()) return;
     if (!photo.trim()) {
+      if (Platform.OS === "web") {
+        const confirmed = window.confirm(
+          "No photo attached. Save as self-declaration receipt?"
+        );
+        if (confirmed) {
+          doSave(true);
+        }
+        return;
+      }
       Alert.alert(
         "No Photo",
         "Would you like to add a receipt photo?",
@@ -431,11 +440,19 @@ export default function AddExpenseScreen() {
     }
   }
 
+  function goBack() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)");
+    }
+  }
+
   function handleBack() {
     if (dirty && !saved) {
-      confirmDiscard().then((ok) => { if (ok) router.back(); });
+      confirmDiscard().then((ok) => { if (ok) goBack(); });
     } else {
-      router.back();
+      goBack();
     }
   }
 
@@ -460,7 +477,7 @@ export default function AddExpenseScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: topInset + 8, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity onPress={goBack} hitSlop={8}>
             <Feather name="x" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Receipt Saved</Text>
@@ -484,7 +501,7 @@ export default function AddExpenseScreen() {
             <Text style={styles.addAnotherText}>Add New Receipt</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={goBack}
             style={[styles.doneBtn, { borderColor: colors.border }]}
           >
             <Text style={[styles.doneBtnText, { color: colors.foreground }]}>Done</Text>

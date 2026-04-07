@@ -170,6 +170,15 @@ export default function AddExchangeScreen() {
   function handleSave() {
     if (!amountSpent || !amountReceived) return;
     if (!photo.trim()) {
+      if (Platform.OS === "web") {
+        const confirmed = window.confirm(
+          "No receipt photo. Save without photo?"
+        );
+        if (confirmed) {
+          doSave("");
+        }
+        return;
+      }
       Alert.alert(
         "No Receipt Photo",
         "Do you want to add a photo of the exchange receipt?",
