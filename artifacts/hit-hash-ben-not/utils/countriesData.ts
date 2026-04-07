@@ -18,6 +18,17 @@ export interface CityOption {
   name: string;
 }
 
+function normalizeLabel(raw: string): string {
+  let s = raw.trim();
+  s = s.replace(/, All Country$/i, "").trim();
+  if (s.includes(", ")) {
+    const parts = s.split(", ");
+    const last = parts[parts.length - 1];
+    if (last) s = last.trim();
+  }
+  return s;
+}
+
 let _countries: CountryOption[] | null = null;
 
 export function getCountries(): CountryOption[] {
@@ -28,12 +39,14 @@ export function getCountries(): CountryOption[] {
     if (!seen.has(entry.COUNTRY)) {
       seen.add(entry.COUNTRY);
       const allEntry = data.find((e) => e.COUNTRY === entry.COUNTRY && e.REGION === "");
-      let name = allEntry?.Trip ?? entry.Trip ?? entry.COUNTRY;
-      name = name.replace(/, All Country$/, "").trim();
+      const rawName = allEntry?.Trip ?? entry.Trip ?? entry.COUNTRY;
+      const name = allEntry
+        ? rawName.replace(/, All Country$/i, "").trim()
+        : normalizeLabel(rawName);
       result.push({ code: entry.COUNTRY, name });
     }
   }
-  _countries = result.sort((a, b) => a.code.localeCompare(b.code));
+  _countries = result.sort((a, b) => a.name.localeCompare(b.name));
   return _countries;
 }
 
@@ -43,17 +56,19 @@ export function getCities(countryCode: string): CityOption[] {
   if (_citiesCache[countryCode]) return _citiesCache[countryCode];
   const countryEntry = data.find((e) => e.COUNTRY === countryCode && e.REGION === "");
   const countryName = countryEntry
-    ? countryEntry.Trip.replace(/, All Country$/, "").trim()
-    : countryCode;
+    ? countryEntry.Trip.replace(/, All Country$/i, "").trim()
+    : "";
+  const prefix = countryName ? countryName + ", " : null;
   const specific = data
     .filter((e) => e.COUNTRY === countryCode && e.REGION !== "")
     .map((e) => {
-      const prefix = countryName + ", ";
-      const name = e.Trip.startsWith(prefix)
-        ? e.Trip.slice(prefix.length).trim()
-        : e.Trip;
+      let name = e.Trip;
+      if (prefix && name.startsWith(prefix)) {
+        name = name.slice(prefix.length).trim();
+      }
       return { code: e.REGION, name };
-    });
+    })
+    .filter((c, i, arr) => arr.findIndex((x) => x.code === c.code) === i);
   const cities: CityOption[] =
     specific.length > 0
       ? specific
