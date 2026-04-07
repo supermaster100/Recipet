@@ -109,6 +109,12 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   }
 
   await db.execAsync(`
+    DELETE FROM Legs WHERE id NOT IN (
+      SELECT MIN(id) FROM Legs
+    );
+  `);
+
+  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS Travels (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       lId INTEGER DEFAULT 0,

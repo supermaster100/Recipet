@@ -697,7 +697,7 @@ export default function TripScreen() {
                 style={[styles.actionBtn, { backgroundColor: selectedIds.size > 0 ? colors.destructive : colors.border }]}
               >
                 <Feather name="trash-2" size={14} color={selectedIds.size > 0 ? "#FFF" : colors.mutedForeground} />
-                <Text style={[styles.actionBtnText, { color: selectedIds.size > 0 ? "#FFF" : colors.mutedForeground }]}>Delete</Text>
+                <Text style={[styles.actionBtnText, { color: selectedIds.size > 0 ? "#FFF" : colors.mutedForeground }]}>Delete Selected</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={hotels.length > 0 ? handleClear : undefined}
