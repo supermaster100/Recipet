@@ -366,11 +366,11 @@ export default function TripScreen() {
     if (!legData.departureDate.trim()) missing.push("Departure Date");
     if (!legData.departureHour.trim()) missing.push("Departure Hour");
     if (!legData.departureCountry) missing.push("Departure Country");
-    if (!legData.departureCity && getCities(legData.departureCountry).length > 0) missing.push("Departure City");
+    if (!legData.departureCity) missing.push("Departure City");
     if (!legData.arrivalDate.trim()) missing.push("Arrival Date");
     if (!legData.arrivalHour.trim()) missing.push("Arrival Hour");
     if (!legData.arrivalCountry) missing.push("Arrival Country");
-    if (!legData.arrivalCity && getCities(legData.arrivalCountry).length > 0) missing.push("Arrival City");
+    if (!legData.arrivalCity) missing.push("Arrival City");
     if (missing.length > 0) {
       Alert.alert("Required Fields", "Please fill in: " + missing.join(", ") + ".");
       return;
@@ -560,36 +560,28 @@ export default function TripScreen() {
             </TouchableOpacity>
           </FieldRow>
 
-          <FieldRow label={depCities.length > 0 ? "City *" : "City"}>
-            {depCities.length > 0 ? (
-              <TouchableOpacity
-                onPress={() => {
-                  if (!legData.departureCountry) {
-                    Alert.alert("Select Country First", "Please select a departure country first.");
-                    return;
-                  }
-                  setShowDepCity(true);
-                }}
-                style={[styles.selectTrigger, { borderColor: colors.border }]}
+          <FieldRow label="City *">
+            <TouchableOpacity
+              onPress={() => {
+                if (!legData.departureCountry) {
+                  Alert.alert("Select Country First", "Please select a departure country first.");
+                  return;
+                }
+                setShowDepCity(true);
+              }}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text
+                style={[
+                  styles.selectTriggerText,
+                  { color: legData.departureCity ? colors.foreground : colors.mutedForeground },
+                ]}
+                numberOfLines={1}
               >
-                <Text
-                  style={[
-                    styles.selectTriggerText,
-                    { color: legData.departureCity ? colors.foreground : colors.mutedForeground },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {legData.departureCity ? depCityName : "Select city..."}
-                </Text>
-                <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            ) : (
-              <Text style={[styles.noCitiesNote, { color: colors.mutedForeground }]}>
-                {legData.departureCountry
-                  ? "No specific cities available for this country"
-                  : "Select a country first"}
+                {legData.departureCity ? depCityName : "Select city..."}
               </Text>
-            )}
+              <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </FieldRow>
         </View>
 
@@ -663,36 +655,28 @@ export default function TripScreen() {
             </TouchableOpacity>
           </FieldRow>
 
-          <FieldRow label={arrCities.length > 0 ? "City *" : "City"}>
-            {arrCities.length > 0 ? (
-              <TouchableOpacity
-                onPress={() => {
-                  if (!legData.arrivalCountry) {
-                    Alert.alert("Select Country First", "Please select an arrival country first.");
-                    return;
-                  }
-                  setShowArrCity(true);
-                }}
-                style={[styles.selectTrigger, { borderColor: colors.border }]}
+          <FieldRow label="City *">
+            <TouchableOpacity
+              onPress={() => {
+                if (!legData.arrivalCountry) {
+                  Alert.alert("Select Country First", "Please select an arrival country first.");
+                  return;
+                }
+                setShowArrCity(true);
+              }}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text
+                style={[
+                  styles.selectTriggerText,
+                  { color: legData.arrivalCity ? colors.foreground : colors.mutedForeground },
+                ]}
+                numberOfLines={1}
               >
-                <Text
-                  style={[
-                    styles.selectTriggerText,
-                    { color: legData.arrivalCity ? colors.foreground : colors.mutedForeground },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {legData.arrivalCity ? arrCityName : "Select city..."}
-                </Text>
-                <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            ) : (
-              <Text style={[styles.noCitiesNote, { color: colors.mutedForeground }]}>
-                {legData.arrivalCountry
-                  ? "No specific cities available for this country"
-                  : "Select a country first"}
+                {legData.arrivalCity ? arrCityName : "Select city..."}
               </Text>
-            )}
+              <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </FieldRow>
         </View>
 
@@ -763,7 +747,8 @@ export default function TripScreen() {
             selected={legData.departureCountry}
             onSelect={(code) => {
               update("departureCountry", code);
-              update("departureCity", "");
+              const cities = getCities(code);
+              update("departureCity", cities.length === 1 && cities[0]?.code === "ALL" ? "ALL" : "");
             }}
             onClose={() => setShowDepCountry(false)}
           />
@@ -779,7 +764,8 @@ export default function TripScreen() {
             selected={legData.arrivalCountry}
             onSelect={(code) => {
               update("arrivalCountry", code);
-              update("arrivalCity", "");
+              const cities = getCities(code);
+              update("arrivalCity", cities.length === 1 && cities[0]?.code === "ALL" ? "ALL" : "");
             }}
             onClose={() => setShowArrCountry(false)}
           />

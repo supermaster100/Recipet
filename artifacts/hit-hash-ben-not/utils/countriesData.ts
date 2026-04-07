@@ -45,7 +45,7 @@ export function getCities(countryCode: string): CityOption[] {
   const countryName = countryEntry
     ? countryEntry.Trip.replace(/, All Country$/, "").trim()
     : countryCode;
-  const cities = data
+  const specific = data
     .filter((e) => e.COUNTRY === countryCode && e.REGION !== "")
     .map((e) => {
       const prefix = countryName + ", ";
@@ -54,6 +54,10 @@ export function getCities(countryCode: string): CityOption[] {
         : e.Trip;
       return { code: e.REGION, name };
     });
+  const cities: CityOption[] =
+    specific.length > 0
+      ? specific
+      : [{ code: "ALL", name: "(All Country)" }];
   _citiesCache[countryCode] = cities;
   return cities;
 }
