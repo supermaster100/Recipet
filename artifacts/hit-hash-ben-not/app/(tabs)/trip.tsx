@@ -560,28 +560,36 @@ export default function TripScreen() {
             </TouchableOpacity>
           </FieldRow>
 
-          <FieldRow label="City">
-            <TouchableOpacity
-              onPress={() => {
-                if (!legData.departureCountry) {
-                  Alert.alert("Select Country First", "Please select a departure country first.");
-                  return;
-                }
-                setShowDepCity(true);
-              }}
-              style={[styles.selectTrigger, { borderColor: colors.border }]}
-            >
-              <Text
-                style={[
-                  styles.selectTriggerText,
-                  { color: legData.departureCity ? colors.foreground : colors.mutedForeground },
-                ]}
-                numberOfLines={1}
+          <FieldRow label={depCities.length > 0 ? "City *" : "City"}>
+            {depCities.length > 0 ? (
+              <TouchableOpacity
+                onPress={() => {
+                  if (!legData.departureCountry) {
+                    Alert.alert("Select Country First", "Please select a departure country first.");
+                    return;
+                  }
+                  setShowDepCity(true);
+                }}
+                style={[styles.selectTrigger, { borderColor: colors.border }]}
               >
-                {legData.departureCity ? depCityName : "Select city..."}
+                <Text
+                  style={[
+                    styles.selectTriggerText,
+                    { color: legData.departureCity ? colors.foreground : colors.mutedForeground },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {legData.departureCity ? depCityName : "Select city..."}
+                </Text>
+                <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : (
+              <Text style={[styles.noCitiesNote, { color: colors.mutedForeground }]}>
+                {legData.departureCountry
+                  ? "No specific cities available for this country"
+                  : "Select a country first"}
               </Text>
-              <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            )}
           </FieldRow>
         </View>
 
@@ -655,28 +663,36 @@ export default function TripScreen() {
             </TouchableOpacity>
           </FieldRow>
 
-          <FieldRow label="City">
-            <TouchableOpacity
-              onPress={() => {
-                if (!legData.arrivalCountry) {
-                  Alert.alert("Select Country First", "Please select an arrival country first.");
-                  return;
-                }
-                setShowArrCity(true);
-              }}
-              style={[styles.selectTrigger, { borderColor: colors.border }]}
-            >
-              <Text
-                style={[
-                  styles.selectTriggerText,
-                  { color: legData.arrivalCity ? colors.foreground : colors.mutedForeground },
-                ]}
-                numberOfLines={1}
+          <FieldRow label={arrCities.length > 0 ? "City *" : "City"}>
+            {arrCities.length > 0 ? (
+              <TouchableOpacity
+                onPress={() => {
+                  if (!legData.arrivalCountry) {
+                    Alert.alert("Select Country First", "Please select an arrival country first.");
+                    return;
+                  }
+                  setShowArrCity(true);
+                }}
+                style={[styles.selectTrigger, { borderColor: colors.border }]}
               >
-                {legData.arrivalCity ? arrCityName : "Select city..."}
+                <Text
+                  style={[
+                    styles.selectTriggerText,
+                    { color: legData.arrivalCity ? colors.foreground : colors.mutedForeground },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {legData.arrivalCity ? arrCityName : "Select city..."}
+                </Text>
+                <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : (
+              <Text style={[styles.noCitiesNote, { color: colors.mutedForeground }]}>
+                {legData.arrivalCountry
+                  ? "No specific cities available for this country"
+                  : "Select a country first"}
               </Text>
-              <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            )}
           </FieldRow>
         </View>
 
@@ -691,26 +707,29 @@ export default function TripScreen() {
                 <Feather name="plus" size={14} color="#FFF" />
                 <Text style={styles.actionBtnText}>Add</Text>
               </TouchableOpacity>
-              {selectedIds.size > 0 && (
-                <TouchableOpacity
-                  onPress={handleDeleteSelected}
-                  style={[styles.actionBtn, { backgroundColor: colors.destructive }]}
-                >
-                  <Feather name="trash-2" size={14} color="#FFF" />
-                  <Text style={styles.actionBtnText}>Delete Selected</Text>
-                </TouchableOpacity>
-              )}
-              {hotels.length > 0 && (
-                <TouchableOpacity
-                  onPress={handleClear}
-                  style={[
-                    styles.actionBtn,
-                    { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border },
-                  ]}
-                >
-                  <Text style={[styles.actionBtnText, { color: colors.destructive }]}>Clear</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                onPress={selectedIds.size > 0 ? handleDeleteSelected : undefined}
+                disabled={selectedIds.size === 0}
+                style={[styles.actionBtn, { backgroundColor: selectedIds.size > 0 ? colors.destructive : colors.border }]}
+              >
+                <Feather name="trash-2" size={14} color={selectedIds.size > 0 ? "#FFF" : colors.mutedForeground} />
+                <Text style={[styles.actionBtnText, { color: selectedIds.size > 0 ? "#FFF" : colors.mutedForeground }]}>Delete</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={hotels.length > 0 ? handleClear : undefined}
+                disabled={hotels.length === 0}
+                style={[
+                  styles.actionBtn,
+                  {
+                    backgroundColor: "transparent",
+                    borderWidth: 1,
+                    borderColor: hotels.length > 0 ? colors.border : colors.border,
+                    opacity: hotels.length > 0 ? 1 : 0.4,
+                  },
+                ]}
+              >
+                <Text style={[styles.actionBtnText, { color: hotels.length > 0 ? colors.destructive : colors.mutedForeground }]}>Clear</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -841,6 +860,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  noCitiesNote: { fontSize: 13, fontFamily: "Inter_400Regular", fontStyle: "italic", paddingVertical: 10 },
   hotelList: { gap: 8 },
   hotelRow: {
     flexDirection: "row",
