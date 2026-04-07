@@ -73,6 +73,14 @@ export interface Leg {
   id: number;
   type: string;
   status: string;
+  departureDate: string;
+  departureHour: string;
+  departureCountry: string;
+  departureCity: string;
+  arrivalDate: string;
+  arrivalHour: string;
+  arrivalCountry: string;
+  arrivalCity: string;
 }
 
 export interface Travel {

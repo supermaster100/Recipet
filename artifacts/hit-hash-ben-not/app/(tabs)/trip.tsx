@@ -1,164 +1,807 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React from "react";
+import * as Haptics from "expo-haptics";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
+  Alert,
   FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AppHeader } from "@/components/ui/AppHeader";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { useAppContext } from "@/context/AppContext";
-import type { Leg } from "@/db/types";
+import { LegDB, TravelDB } from "@/db/database";
+import type { Leg, Travel } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
+import { getCities, getCountries } from "@/utils/countriesData";
+import { deletePhotoFromLocal } from "@/utils/photoUtils";
 
-function LegCard({ leg, onPress }: { leg: Leg; onPress: () => void }) {
+const COUNTRIES = getCountries();
+
+function today() {
+  return new Date().toISOString().split("T")[0] ?? "";
+}
+
+function emptyLeg(): Omit<Leg, "id"> {
+  return {
+    type: "TRIP",
+    status: "active",
+    departureDate: today(),
+    departureHour: "08:00",
+    departureCountry: "",
+    departureCity: "",
+    arrivalDate: today(),
+    arrivalHour: "10:00",
+    arrivalCountry: "",
+    arrivalCity: "",
+  };
+}
+
+function CountryPickerModal({
+  visible,
+  selected,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  selected: string;
+  onSelect: (code: string) => void;
+  onClose: () => void;
+}) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [query, setQuery] = useState("");
 
+  if (!visible) return null;
+
+  const filtered = query.trim()
+    ? COUNTRIES.filter(
+        (c) =>
+          c.code.toLowerCase().includes(query.toLowerCase()) ||
+          c.name.toLowerCase().includes(query.toLowerCase())
+      )
+    : COUNTRIES;
+
+  return (
+    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.background, zIndex: 100 }]}>
+      <View
+        style={[
+          styles.pickerHeader,
+          { paddingTop: (Platform.OS === "web" ? 67 : insets.top) + 8, borderBottomColor: colors.border },
+        ]}
+      >
+        <TouchableOpacity onPress={() => { onClose(); setQuery(""); }} hitSlop={8}>
+          <Feather name="x" size={22} color={colors.foreground} />
+        </TouchableOpacity>
+        <Text style={[styles.pickerTitle, { color: colors.foreground }]}>Select Country</Text>
+        <View style={{ width: 22 }} />
+      </View>
+      <View style={[styles.pickerSearch, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+        <Feather name="search" size={16} color={colors.mutedForeground} />
+        <TextInput
+          style={[styles.pickerSearchInput, { color: colors.foreground }]}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search..."
+          placeholderTextColor={colors.mutedForeground}
+          autoFocus
+        />
+        {query.length > 0 && (
+          <TouchableOpacity onPress={() => setQuery("")}>
+            <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        )}
+      </View>
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.code}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            onPress={() => {
+              onSelect(item.code);
+              onClose();
+              setQuery("");
+            }}
+            style={[
+              styles.pickerOption,
+              { backgroundColor: item.code === selected ? colors.primary + "22" : "transparent" },
+            ]}
+          >
+            <Text style={[styles.pickerOptionCode, { color: colors.mutedForeground }]}>{item.code}</Text>
+            <Text
+              style={[
+                styles.pickerOptionName,
+                { color: item.code === selected ? colors.primary : colors.foreground },
+              ]}
+            >
+              {item.name}
+            </Text>
+            {item.code === selected && <Feather name="check" size={16} color={colors.primary} />}
+          </TouchableOpacity>
+        )}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+      />
+    </View>
+  );
+}
+
+function CityPickerModal({
+  visible,
+  countryCode,
+  selected,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  countryCode: string;
+  selected: string;
+  onSelect: (code: string) => void;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const cities = getCities(countryCode);
+
+  if (!visible) return null;
+
+  return (
+    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.background, zIndex: 100 }]}>
+      <View
+        style={[
+          styles.pickerHeader,
+          { paddingTop: (Platform.OS === "web" ? 67 : insets.top) + 8, borderBottomColor: colors.border },
+        ]}
+      >
+        <TouchableOpacity onPress={onClose} hitSlop={8}>
+          <Feather name="x" size={22} color={colors.foreground} />
+        </TouchableOpacity>
+        <Text style={[styles.pickerTitle, { color: colors.foreground }]}>Select City</Text>
+        <View style={{ width: 22 }} />
+      </View>
+      {cities.length === 0 ? (
+        <View style={styles.pickerEmpty}>
+          <Text style={[styles.pickerEmptyText, { color: colors.mutedForeground }]}>
+            No cities available for this country
+          </Text>
+          <TouchableOpacity
+            onPress={() => { onSelect(""); onClose(); }}
+            style={[styles.smallBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={styles.smallBtnText}>OK</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={cities}
+          keyExtractor={(item) => item.code}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => { onSelect(item.code); onClose(); }}
+              style={[
+                styles.pickerOption,
+                { backgroundColor: item.code === selected ? colors.primary + "22" : "transparent" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.pickerOptionName,
+                  { color: item.code === selected ? colors.primary : colors.foreground },
+                ]}
+              >
+                {item.name}
+              </Text>
+              {item.code === selected && <Feather name="check" size={16} color={colors.primary} />}
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        />
+      )}
+    </View>
+  );
+}
+
+function HotelRow({
+  travel,
+  isSelected,
+  onToggle,
+  onPress,
+}: {
+  travel: Travel;
+  isSelected: boolean;
+  onToggle: () => void;
+  onPress: () => void;
+}) {
+  const colors = useColors();
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        {
-          backgroundColor: colors.card,
-          shadowColor: colors.shadowColor,
-          opacity: pressed ? 0.85 : 1,
-        },
-      ]}
+      style={[styles.hotelRow, { backgroundColor: colors.card, borderColor: colors.border }]}
     >
-      <View style={styles.cardHeader}>
-        <View style={[styles.iconBox, { backgroundColor: colors.warning + "18" }]}>
-          <Feather name="map" size={18} color={colors.warning} />
+      <TouchableOpacity onPress={onToggle} hitSlop={8}>
+        <View
+          style={[
+            styles.checkboxBox,
+            {
+              borderColor: isSelected ? colors.primary : colors.border,
+              backgroundColor: isSelected ? colors.primary : "transparent",
+            },
+          ]}
+        >
+          {isSelected && <Feather name="check" size={12} color="#FFF" />}
         </View>
-        <View style={styles.cardInfo}>
-          <Text
-            style={[styles.cardName, { color: colors.foreground }]}
-            numberOfLines={1}
-          >
-            {leg.type || "Unnamed Trip"}
+      </TouchableOpacity>
+      <View style={styles.hotelRowContent}>
+        <View style={styles.hotelRowMain}>
+          <Text style={[styles.hotelRate, { color: colors.foreground }]}>
+            {travel.ratePerNight > 0
+              ? `${travel.ratePerNight} ${travel.currencyPN}/night`
+              : "\u2014"}
           </Text>
-          {leg.status ? (
-            <Text
-              style={[styles.cardStatus, { color: colors.mutedForeground }]}
-              numberOfLines={1}
-            >
-              {leg.status}
+          {travel.nights > 0 && (
+            <Text style={[styles.hotelNights, { color: colors.mutedForeground }]}>
+              {" "}&middot;{" "}{travel.nights} night{travel.nights !== 1 ? "s" : ""}
             </Text>
-          ) : null}
+          )}
         </View>
-        <View style={[styles.chevronBox, { backgroundColor: colors.secondary }]}>
-          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-        </View>
+        {travel.description ? (
+          <Text style={[styles.hotelNote, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {travel.description}
+          </Text>
+        ) : null}
       </View>
+      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
     </Pressable>
+  );
+}
+
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  const colors = useColors();
+  return (
+    <View style={styles.fieldRow}>
+      <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      <View style={styles.fieldValue}>{children}</View>
+    </View>
   );
 }
 
 export default function TripScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { legs, isDbReady } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
+
+  const [legData, setLegData] = useState<Omit<Leg, "id">>(emptyLeg());
+  const [legId, setLegId] = useState<number | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [hotels, setHotels] = useState<Travel[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  const [showDepCountry, setShowDepCountry] = useState(false);
+  const [showDepCity, setShowDepCity] = useState(false);
+  const [showArrCountry, setShowArrCountry] = useState(false);
+  const [showArrCity, setShowArrCity] = useState(false);
+
+  async function load() {
+    const leg = await LegDB.getFirst();
+    if (leg) {
+      setLegId(leg.id);
+      setLegData({
+        type: leg.type,
+        status: leg.status,
+        departureDate: leg.departureDate,
+        departureHour: leg.departureHour,
+        departureCountry: leg.departureCountry,
+        departureCity: leg.departureCity,
+        arrivalDate: leg.arrivalDate,
+        arrivalHour: leg.arrivalHour,
+        arrivalCountry: leg.arrivalCountry,
+        arrivalCity: leg.arrivalCity,
+      });
+      const travels = await TravelDB.getByLegId(leg.id);
+      setHotels(travels);
+    } else {
+      setLegData(emptyLeg());
+      setLegId(null);
+      setHotels([]);
+    }
+    setIsDirty(false);
+    setSelectedIds(new Set());
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [])
+  );
+
+  function update(field: keyof Omit<Leg, "id">, value: string) {
+    setLegData((prev) => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+  }
+
+  async function handleSave() {
+    if (!legData.departureCountry || !legData.arrivalCountry) {
+      Alert.alert("Required", "Please select departure and arrival countries.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await LegDB.upsertSingleton(legData);
+      setLegId(saved.id);
+      setIsDirty(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleSelected(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleDeleteSelected() {
+    if (selectedIds.size === 0) return;
+    Alert.alert("Delete Selected", "Delete " + selectedIds.size + " hotel night(s)?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          for (const id of selectedIds) {
+            const t = hotels.find((h) => h.id === id);
+            if (t?.photo) await deletePhotoFromLocal(t.photo);
+            await TravelDB.delete(id);
+          }
+          setSelectedIds(new Set());
+          const updated = legId ? await TravelDB.getByLegId(legId) : [];
+          setHotels(updated);
+        },
+      },
+    ]);
+  }
+
+  async function handleClear() {
+    if (hotels.length === 0) return;
+    Alert.alert("Clear All", "Delete all hotel nights?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear",
+        style: "destructive",
+        onPress: async () => {
+          for (const t of hotels) {
+            if (t.photo) await deletePhotoFromLocal(t.photo);
+            await TravelDB.delete(t.id);
+          }
+          setSelectedIds(new Set());
+          setHotels([]);
+        },
+      },
+    ]);
+  }
+
+  function handleAddHotel() {
+    if (!legId) {
+      Alert.alert("Save Trip First", "Please save the trip data before adding hotel nights.");
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    router.push(("/add-hotel-night?legId=" + legId) as any);
+  }
+
+  const depCities = getCities(legData.departureCountry);
+  const arrCities = getCities(legData.arrivalCountry);
+  const depCountryName = COUNTRIES.find((c) => c.code === legData.departureCountry)?.name ?? "";
+  const depCityName = depCities.find((c) => c.code === legData.departureCity)?.name ?? legData.departureCity;
+  const arrCountryName = COUNTRIES.find((c) => c.code === legData.arrivalCountry)?.name ?? "";
+  const arrCityName = arrCities.find((c) => c.code === legData.arrivalCity)?.name ?? legData.arrivalCity;
+
+  const anyPickerOpen = showDepCountry || showDepCity || showArrCountry || showArrCity;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={{ paddingTop: topInset }}>
-        <AppHeader
-          title="Trips"
-          right={
-            <TouchableOpacity
-              onPress={() => router.push("/add-trip")}
-              hitSlop={8}
-              style={[styles.addButton, { backgroundColor: colors.warning + "18" }]}
-            >
-              <Feather name="plus" size={18} color={colors.warning} />
-            </TouchableOpacity>
-          }
-        />
-      </View>
-      <FlatList
-        data={legs}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={[
-          styles.list,
-          { paddingBottom: insets.bottom + 100 },
+      <View
+        style={[
+          styles.header,
+          { paddingTop: topInset + 8, borderBottomColor: colors.border },
         ]}
-        scrollEnabled={legs.length > 0}
-        ListEmptyComponent={
-          isDbReady ? (
-            <EmptyState
-              icon="map"
-              title="No trips yet"
-              subtitle="Create a new trip to track your travel expenses"
-            />
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <LegCard leg={item} onPress={() => router.push(`/trip/${item.id}`)} />
+      >
+        {isDirty ? (
+          <TouchableOpacity onPress={load} hitSlop={8}>
+            <Text style={[styles.headerAction, { color: colors.mutedForeground }]}>Cancel</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 60 }} />
         )}
-      />
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Trip</Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={saving || !isDirty}
+          hitSlop={8}
+        >
+          <Text
+            style={[
+              styles.headerAction,
+              { color: isDirty && !saving ? colors.primary : colors.mutedForeground },
+            ]}
+          >
+            {saving ? "Saving..." : "Save"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Departure</Text>
+
+          <FieldRow label="Date">
+            <TextInput
+              style={[styles.fieldInput, { color: colors.foreground, borderColor: colors.border }]}
+              value={legData.departureDate}
+              onChangeText={(v) => update("departureDate", v)}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="numbers-and-punctuation"
+            />
+          </FieldRow>
+
+          <FieldRow label="Hour">
+            <TextInput
+              style={[styles.fieldInput, { color: colors.foreground, borderColor: colors.border }]}
+              value={legData.departureHour}
+              onChangeText={(v) => update("departureHour", v)}
+              placeholder="HH:MM"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="numbers-and-punctuation"
+            />
+          </FieldRow>
+
+          <FieldRow label="Country *">
+            <TouchableOpacity
+              onPress={() => setShowDepCountry(true)}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text
+                style={[
+                  styles.selectTriggerText,
+                  { color: legData.departureCountry ? colors.foreground : colors.mutedForeground },
+                ]}
+                numberOfLines={1}
+              >
+                {legData.departureCountry
+                  ? legData.departureCountry + " \u2014 " + depCountryName
+                  : "Select country..."}
+              </Text>
+              <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </FieldRow>
+
+          <FieldRow label="City">
+            <TouchableOpacity
+              onPress={() => {
+                if (!legData.departureCountry) {
+                  Alert.alert("Select Country First", "Please select a departure country first.");
+                  return;
+                }
+                setShowDepCity(true);
+              }}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text
+                style={[
+                  styles.selectTriggerText,
+                  { color: legData.departureCity ? colors.foreground : colors.mutedForeground },
+                ]}
+                numberOfLines={1}
+              >
+                {legData.departureCity ? depCityName : "Select city..."}
+              </Text>
+              <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </FieldRow>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Arrival</Text>
+
+          <FieldRow label="Date">
+            <TextInput
+              style={[styles.fieldInput, { color: colors.foreground, borderColor: colors.border }]}
+              value={legData.arrivalDate}
+              onChangeText={(v) => update("arrivalDate", v)}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="numbers-and-punctuation"
+            />
+          </FieldRow>
+
+          <FieldRow label="Hour">
+            <TextInput
+              style={[styles.fieldInput, { color: colors.foreground, borderColor: colors.border }]}
+              value={legData.arrivalHour}
+              onChangeText={(v) => update("arrivalHour", v)}
+              placeholder="HH:MM"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="numbers-and-punctuation"
+            />
+          </FieldRow>
+
+          <FieldRow label="Country *">
+            <TouchableOpacity
+              onPress={() => setShowArrCountry(true)}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text
+                style={[
+                  styles.selectTriggerText,
+                  { color: legData.arrivalCountry ? colors.foreground : colors.mutedForeground },
+                ]}
+                numberOfLines={1}
+              >
+                {legData.arrivalCountry
+                  ? legData.arrivalCountry + " \u2014 " + arrCountryName
+                  : "Select country..."}
+              </Text>
+              <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </FieldRow>
+
+          <FieldRow label="City">
+            <TouchableOpacity
+              onPress={() => {
+                if (!legData.arrivalCountry) {
+                  Alert.alert("Select Country First", "Please select an arrival country first.");
+                  return;
+                }
+                setShowArrCity(true);
+              }}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text
+                style={[
+                  styles.selectTriggerText,
+                  { color: legData.arrivalCity ? colors.foreground : colors.mutedForeground },
+                ]}
+                numberOfLines={1}
+              >
+                {legData.arrivalCity ? arrCityName : "Select city..."}
+              </Text>
+              <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </FieldRow>
+        </View>
+
+        <View style={styles.hotelSection}>
+          <View style={styles.hotelSectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Hotel Nights</Text>
+            <View style={styles.hotelActions}>
+              <TouchableOpacity
+                onPress={handleAddHotel}
+                style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+              >
+                <Feather name="plus" size={14} color="#FFF" />
+                <Text style={styles.actionBtnText}>Add</Text>
+              </TouchableOpacity>
+              {selectedIds.size > 0 && (
+                <TouchableOpacity
+                  onPress={handleDeleteSelected}
+                  style={[styles.actionBtn, { backgroundColor: colors.destructive }]}
+                >
+                  <Feather name="trash-2" size={14} color="#FFF" />
+                  <Text style={styles.actionBtnText}>Delete Selected</Text>
+                </TouchableOpacity>
+              )}
+              {hotels.length > 0 && (
+                <TouchableOpacity
+                  onPress={handleClear}
+                  style={[
+                    styles.actionBtn,
+                    { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={[styles.actionBtnText, { color: colors.destructive }]}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {hotels.length === 0 ? (
+            <View style={[styles.emptyHotels, { borderColor: colors.border }]}>
+              <Feather name="moon" size={28} color={colors.mutedForeground} />
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                No hotel nights added
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.hotelList}>
+              {hotels.map((hotel) => (
+                <HotelRow
+                  key={hotel.id}
+                  travel={hotel}
+                  isSelected={selectedIds.has(hotel.id)}
+                  onToggle={() => toggleSelected(hotel.id)}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  onPress={() => router.push(("/edit-hotel-night/" + hotel.id + "?legId=" + legId) as any)}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {anyPickerOpen && (
+        <>
+          <CountryPickerModal
+            visible={showDepCountry}
+            selected={legData.departureCountry}
+            onSelect={(code) => {
+              update("departureCountry", code);
+              update("departureCity", "");
+            }}
+            onClose={() => setShowDepCountry(false)}
+          />
+          <CityPickerModal
+            visible={showDepCity}
+            countryCode={legData.departureCountry}
+            selected={legData.departureCity}
+            onSelect={(code) => update("departureCity", code)}
+            onClose={() => setShowDepCity(false)}
+          />
+          <CountryPickerModal
+            visible={showArrCountry}
+            selected={legData.arrivalCountry}
+            onSelect={(code) => {
+              update("arrivalCountry", code);
+              update("arrivalCity", "");
+            }}
+            onClose={() => setShowArrCountry(false)}
+          />
+          <CityPickerModal
+            visible={showArrCity}
+            countryCode={legData.arrivalCountry}
+            selected={legData.arrivalCity}
+            onSelect={(code) => update("arrivalCity", code)}
+            onClose={() => setShowArrCity(false)}
+          />
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  list: {
-    padding: 20,
-    gap: 10,
-    flexGrow: 1,
-  },
-  card: {
-    borderRadius: 16,
-    padding: 16,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  cardName: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
-  cardStatus: {
-    fontSize: 13,
+  headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  headerAction: { fontSize: 15, fontFamily: "Inter_600SemiBold", minWidth: 60, textAlign: "center" },
+  content: { padding: 16, gap: 16 },
+  section: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 12 },
+  sectionTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  fieldRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  fieldLabel: { fontSize: 12, fontFamily: "Inter_500Medium", width: 76 },
+  fieldValue: { flex: 1 },
+  fieldInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
-  chevronBox: {
-    width: 30,
-    height: 30,
+  selectTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
     borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  selectTriggerText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
+  hotelSection: { gap: 12 },
+  hotelSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  hotelActions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  actionBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#FFF" },
+  emptyHotels: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderStyle: "dashed",
+    borderRadius: 12,
+    alignItems: "center",
+    paddingVertical: 36,
+    gap: 10,
+  },
+  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  hotelList: { gap: 8 },
+  hotelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  checkboxBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
+  hotelRowContent: { flex: 1, gap: 2 },
+  hotelRowMain: { flexDirection: "row", alignItems: "center", gap: 4 },
+  hotelRate: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  hotelNights: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  hotelNote: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  pickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  pickerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  pickerSearch: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  pickerSearchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  pickerOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  pickerOptionCode: { fontSize: 13, fontFamily: "Inter_600SemiBold", width: 36 },
+  pickerOptionName: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
+  pickerEmpty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40, gap: 12 },
+  pickerEmptyText: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center" },
+  smallBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  smallBtnText: { color: "#FFF", fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });

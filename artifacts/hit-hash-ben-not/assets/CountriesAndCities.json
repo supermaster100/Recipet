@@ -1,0 +1,1692 @@
+[
+  {
+    "COUNTRY": "AD",
+    "REGION": "",
+    "Trip": "Andorra"
+  },
+  {
+    "COUNTRY": "AE",
+    "REGION": "",
+    "Trip": "UAE , All Country"
+  },
+  {
+    "COUNTRY": "AE",
+    "REGION": "DUBAI",
+    "Trip": "UAE , Dubai"
+  },
+  {
+    "COUNTRY": "AF",
+    "REGION": "",
+    "Trip": "Afghanistan, All Country"
+  },
+  {
+    "COUNTRY": "AG",
+    "REGION": "",
+    "Trip": "Antigua/Barb, All Country"
+  },
+  {
+    "COUNTRY": "AI",
+    "REGION": "",
+    "Trip": "Anguilla"
+  },
+  {
+    "COUNTRY": "AL",
+    "REGION": "",
+    "Trip": "Albania, All Country"
+  },
+  {
+    "COUNTRY": "AL",
+    "REGION": "TIRAN",
+    "Trip": "Albania, All Country"
+  },
+  {
+    "COUNTRY": "AM",
+    "REGION": "",
+    "Trip": "Armenia, All Country"
+  },
+  {
+    "COUNTRY": "AO",
+    "REGION": "",
+    "Trip": "Angola, All Country"
+  },
+  {
+    "COUNTRY": "AQ",
+    "REGION": "",
+    "Trip": "Antarctic"
+  },
+  {
+    "COUNTRY": "AR",
+    "REGION": "",
+    "Trip": "Argentina, All Country"
+  },
+  {
+    "COUNTRY": "AR",
+    "REGION": "BUARS",
+    "Trip": "Argentina, Buenos Aires"
+  },
+  {
+    "COUNTRY": "AS",
+    "REGION": "",
+    "Trip": "Samoa,American"
+  },
+  {
+    "COUNTRY": "AT",
+    "REGION": "",
+    "Trip": "Austria, All Country"
+  },
+  {
+    "COUNTRY": "AT",
+    "REGION": "WIEN",
+    "Trip": "Austria, Vienna"
+  },
+  {
+    "COUNTRY": "AU",
+    "REGION": "",
+    "Trip": "Australia, All Country"
+  },
+  {
+    "COUNTRY": "AU",
+    "REGION": "CABRA",
+    "Trip": "Australia, Canberra"
+  },
+  {
+    "COUNTRY": "AU",
+    "REGION": "MLBRN",
+    "Trip": "Australia, Melborn"
+  },
+  {
+    "COUNTRY": "AU",
+    "REGION": "PERTH",
+    "Trip": "Australia, Perth"
+  },
+  {
+    "COUNTRY": "AU",
+    "REGION": "SIDNY",
+    "Trip": "Australia, Sidny"
+  },
+  {
+    "COUNTRY": "AW",
+    "REGION": "",
+    "Trip": "Aruba"
+  },
+  {
+    "COUNTRY": "AZ",
+    "REGION": "",
+    "Trip": "Azerbaijan, All Country"
+  },
+  {
+    "COUNTRY": "BA",
+    "REGION": "",
+    "Trip": "Bosnia-Herz., All Country"
+  },
+  {
+    "COUNTRY": "BB",
+    "REGION": "",
+    "Trip": "Barbados, All Country"
+  },
+  {
+    "COUNTRY": "BD",
+    "REGION": "",
+    "Trip": "Bangladesh"
+  },
+  {
+    "COUNTRY": "BE",
+    "REGION": "",
+    "Trip": "Belgium, All Country"
+  },
+  {
+    "COUNTRY": "BE",
+    "REGION": "ATWRP",
+    "Trip": "Belgium, Brussel"
+  },
+  {
+    "COUNTRY": "BE",
+    "REGION": "BRUES",
+    "Trip": "Belgium Brussels"
+  },
+  {
+    "COUNTRY": "BE",
+    "REGION": "BRUSL",
+    "Trip": "Belgium, Brussel"
+  },
+  {
+    "COUNTRY": "BF",
+    "REGION": "",
+    "Trip": "Burkina-Faso, All Country"
+  },
+  {
+    "COUNTRY": "BG",
+    "REGION": "",
+    "Trip": "Bulgaria"
+  },
+  {
+    "COUNTRY": "BG",
+    "REGION": "SOFIA",
+    "Trip": "Bulgaria, Sofia"
+  },
+  {
+    "COUNTRY": "BH",
+    "REGION": "",
+    "Trip": "Bharain, All Country"
+  },
+  {
+    "COUNTRY": "BI",
+    "REGION": "",
+    "Trip": "Burundi, All Country"
+  },
+  {
+    "COUNTRY": "BJ",
+    "REGION": "",
+    "Trip": "Benin"
+  },
+  {
+    "COUNTRY": "BM",
+    "REGION": "",
+    "Trip": "Bermuda"
+  },
+  {
+    "COUNTRY": "BN",
+    "REGION": "",
+    "Trip": "Brunei Dar-e, All Country"
+  },
+  {
+    "COUNTRY": "BO",
+    "REGION": "",
+    "Trip": "Bolivia, All Country"
+  },
+  {
+    "COUNTRY": "BR",
+    "REGION": "",
+    "Trip": "Brazil, All Country"
+  },
+  {
+    "COUNTRY": "BR",
+    "REGION": "BRZIL",
+    "Trip": "Brazil, Brazilia"
+  },
+  {
+    "COUNTRY": "BR",
+    "REGION": "RECIF",
+    "Trip": "Brazil, Recife"
+  },
+  {
+    "COUNTRY": "BR",
+    "REGION": "RIO",
+    "Trip": "Brazil, Rio de Janeiro"
+  },
+  {
+    "COUNTRY": "BR",
+    "REGION": "SPAU",
+    "Trip": "Brazil, Sao Paulo"
+  },
+  {
+    "COUNTRY": "BR",
+    "REGION": "SPAUL",
+    "Trip": "Brazil, Sao Paulo"
+  },
+  {
+    "COUNTRY": "BS",
+    "REGION": "",
+    "Trip": "Bahamas, All Country"
+  },
+  {
+    "COUNTRY": "BT",
+    "REGION": "",
+    "Trip": "Bhutan"
+  },
+  {
+    "COUNTRY": "BU",
+    "REGION": "",
+    "Trip": "Myanmar(formerly Burma)"
+  },
+  {
+    "COUNTRY": "BW",
+    "REGION": "",
+    "Trip": "Botswana, All Country"
+  },
+  {
+    "COUNTRY": "BY",
+    "REGION": "",
+    "Trip": "White Russia, All Country"
+  },
+  {
+    "COUNTRY": "BZ",
+    "REGION": "",
+    "Trip": "Belize, All Country"
+  },
+  {
+    "COUNTRY": "CA",
+    "REGION": "",
+    "Trip": "Canada, All Country"
+  },
+  {
+    "COUNTRY": "CA",
+    "REGION": "MONTR",
+    "Trip": "Canada, Montriol"
+  },
+  {
+    "COUNTRY": "CA",
+    "REGION": "OTAWA",
+    "Trip": "Canada, Otawa"
+  },
+  {
+    "COUNTRY": "CA",
+    "REGION": "OTTAW",
+    "Trip": "Canada Ottawa"
+  },
+  {
+    "COUNTRY": "CA",
+    "REGION": "TORON",
+    "Trip": "Canada, Toronto"
+  },
+  {
+    "COUNTRY": "CD",
+    "REGION": "",
+    "Trip": "Congo"
+  },
+  {
+    "COUNTRY": "CF",
+    "REGION": "",
+    "Trip": "Central Afr., All Country"
+  },
+  {
+    "COUNTRY": "CG",
+    "REGION": "",
+    "Trip": "Congo, All Country"
+  },
+  {
+    "COUNTRY": "CH",
+    "REGION": "",
+    "Trip": "Switzerland, All Country"
+  },
+  {
+    "COUNTRY": "CH",
+    "REGION": "BERN",
+    "Trip": "Switzerland, Bern"
+  },
+  {
+    "COUNTRY": "CH",
+    "REGION": "JENEV",
+    "Trip": "Switzerland, Jenev"
+  },
+  {
+    "COUNTRY": "CH",
+    "REGION": "ZURIC",
+    "Trip": "Switzerland, Zurich"
+  },
+  {
+    "COUNTRY": "CI",
+    "REGION": "",
+    "Trip": "Ivory Coast, All Country"
+  },
+  {
+    "COUNTRY": "CK",
+    "REGION": "",
+    "Trip": "Cook Islands, All Country"
+  },
+  {
+    "COUNTRY": "CL",
+    "REGION": "",
+    "Trip": "Chile, All Country"
+  },
+  {
+    "COUNTRY": "CL",
+    "REGION": "SANTG",
+    "Trip": "Chile, San Tiago"
+  },
+  {
+    "COUNTRY": "CM",
+    "REGION": "",
+    "Trip": "Cameroon, All Country"
+  },
+  {
+    "COUNTRY": "CN",
+    "REGION": "",
+    "Trip": "China, All Country"
+  },
+  {
+    "COUNTRY": "CN",
+    "REGION": "BEIJN",
+    "Trip": "China, Shanghai"
+  },
+  {
+    "COUNTRY": "CN",
+    "REGION": "GUANG",
+    "Trip": "China, Shanghai"
+  },
+  {
+    "COUNTRY": "CN",
+    "REGION": "HKONG",
+    "Trip": "Hong Kong China"
+  },
+  {
+    "COUNTRY": "CN",
+    "REGION": "KANTO",
+    "Trip": "China, Canton"
+  },
+  {
+    "COUNTRY": "CN",
+    "REGION": "PEKIN",
+    "Trip": "China, Shanghai"
+  },
+  {
+    "COUNTRY": "CN",
+    "REGION": "SHANG",
+    "Trip": "China, Shanghai"
+  },
+  {
+    "COUNTRY": "CN",
+    "REGION": "SHENZ",
+    "Trip": "China, Shanghai"
+  },
+  {
+    "COUNTRY": "CO",
+    "REGION": "",
+    "Trip": "Columbia, All Country"
+  },
+  {
+    "COUNTRY": "CR",
+    "REGION": "",
+    "Trip": "Costa Rica, All Country"
+  },
+  {
+    "COUNTRY": "CU",
+    "REGION": "",
+    "Trip": "cuba,All Country"
+  },
+  {
+    "COUNTRY": "CV",
+    "REGION": "",
+    "Trip": "Cape Verde, All Country"
+  },
+  {
+    "COUNTRY": "CY",
+    "REGION": "",
+    "Trip": "Cyprus, All Country"
+  },
+  {
+    "COUNTRY": "CY",
+    "REGION": "LIMSL",
+    "Trip": "Cyprus, Limasol"
+  },
+  {
+    "COUNTRY": "CY",
+    "REGION": "LRNKA",
+    "Trip": "Cyprus, Larnaka"
+  },
+  {
+    "COUNTRY": "CY",
+    "REGION": "NIKOS",
+    "Trip": "Cyprus, Nikosia"
+  },
+  {
+    "COUNTRY": "CZ",
+    "REGION": "",
+    "Trip": "Czech Republic, All Count"
+  },
+  {
+    "COUNTRY": "CZ",
+    "REGION": "PRUGE",
+    "Trip": "Czech Republic, Pruge"
+  },
+  {
+    "COUNTRY": "DE",
+    "REGION": "",
+    "Trip": "Germany, All Country"
+  },
+  {
+    "COUNTRY": "DE",
+    "REGION": "BERLN",
+    "Trip": "Germany, Berlin"
+  },
+  {
+    "COUNTRY": "DE",
+    "REGION": "FRKFT",
+    "Trip": "Germany, Berlin"
+  },
+  {
+    "COUNTRY": "DE",
+    "REGION": "HAMBG",
+    "Trip": "Germany, Berlin"
+  },
+  {
+    "COUNTRY": "DE",
+    "REGION": "MUNIC",
+    "Trip": "Germany, Berlin"
+  },
+  {
+    "COUNTRY": "DJ",
+    "REGION": "",
+    "Trip": "Djibouti, All Country"
+  },
+  {
+    "COUNTRY": "DK",
+    "REGION": "",
+    "Trip": "Denmark, All Country"
+  },
+  {
+    "COUNTRY": "DK",
+    "REGION": "KOPEN",
+    "Trip": "Denmark, Copenhagen"
+  },
+  {
+    "COUNTRY": "DM",
+    "REGION": "",
+    "Trip": "Dominica, All Country"
+  },
+  {
+    "COUNTRY": "DO",
+    "REGION": "",
+    "Trip": "Dominican Re, All Country"
+  },
+  {
+    "COUNTRY": "DU",
+    "REGION": "",
+    "Trip": "Dubai, All Country"
+  },
+  {
+    "COUNTRY": "DZ",
+    "REGION": "",
+    "Trip": "Algeria, All Country"
+  },
+  {
+    "COUNTRY": "EC",
+    "REGION": "",
+    "Trip": "Ecuador, All Country"
+  },
+  {
+    "COUNTRY": "EE",
+    "REGION": "",
+    "Trip": "Estonia, All Country"
+  },
+  {
+    "COUNTRY": "EE",
+    "REGION": "TALIN",
+    "Trip": "Estonia, Talin"
+  },
+  {
+    "COUNTRY": "EG",
+    "REGION": "",
+    "Trip": "Egypt, All Country"
+  },
+  {
+    "COUNTRY": "EG",
+    "REGION": "ALXDR",
+    "Trip": "Egypt, Alexandria"
+  },
+  {
+    "COUNTRY": "EG",
+    "REGION": "KAIRO",
+    "Trip": "Egypt Cairo"
+  },
+  {
+    "COUNTRY": "ER",
+    "REGION": "",
+    "Trip": "Eritrea, All Country"
+  },
+  {
+    "COUNTRY": "ES",
+    "REGION": "",
+    "Trip": "Spain, All Country"
+  },
+  {
+    "COUNTRY": "ES",
+    "REGION": "BARCE",
+    "Trip": "Spain, Barcelona"
+  },
+  {
+    "COUNTRY": "ES",
+    "REGION": "KANAR",
+    "Trip": "Spain, Canary Islands"
+  },
+  {
+    "COUNTRY": "ES",
+    "REGION": "MADRD",
+    "Trip": "Spain, Madrid"
+  },
+  {
+    "COUNTRY": "ET",
+    "REGION": "",
+    "Trip": "Ethiopia, All Country"
+  },
+  {
+    "COUNTRY": "EU",
+    "REGION": "",
+    "Trip": "Country grp EU"
+  },
+  {
+    "COUNTRY": "FI",
+    "REGION": "",
+    "Trip": "Finland, All Country"
+  },
+  {
+    "COUNTRY": "FI",
+    "REGION": "HLSNK",
+    "Trip": "Finland, Helsinki"
+  },
+  {
+    "COUNTRY": "FJ",
+    "REGION": "",
+    "Trip": "Fiji, All Country"
+  },
+  {
+    "COUNTRY": "FM",
+    "REGION": "",
+    "Trip": "Micronesia"
+  },
+  {
+    "COUNTRY": "FO",
+    "REGION": "",
+    "Trip": "Faroe Islands"
+  },
+  {
+    "COUNTRY": "FR",
+    "REGION": "",
+    "Trip": "France, All Country"
+  },
+  {
+    "COUNTRY": "FR",
+    "REGION": "BORDX",
+    "Trip": "France, Bordeaux"
+  },
+  {
+    "COUNTRY": "FR",
+    "REGION": "LYON",
+    "Trip": "France, Lyons"
+  },
+  {
+    "COUNTRY": "FR",
+    "REGION": "MARSI",
+    "Trip": "France, Marsey"
+  },
+  {
+    "COUNTRY": "FR",
+    "REGION": "PARIS",
+    "Trip": "France, Paris"
+  },
+  {
+    "COUNTRY": "FR",
+    "REGION": "STRAS",
+    "Trip": "France, Marsey"
+  },
+  {
+    "COUNTRY": "FR",
+    "REGION": "TOULS",
+    "Trip": "France, Marsey"
+  },
+  {
+    "COUNTRY": "GA",
+    "REGION": "",
+    "Trip": "Gabon, All Country"
+  },
+  {
+    "COUNTRY": "GB",
+    "REGION": "",
+    "Trip": "UK, All Country"
+  },
+  {
+    "COUNTRY": "GB",
+    "REGION": "LONDO",
+    "Trip": "United Kingdom,London"
+  },
+  {
+    "COUNTRY": "GB",
+    "REGION": "MANCH",
+    "Trip": "Great Britain, Manchester"
+  },
+  {
+    "COUNTRY": "GD",
+    "REGION": "",
+    "Trip": "Grenada, All Country"
+  },
+  {
+    "COUNTRY": "GE",
+    "REGION": "",
+    "Trip": "Georgia, All Country"
+  },
+  {
+    "COUNTRY": "GF",
+    "REGION": "",
+    "Trip": "French Guinea"
+  },
+  {
+    "COUNTRY": "GH",
+    "REGION": "",
+    "Trip": "Ghana, All Country"
+  },
+  {
+    "COUNTRY": "GL",
+    "REGION": "",
+    "Trip": "Greenland"
+  },
+  {
+    "COUNTRY": "GM",
+    "REGION": "",
+    "Trip": "Gambia, All Country"
+  },
+  {
+    "COUNTRY": "GN",
+    "REGION": "",
+    "Trip": "Guinea, All Country"
+  },
+  {
+    "COUNTRY": "GP",
+    "REGION": "",
+    "Trip": "Guadeloupe"
+  },
+  {
+    "COUNTRY": "GQ",
+    "REGION": "",
+    "Trip": "Equatorial Guinea"
+  },
+  {
+    "COUNTRY": "GR",
+    "REGION": "",
+    "Trip": "Greece, All Country"
+  },
+  {
+    "COUNTRY": "GR",
+    "REGION": "ATHEN",
+    "Trip": "Greece, Athen"
+  },
+  {
+    "COUNTRY": "GR",
+    "REGION": "SLNKI",
+    "Trip": "Greece, Saloniki"
+  },
+  {
+    "COUNTRY": "GT",
+    "REGION": "",
+    "Trip": "Guatemala, All Country"
+  },
+  {
+    "COUNTRY": "GU",
+    "REGION": "",
+    "Trip": "Guam"
+  },
+  {
+    "COUNTRY": "GW",
+    "REGION": "",
+    "Trip": "Guinea-Bissau"
+  },
+  {
+    "COUNTRY": "GY",
+    "REGION": "",
+    "Trip": "Guyana"
+  },
+  {
+    "COUNTRY": "HK",
+    "REGION": "",
+    "Trip": "Hong Kong, All Country"
+  },
+  {
+    "COUNTRY": "HN",
+    "REGION": "",
+    "Trip": "Honduras, All Country"
+  },
+  {
+    "COUNTRY": "HR",
+    "REGION": "",
+    "Trip": "Croatia, All Country"
+  },
+  {
+    "COUNTRY": "HR",
+    "REGION": "ZAGRB",
+    "Trip": "Croatia, All Country"
+  },
+  {
+    "COUNTRY": "HT",
+    "REGION": "",
+    "Trip": "Haiti, All Country"
+  },
+  {
+    "COUNTRY": "HU",
+    "REGION": "",
+    "Trip": "Hungary, All Country"
+  },
+  {
+    "COUNTRY": "HU",
+    "REGION": "BDPST",
+    "Trip": "Hungary, Budapest"
+  },
+  {
+    "COUNTRY": "ID",
+    "REGION": "",
+    "Trip": "Indonesia, All Country"
+  },
+  {
+    "COUNTRY": "IE",
+    "REGION": "",
+    "Trip": "Ireland, All Country"
+  },
+  {
+    "COUNTRY": "IE",
+    "REGION": "DBLIN",
+    "Trip": "Ireland, Dublin"
+  },
+  {
+    "COUNTRY": "IL",
+    "REGION": "",
+    "Trip": "Israel, All Country"
+  },
+  {
+    "COUNTRY": "IN",
+    "REGION": "",
+    "Trip": "India, All Country"
+  },
+  {
+    "COUNTRY": "IN",
+    "REGION": "BANGL",
+    "Trip": "India,Sikkim,New Delhi"
+  },
+  {
+    "COUNTRY": "IN",
+    "REGION": "BOMBA",
+    "Trip": "India,Sikkim,Bombay"
+  },
+  {
+    "COUNTRY": "IN",
+    "REGION": "DEHLI",
+    "Trip": "India,Sikkim,New Delhi"
+  },
+  {
+    "COUNTRY": "IQ",
+    "REGION": "",
+    "Trip": "Iraq, All Country"
+  },
+  {
+    "COUNTRY": "IQ",
+    "REGION": "KURD",
+    "Trip": "Iraq, kurdistan"
+  },
+  {
+    "COUNTRY": "IR",
+    "REGION": "",
+    "Trip": "Iran, All Country"
+  },
+  {
+    "COUNTRY": "IS",
+    "REGION": "",
+    "Trip": "Iceland, All Country"
+  },
+  {
+    "COUNTRY": "IT",
+    "REGION": "",
+    "Trip": "Italy, All Country"
+  },
+  {
+    "COUNTRY": "IT",
+    "REGION": "MAILA",
+    "Trip": "Italy, Milan"
+  },
+  {
+    "COUNTRY": "IT",
+    "REGION": "ROM",
+    "Trip": "Italy, Rome"
+  },
+  {
+    "COUNTRY": "IT",
+    "REGION": "ROME",
+    "Trip": "Italy, Rome"
+  },
+  {
+    "COUNTRY": "JM",
+    "REGION": "",
+    "Trip": "Jamaica, All Country"
+  },
+  {
+    "COUNTRY": "JO",
+    "REGION": "",
+    "Trip": "Jordan, All Country"
+  },
+  {
+    "COUNTRY": "JP",
+    "REGION": "",
+    "Trip": "Japan, All Country"
+  },
+  {
+    "COUNTRY": "JP",
+    "REGION": "TOKIO",
+    "Trip": "Japan, Tokio"
+  },
+  {
+    "COUNTRY": "KE",
+    "REGION": "",
+    "Trip": "Kenya, All Country"
+  },
+  {
+    "COUNTRY": "KE",
+    "REGION": "NYRBE",
+    "Trip": "Kenya, Nayrobee"
+  },
+  {
+    "COUNTRY": "KG",
+    "REGION": "",
+    "Trip": "Kirghistan, All Country"
+  },
+  {
+    "COUNTRY": "KH",
+    "REGION": "",
+    "Trip": "Cambodia, All Country"
+  },
+  {
+    "COUNTRY": "KI",
+    "REGION": "",
+    "Trip": "Ciribati"
+  },
+  {
+    "COUNTRY": "KM",
+    "REGION": "",
+    "Trip": "Comoros"
+  },
+  {
+    "COUNTRY": "KN",
+    "REGION": "",
+    "Trip": "St.Chr.,Nevis"
+  },
+  {
+    "COUNTRY": "KP",
+    "REGION": "",
+    "Trip": "North Korea"
+  },
+  {
+    "COUNTRY": "KR",
+    "REGION": "",
+    "Trip": "South Korea, All Country"
+  },
+  {
+    "COUNTRY": "KR",
+    "REGION": "SEUL",
+    "Trip": "South Korea, Seul"
+  },
+  {
+    "COUNTRY": "KW",
+    "REGION": "",
+    "Trip": "Kuwait, All Country"
+  },
+  {
+    "COUNTRY": "KY",
+    "REGION": "",
+    "Trip": "Cayman Islands"
+  },
+  {
+    "COUNTRY": "KZ",
+    "REGION": "",
+    "Trip": "Kazakhstan, All Country"
+  },
+  {
+    "COUNTRY": "KZ",
+    "REGION": "ASTNA",
+    "Trip": "Kazakhstan, Astena"
+  },
+  {
+    "COUNTRY": "LA",
+    "REGION": "",
+    "Trip": "Laos, All Country"
+  },
+  {
+    "COUNTRY": "LB",
+    "REGION": "",
+    "Trip": "Lebanon, All Country"
+  },
+  {
+    "COUNTRY": "LC",
+    "REGION": "",
+    "Trip": "St. Lucia"
+  },
+  {
+    "COUNTRY": "LI",
+    "REGION": "",
+    "Trip": "Liechtenstei, All Country"
+  },
+  {
+    "COUNTRY": "LK",
+    "REGION": "",
+    "Trip": "Sri Lanka, All Country"
+  },
+  {
+    "COUNTRY": "LR",
+    "REGION": "",
+    "Trip": "Liberia, All Country"
+  },
+  {
+    "COUNTRY": "LS",
+    "REGION": "",
+    "Trip": "Lesotho, All Country"
+  },
+  {
+    "COUNTRY": "LT",
+    "REGION": "",
+    "Trip": "Lithuania, All Country"
+  },
+  {
+    "COUNTRY": "LU",
+    "REGION": "",
+    "Trip": "Luxembourg, All Country"
+  },
+  {
+    "COUNTRY": "LV",
+    "REGION": "",
+    "Trip": "Latvia, All Country"
+  },
+  {
+    "COUNTRY": "LY",
+    "REGION": "",
+    "Trip": "Libya, All Country"
+  },
+  {
+    "COUNTRY": "MA",
+    "REGION": "",
+    "Trip": "Morocco, All Country"
+  },
+  {
+    "COUNTRY": "MC",
+    "REGION": "",
+    "Trip": "Monaco, All Country"
+  },
+  {
+    "COUNTRY": "MD",
+    "REGION": "",
+    "Trip": "Moldavia, All Country"
+  },
+  {
+    "COUNTRY": "ME",
+    "REGION": "",
+    "Trip": "Montenegro, All Country"
+  },
+  {
+    "COUNTRY": "MG",
+    "REGION": "",
+    "Trip": "Madagascar, All Country"
+  },
+  {
+    "COUNTRY": "MH",
+    "REGION": "",
+    "Trip": "Marshall Isl, All Country"
+  },
+  {
+    "COUNTRY": "MK",
+    "REGION": "",
+    "Trip": "Macedonia, All Country"
+  },
+  {
+    "COUNTRY": "ML",
+    "REGION": "",
+    "Trip": "Mali"
+  },
+  {
+    "COUNTRY": "MM",
+    "REGION": "",
+    "Trip": "Myanmar, All Country"
+  },
+  {
+    "COUNTRY": "MN",
+    "REGION": "",
+    "Trip": "Mongolia, All Country"
+  },
+  {
+    "COUNTRY": "MO",
+    "REGION": "",
+    "Trip": "Macau, All Country"
+  },
+  {
+    "COUNTRY": "MQ",
+    "REGION": "",
+    "Trip": "Martinique"
+  },
+  {
+    "COUNTRY": "MR",
+    "REGION": "",
+    "Trip": "Mauretania, All Country"
+  },
+  {
+    "COUNTRY": "MS",
+    "REGION": "",
+    "Trip": "Montserrat"
+  },
+  {
+    "COUNTRY": "MT",
+    "REGION": "",
+    "Trip": "Malta, All Country"
+  },
+  {
+    "COUNTRY": "MU",
+    "REGION": "",
+    "Trip": "Mauritius, All Country"
+  },
+  {
+    "COUNTRY": "MV",
+    "REGION": "",
+    "Trip": "Maldives, All Country"
+  },
+  {
+    "COUNTRY": "MW",
+    "REGION": "",
+    "Trip": "Malawi, All Country"
+  },
+  {
+    "COUNTRY": "MX",
+    "REGION": "",
+    "Trip": "Mexico, All Country"
+  },
+  {
+    "COUNTRY": "MY",
+    "REGION": "",
+    "Trip": "Malaysia, All Country"
+  },
+  {
+    "COUNTRY": "MZ",
+    "REGION": "",
+    "Trip": "Mozambique, All Country"
+  },
+  {
+    "COUNTRY": "NA",
+    "REGION": "",
+    "Trip": "Namibia, All Country"
+  },
+  {
+    "COUNTRY": "NC",
+    "REGION": "",
+    "Trip": "New Caledonia"
+  },
+  {
+    "COUNTRY": "NE",
+    "REGION": "",
+    "Trip": "Niger, All Country"
+  },
+  {
+    "COUNTRY": "NG",
+    "REGION": "",
+    "Trip": "Nigeria, All Country"
+  },
+  {
+    "COUNTRY": "NI",
+    "REGION": "",
+    "Trip": "Nicaragua, All Country"
+  },
+  {
+    "COUNTRY": "NL",
+    "REGION": "",
+    "Trip": "Netherlands, All Country"
+  },
+  {
+    "COUNTRY": "NL",
+    "REGION": "AMSTR",
+    "Trip": "Netherlands, Amsterdam"
+  },
+  {
+    "COUNTRY": "NL",
+    "REGION": "HAG",
+    "Trip": "Netherlands, Hag"
+  },
+  {
+    "COUNTRY": "NO",
+    "REGION": "",
+    "Trip": "Norway, All Country"
+  },
+  {
+    "COUNTRY": "NO",
+    "REGION": "BERGN",
+    "Trip": "Norway, Bergen"
+  },
+  {
+    "COUNTRY": "NO",
+    "REGION": "OSLO",
+    "Trip": "Norway, Oslo"
+  },
+  {
+    "COUNTRY": "NO",
+    "REGION": "TRUDN",
+    "Trip": "Norway, Trudenhaim"
+  },
+  {
+    "COUNTRY": "NP",
+    "REGION": "",
+    "Trip": "Nepal, All Country"
+  },
+  {
+    "COUNTRY": "NP",
+    "REGION": "QATMD",
+    "Trip": "Nepal, Qatmandu"
+  },
+  {
+    "COUNTRY": "NR",
+    "REGION": "",
+    "Trip": "Nauru"
+  },
+  {
+    "COUNTRY": "NZ",
+    "REGION": "",
+    "Trip": "New Zealand, All Country"
+  },
+  {
+    "COUNTRY": "NZ",
+    "REGION": "WALGT",
+    "Trip": "New Zealand, Wallington"
+  },
+  {
+    "COUNTRY": "OM",
+    "REGION": "",
+    "Trip": "Oman, All Country"
+  },
+  {
+    "COUNTRY": "PA",
+    "REGION": "",
+    "Trip": "Panama, All Country"
+  },
+  {
+    "COUNTRY": "PE",
+    "REGION": "",
+    "Trip": "Peru, All Country"
+  },
+  {
+    "COUNTRY": "PE",
+    "REGION": "LIMA",
+    "Trip": "Peru, Lima"
+  },
+  {
+    "COUNTRY": "PG",
+    "REGION": "",
+    "Trip": "Pap. New Gui, All Country"
+  },
+  {
+    "COUNTRY": "PH",
+    "REGION": "",
+    "Trip": "Philippines, All Country"
+  },
+  {
+    "COUNTRY": "PH",
+    "REGION": "MANLA",
+    "Trip": "Philippines, Manila"
+  },
+  {
+    "COUNTRY": "PK",
+    "REGION": "",
+    "Trip": "Pakistan, All Country"
+  },
+  {
+    "COUNTRY": "PL",
+    "REGION": "",
+    "Trip": "Poland, All Country"
+  },
+  {
+    "COUNTRY": "PL",
+    "REGION": "BRESL",
+    "Trip": "Poland, Wroclaw"
+  },
+  {
+    "COUNTRY": "PL",
+    "REGION": "DANZI",
+    "Trip": "Poland, Danzig"
+  },
+  {
+    "COUNTRY": "PL",
+    "REGION": "KRAKV",
+    "Trip": "Poland, Krakov"
+  },
+  {
+    "COUNTRY": "PL",
+    "REGION": "WARSC",
+    "Trip": "Poland, Warsaw"
+  },
+  {
+    "COUNTRY": "PR",
+    "REGION": "",
+    "Trip": "Portugal, All Country"
+  },
+  {
+    "COUNTRY": "PT",
+    "REGION": "",
+    "Trip": "Portugal, All Country"
+  },
+  {
+    "COUNTRY": "PT",
+    "REGION": "LISBO",
+    "Trip": "Portugal, Lisbon"
+  },
+  {
+    "COUNTRY": "PY",
+    "REGION": "",
+    "Trip": "Paraguay, All Country"
+  },
+  {
+    "COUNTRY": "PY",
+    "REGION": "ASSNS",
+    "Trip": "Paraguay, Assosnion"
+  },
+  {
+    "COUNTRY": "QA",
+    "REGION": "",
+    "Trip": "Qatar, All Country"
+  },
+  {
+    "COUNTRY": "RE",
+    "REGION": "",
+    "Trip": "Reunion"
+  },
+  {
+    "COUNTRY": "RO",
+    "REGION": "",
+    "Trip": "Romania, All Country"
+  },
+  {
+    "COUNTRY": "RO",
+    "REGION": "BUKAR",
+    "Trip": "Romania, Bucharest"
+  },
+  {
+    "COUNTRY": "RS",
+    "REGION": "",
+    "Trip": "serbia, All Country"
+  },
+  {
+    "COUNTRY": "RU",
+    "REGION": "",
+    "Trip": "Russian Federation"
+  },
+  {
+    "COUNTRY": "RU",
+    "REGION": "MOSKA",
+    "Trip": "Russian Federation,Moscow"
+  },
+  {
+    "COUNTRY": "RU",
+    "REGION": "NOWOS",
+    "Trip": "Novosibirsk, Russ.Fed."
+  },
+  {
+    "COUNTRY": "RU",
+    "REGION": "SARAT",
+    "Trip": "Saratov, Russ.Federation"
+  },
+  {
+    "COUNTRY": "RU",
+    "REGION": "ST.PE",
+    "Trip": "St.Petersburg, Russ. Fed."
+  },
+  {
+    "COUNTRY": "RW",
+    "REGION": "",
+    "Trip": "Rwanda, All Country"
+  },
+  {
+    "COUNTRY": "SA",
+    "REGION": "",
+    "Trip": "Saudi Arabia, All Country"
+  },
+  {
+    "COUNTRY": "SA",
+    "REGION": "RIAD",
+    "Trip": "Saudi Arabia,Riad"
+  },
+  {
+    "COUNTRY": "SB",
+    "REGION": "",
+    "Trip": "Solomons"
+  },
+  {
+    "COUNTRY": "SC",
+    "REGION": "",
+    "Trip": "Seychelles, All Country"
+  },
+  {
+    "COUNTRY": "SD",
+    "REGION": "",
+    "Trip": "Sudan, All Country"
+  },
+  {
+    "COUNTRY": "SE",
+    "REGION": "",
+    "Trip": "Sweden, All Country"
+  },
+  {
+    "COUNTRY": "SE",
+    "REGION": "STOKL",
+    "Trip": "Sweden, Stokhom"
+  },
+  {
+    "COUNTRY": "SEA",
+    "REGION": "",
+    "Trip": "Sea"
+  },
+  {
+    "COUNTRY": "SG",
+    "REGION": "",
+    "Trip": "Singapore, All Country"
+  },
+  {
+    "COUNTRY": "SH",
+    "REGION": "",
+    "Trip": "St.Helena"
+  },
+  {
+    "COUNTRY": "SI",
+    "REGION": "",
+    "Trip": "Slovenia, All Country"
+  },
+  {
+    "COUNTRY": "SK",
+    "REGION": "",
+    "Trip": "Slovakia, All Country"
+  },
+  {
+    "COUNTRY": "SL",
+    "REGION": "",
+    "Trip": "Sierra Leone, All Country"
+  },
+  {
+    "COUNTRY": "SM",
+    "REGION": "",
+    "Trip": "San Marino"
+  },
+  {
+    "COUNTRY": "SN",
+    "REGION": "",
+    "Trip": "Senegal, All Country"
+  },
+  {
+    "COUNTRY": "SO",
+    "REGION": "",
+    "Trip": "Somalia, All Country"
+  },
+  {
+    "COUNTRY": "SR",
+    "REGION": "",
+    "Trip": "Surinam"
+  },
+  {
+    "COUNTRY": "SS",
+    "REGION": "",
+    "Trip": "South Sudan, All Country"
+  },
+  {
+    "COUNTRY": "ST",
+    "REGION": "",
+    "Trip": "Sao Tome and Principe"
+  },
+  {
+    "COUNTRY": "SV",
+    "REGION": "",
+    "Trip": "El Salvador, All Country"
+  },
+  {
+    "COUNTRY": "SY",
+    "REGION": "",
+    "Trip": "Syria, All Country"
+  },
+  {
+    "COUNTRY": "SZ",
+    "REGION": "",
+    "Trip": "Swaziland"
+  },
+  {
+    "COUNTRY": "TD",
+    "REGION": "",
+    "Trip": "Chad, All Country"
+  },
+  {
+    "COUNTRY": "TG",
+    "REGION": "",
+    "Trip": "Togo, All Country"
+  },
+  {
+    "COUNTRY": "TH",
+    "REGION": "",
+    "Trip": "Thailand, All Country"
+  },
+  {
+    "COUNTRY": "TH",
+    "REGION": "BANKK",
+    "Trip": "Thailand, Bangkok"
+  },
+  {
+    "COUNTRY": "TJ",
+    "REGION": "",
+    "Trip": "Tadzhikistan"
+  },
+  {
+    "COUNTRY": "TM",
+    "REGION": "",
+    "Trip": "Turkmenistan, All Country"
+  },
+  {
+    "COUNTRY": "TN",
+    "REGION": "",
+    "Trip": "Tunisia, All Country"
+  },
+  {
+    "COUNTRY": "TO",
+    "REGION": "",
+    "Trip": "Tonga"
+  },
+  {
+    "COUNTRY": "TP",
+    "REGION": "",
+    "Trip": "East Timor, All Country"
+  },
+  {
+    "COUNTRY": "TR",
+    "REGION": "",
+    "Trip": "Turkey, All Country"
+  },
+  {
+    "COUNTRY": "TR",
+    "REGION": "ANKAR",
+    "Trip": "Turkey, Ankara"
+  },
+  {
+    "COUNTRY": "TR",
+    "REGION": "ANKRA",
+    "Trip": "Turkey, Istanbul"
+  },
+  {
+    "COUNTRY": "TR",
+    "REGION": "ASIEN",
+    "Trip": "Turkey, Asiatic"
+  },
+  {
+    "COUNTRY": "TR",
+    "REGION": "ISTAN",
+    "Trip": "Turkey, Istanbul"
+  },
+  {
+    "COUNTRY": "TR",
+    "REGION": "IZMIR",
+    "Trip": "Turkey, Izmir"
+  },
+  {
+    "COUNTRY": "TT",
+    "REGION": "",
+    "Trip": "Trinidad,Tob, All Country"
+  },
+  {
+    "COUNTRY": "TV",
+    "REGION": "",
+    "Trip": "Tuvalu"
+  },
+  {
+    "COUNTRY": "TW",
+    "REGION": "",
+    "Trip": "Taiwan, All Country"
+  },
+  {
+    "COUNTRY": "TW",
+    "REGION": "TAIPA",
+    "Trip": "Taiwan, Taipa"
+  },
+  {
+    "COUNTRY": "TZ",
+    "REGION": "",
+    "Trip": "Tanzania, All Country"
+  },
+  {
+    "COUNTRY": "UA",
+    "REGION": "",
+    "Trip": "Ukraine, All Country"
+  },
+  {
+    "COUNTRY": "UA",
+    "REGION": "KIEV",
+    "Trip": "Ukraine, Kiev"
+  },
+  {
+    "COUNTRY": "UG",
+    "REGION": "",
+    "Trip": "Uganda, All Country"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "",
+    "Trip": "USA, All Country"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "ATLAN",
+    "Trip": "USA, Atlanta"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "BOSTO",
+    "Trip": "USA, Boston"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "DALLS",
+    "Trip": "USA, Atlanta"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "HOUST",
+    "Trip": "USA, Houston"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "LASVG",
+    "Trip": "USA, Atlanta"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "LOSAN",
+    "Trip": "USA, Los-Angeles"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "MIAMI",
+    "Trip": "USA, Miami"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "NYC",
+    "Trip": "USA, New York"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "PHILD",
+    "Trip": "USA, Philadelphia"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "SANDG",
+    "Trip": "USA, Atlanta"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "SFRAN",
+    "Trip": "USA Seattle San Francisco"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "SHICG",
+    "Trip": "USA, Shicago"
+  },
+  {
+    "COUNTRY": "US",
+    "REGION": "WADC",
+    "Trip": "USA, Washington"
+  },
+  {
+    "COUNTRY": "UY",
+    "REGION": "",
+    "Trip": "Uruguay, All Country"
+  },
+  {
+    "COUNTRY": "UZ",
+    "REGION": "",
+    "Trip": "Uzbekistan, All Country"
+  },
+  {
+    "COUNTRY": "UZ",
+    "REGION": "TSHKN",
+    "Trip": "Uzbekistan, Tashkent"
+  },
+  {
+    "COUNTRY": "VA",
+    "REGION": "",
+    "Trip": "Vatican City, All Country"
+  },
+  {
+    "COUNTRY": "VE",
+    "REGION": "",
+    "Trip": "Venezuela, All Country"
+  },
+  {
+    "COUNTRY": "VN",
+    "REGION": "",
+    "Trip": "Vietnam, All Country"
+  },
+  {
+    "COUNTRY": "VN",
+    "REGION": "HOCHI",
+    "Trip": "Vietnam, Ho Chi Minh City"
+  },
+  {
+    "COUNTRY": "VU",
+    "REGION": "",
+    "Trip": "Vanuatu, All Country"
+  },
+  {
+    "COUNTRY": "WS",
+    "REGION": "",
+    "Trip": "Western Samo, All Country"
+  },
+  {
+    "COUNTRY": "XK",
+    "REGION": "",
+    "Trip": "Kosovo, All Country"
+  },
+  {
+    "COUNTRY": "YE",
+    "REGION": "",
+    "Trip": "Yemen"
+  },
+  {
+    "COUNTRY": "YT",
+    "REGION": "",
+    "Trip": "Mayotte, All Country"
+  },
+  {
+    "COUNTRY": "ZA",
+    "REGION": "",
+    "Trip": "South Africa, All Country"
+  },
+  {
+    "COUNTRY": "ZA",
+    "REGION": "PRETO",
+    "Trip": "South Africa,Pretoria"
+  },
+  {
+    "COUNTRY": "ZM",
+    "REGION": "",
+    "Trip": "Zambia, All Country"
+  },
+  {
+    "COUNTRY": "ZR",
+    "REGION": "",
+    "Trip": "Zaire"
+  },
+  {
+    "COUNTRY": "ZW",
+    "REGION": "",
+    "Trip": "Zimbabwe, All Country"
+  }
+]

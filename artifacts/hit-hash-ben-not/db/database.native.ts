@@ -82,9 +82,31 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
     CREATE TABLE IF NOT EXISTS Legs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL DEFAULT ''
+      status TEXT NOT NULL DEFAULT '',
+      departureDate TEXT NOT NULL DEFAULT '',
+      departureHour TEXT NOT NULL DEFAULT '',
+      departureCountry TEXT NOT NULL DEFAULT '',
+      departureCity TEXT NOT NULL DEFAULT '',
+      arrivalDate TEXT NOT NULL DEFAULT '',
+      arrivalHour TEXT NOT NULL DEFAULT '',
+      arrivalCountry TEXT NOT NULL DEFAULT '',
+      arrivalCity TEXT NOT NULL DEFAULT ''
     );
   `);
+
+  const legMigrations = [
+    "ALTER TABLE Legs ADD COLUMN departureDate TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE Legs ADD COLUMN departureHour TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE Legs ADD COLUMN departureCountry TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE Legs ADD COLUMN departureCity TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE Legs ADD COLUMN arrivalDate TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE Legs ADD COLUMN arrivalHour TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE Legs ADD COLUMN arrivalCountry TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE Legs ADD COLUMN arrivalCity TEXT NOT NULL DEFAULT ''",
+  ];
+  for (const sql of legMigrations) {
+    try { await db.execAsync(sql); } catch (_) { /* column already exists */ }
+  }
 
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS Travels (
@@ -169,6 +191,14 @@ function toLeg(r: Record<string, unknown>): Leg {
     id: r["id"] as number,
     type: r["type"] as string,
     status: r["status"] as string,
+    departureDate: (r["departureDate"] as string) ?? "",
+    departureHour: (r["departureHour"] as string) ?? "",
+    departureCountry: (r["departureCountry"] as string) ?? "",
+    departureCity: (r["departureCity"] as string) ?? "",
+    arrivalDate: (r["arrivalDate"] as string) ?? "",
+    arrivalHour: (r["arrivalHour"] as string) ?? "",
+    arrivalCountry: (r["arrivalCountry"] as string) ?? "",
+    arrivalCity: (r["arrivalCity"] as string) ?? "",
   };
 }
 
@@ -310,17 +340,46 @@ export const LegDB = {
     const rows = await db.getAllAsync<Record<string, unknown>>("SELECT * FROM Legs");
     return rows.map(toLeg);
   },
+  async getFirst(): Promise<Leg | null> {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<Record<string, unknown>>("SELECT * FROM Legs ORDER BY id ASC LIMIT 1");
+    return row ? toLeg(row) : null;
+  },
+  async upsertSingleton(l: Omit<Leg, "id">): Promise<Leg> {
+    const db = await getDatabase();
+    const existing = await LegDB.getFirst();
+    if (existing) {
+      await db.runAsync(
+        `UPDATE Legs SET type=?, status=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrivalDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=? WHERE id=?`,
+        [l.type, l.status, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
+         l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity, existing.id]
+      );
+      return { ...l, id: existing.id };
+    } else {
+      const res = await db.runAsync(
+        `INSERT INTO Legs (type, status, departureDate, departureHour, departureCountry, departureCity, arrivalDate, arrivalHour, arrivalCountry, arrivalCity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [l.type, l.status, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
+         l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity]
+      );
+      return { ...l, id: res.lastInsertRowId };
+    }
+  },
   async insert(l: Omit<Leg, "id">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
-      "INSERT INTO Legs (type, status) VALUES (?, ?)",
-      [l.type, l.status]
+      `INSERT INTO Legs (type, status, departureDate, departureHour, departureCountry, departureCity, arrivalDate, arrivalHour, arrivalCountry, arrivalCity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [l.type, l.status, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
+       l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity]
     );
     return res.lastInsertRowId;
   },
   async update(l: Leg): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync("UPDATE Legs SET type=?, status=? WHERE id=?", [l.type, l.status, l.id]);
+    await db.runAsync(
+      `UPDATE Legs SET type=?, status=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrivalDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=? WHERE id=?`,
+      [l.type, l.status, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
+       l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity, l.id]
+    );
   },
   async delete(id: number): Promise<void> {
     const db = await getDatabase();
@@ -332,7 +391,14 @@ export const TravelDB = {
   async getAll(): Promise<Travel[]> {
     const db = await getDatabase();
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM Travels ORDER BY departureDate DESC, id DESC"
+      "SELECT * FROM Travels ORDER BY id ASC"
+    );
+    return rows.map(toTravel);
+  },
+  async getByLegId(lId: number): Promise<Travel[]> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      "SELECT * FROM Travels WHERE lId = ? ORDER BY id ASC", [lId]
     );
     return rows.map(toTravel);
   },

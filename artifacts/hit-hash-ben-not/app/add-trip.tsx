@@ -36,7 +36,18 @@ export default function AddTripScreen() {
     if (!type.trim()) return;
     setSaving(true);
     try {
-      const id = await LegDB.insert({ type, status });
+      const id = await LegDB.insert({
+        type,
+        status,
+        departureDate: "",
+        departureHour: "",
+        departureCountry: "",
+        departureCity: "",
+        arrivalDate: "",
+        arrivalHour: "",
+        arrivalCountry: "",
+        arrivalCity: "",
+      });
       await refreshLegs();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace(`/trip/${id}`);
