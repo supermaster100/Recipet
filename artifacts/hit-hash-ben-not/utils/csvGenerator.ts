@@ -44,7 +44,7 @@ export function buildCSV(
   lines.push("# TRIP LEGS (Transport)");
   lines.push("Row,Type,DepartureDate,DepartureHour,DepartureCountry,DepartureCity,ArrivalDate,ArrivalHour,ArrivalCountry,ArrivalCity");
   for (const l of legs) {
-    lines.push(row("L", l.type, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
+    lines.push(row("T", l.type, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
       l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity));
   }
   lines.push("");

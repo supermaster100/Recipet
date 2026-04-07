@@ -57,7 +57,8 @@ export default function ExportScreen() {
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [includePhotos, setIncludePhotos] = useState(true);
+  const [exportAll, setExportAll] = useState(false);
+  const [includePhotos] = useState(true);
   const [clearAfter, setClearAfter] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
@@ -135,7 +136,7 @@ export default function ExportScreen() {
     }
   }
 
-  const canExport = !running && totalItems > 0;
+  const canExport = !running && exportAll && receipts.length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -178,10 +179,10 @@ export default function ExportScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>What to Export</Text>
           </View>
           <CheckRow
-            label="Include photo attachments"
-            subtitle={`${totalItems} item${totalItems !== 1 ? "s" : ""} total — attach receipt photos`}
-            checked={includePhotos}
-            onToggle={() => setIncludePhotos(!includePhotos)}
+            label="Export all?"
+            subtitle={`All ${totalItems} item${totalItems !== 1 ? "s" : ""} across every category will be included`}
+            checked={exportAll}
+            onToggle={() => setExportAll(!exportAll)}
           />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <CheckRow
@@ -235,9 +236,9 @@ export default function ExportScreen() {
           </TouchableOpacity>
         )}
 
-        {totalItems === 0 && !running && (
+        {receipts.length === 0 && !running && (
           <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
-            No data to export yet. Add expenses or hotel nights first.
+            No expenses found. Add at least one expense receipt before exporting.
           </Text>
         )}
 

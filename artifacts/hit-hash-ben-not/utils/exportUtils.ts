@@ -49,11 +49,8 @@ export function validateExportData(data: ExportData): ValidationError | null {
   if (!data.general || !data.general.workerNumber.trim()) {
     return { message: "General Data is not filled in (Worker Number is required).", screen: "General Data" };
   }
-  const totalItems =
-    data.receipts.length + data.travels.length + data.exchanges.length +
-    data.atmWithdrawals.length + data.moneyTransfers.length + data.clientTransfers.length;
-  if (totalItems === 0) {
-    return { message: "Nothing to export. Add at least one expense, hotel night, or exchange.", screen: "Expenses / Trip / Exchange" };
+  if (data.receipts.length === 0) {
+    return { message: "No expenses found. Please add at least one expense receipt before exporting.", screen: "Expenses" };
   }
   return null;
 }
@@ -215,9 +212,7 @@ export async function runExport(
       await FileSystem.deleteAsync(entry.attachmentUri, { idempotent: true }).catch(() => {});
     }
 
-    const wasSent =
-      result.status === MailComposer.MailComposerStatus.SENT ||
-      result.status === MailComposer.MailComposerStatus.SAVED;
+    const wasSent = result.status === MailComposer.MailComposerStatus.SENT;
 
     if (wasSent && clearAfter) {
       onProgress("Clearing trip data…");
