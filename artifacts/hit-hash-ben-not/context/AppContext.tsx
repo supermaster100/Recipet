@@ -101,14 +101,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     getDatabase()
-      .then((database) => {
-        if (Platform.OS !== "web") {
-          setDb(database as SQLite.SQLiteDatabase);
+      .then((database: SQLite.SQLiteDatabase | null) => {
+        if (Platform.OS !== "web" && database !== null) {
+          setDb(database);
         }
         setIsDbReady(true);
         return refreshAll();
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error("Database init error:", err);
         setIsDbReady(true);
       });

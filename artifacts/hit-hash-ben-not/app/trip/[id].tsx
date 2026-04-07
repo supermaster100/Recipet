@@ -34,9 +34,9 @@ export default function TripDetailScreen() {
     if (!id) return;
     const legId = Number(id);
     const allTravels = await TravelDB.getAll();
-    const legTravels = allTravels.filter((t) => t.lId === legId);
+    const legTravels = allTravels.filter((t: Travel) => t.lId === legId);
     const allLegs = await LegDB.getAll();
-    const currentLeg = allLegs.find((l) => l.id === legId) ?? null;
+    const currentLeg = allLegs.find((l: Leg) => l.id === legId) ?? null;
     setLeg(currentLeg);
     setTravels(legTravels);
   }
