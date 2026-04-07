@@ -37,7 +37,6 @@ interface ExpenseDraft {
   currency: Currency;
   date: string;
   numberOfPeople: string;
-  division: string;
   costCenter: string;
   photo: string;
   selfDeclaration: boolean;
@@ -56,7 +55,6 @@ interface FormErrors {
   currency?: string;
   date?: string;
   numberOfPeople?: string;
-  division?: string;
   costCenter?: string;
 }
 
@@ -189,7 +187,6 @@ export default function AddExpenseScreen() {
   const [currency, setCurrency] = useState<Currency>("ILS");
   const [date, setDate] = useState(today());
   const [numberOfPeople, setNumberOfPeople] = useState("1");
-  const [division, setDivision] = useState("");
   const [costCenter, setCostCenter] = useState("");
   const [photo, setPhoto] = useState("");
   const [selfDeclaration, setSelfDeclaration] = useState(true);
@@ -211,7 +208,6 @@ export default function AddExpenseScreen() {
 
   useEffect(() => {
     if (general && !draftLoaded) {
-      setDivision(general.division);
       setCostCenter(general.costCenter);
     }
   }, [general, draftLoaded]);
@@ -240,7 +236,6 @@ export default function AddExpenseScreen() {
               setCurrency(draft.currency);
               setDate(draft.date);
               setNumberOfPeople(draft.numberOfPeople);
-              setDivision(draft.division);
               setCostCenter(draft.costCenter);
               setPhoto(draft.photo ?? "");
               setSelfDeclaration(draft.selfDeclaration);
@@ -262,14 +257,13 @@ export default function AddExpenseScreen() {
     currency,
     date,
     numberOfPeople,
-    division,
     costCenter,
     photo,
     selfDeclaration,
     note,
     budgetId,
     paymentMethod,
-  }), [type, amount, currency, date, numberOfPeople, division, costCenter, photo, selfDeclaration, note, budgetId, paymentMethod]);
+  }), [type, amount, currency, date, numberOfPeople, costCenter, photo, selfDeclaration, note, budgetId, paymentMethod]);
 
   useEffect(() => {
     if (!dirty || saved) return;
@@ -283,7 +277,7 @@ export default function AddExpenseScreen() {
     if (dirty && !saved) {
       saveDraft(DRAFT_KEY, getDraftData());
     }
-  }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, division, costCenter, photo, selfDeclaration, note, budgetId, paymentMethod]);
+  }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, costCenter, photo, selfDeclaration, note, budgetId, paymentMethod]);
 
   const confirmDiscard = useCallback(() => {
     return new Promise<boolean>((resolve) => {
@@ -338,7 +332,6 @@ export default function AddExpenseScreen() {
     const nop = Number(numberOfPeople);
     if (!numberOfPeople.trim() || isNaN(nop) || nop < 1)
       e.numberOfPeople = "Enter at least 1 person";
-    if (!division.trim()) e.division = "Division is required";
     if (!costCenter.trim()) e.costCenter = "Cost center is required";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -352,7 +345,6 @@ export default function AddExpenseScreen() {
     !!currency &&
     date.trim().length > 0 &&
     numberOfPeople.trim().length > 0 &&
-    division.trim().length > 0 &&
     costCenter.trim().length > 0;
 
   async function handleSave() {
@@ -418,7 +410,6 @@ export default function AddExpenseScreen() {
         currency,
         date,
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
-        division: division.trim(),
         costCenter: costCenter.trim(),
         selfDeclaration: effectiveSelfDecl,
         note: note.trim(),
@@ -479,7 +470,6 @@ export default function AddExpenseScreen() {
     setCurrency("ILS");
     setDate(today());
     setNumberOfPeople("1");
-    setDivision(general?.division ?? "");
     setCostCenter(general?.costCenter ?? "");
     setPhoto("");
     setNote("");
@@ -652,23 +642,12 @@ export default function AddExpenseScreen() {
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Division" required />
-          <StyledInput
-            value={division}
-            onChangeText={(v) => { setDivision(v); markDirty(); if (errors.division) setErrors((e) => ({ ...e, division: undefined })); }}
-            placeholder="e.g. Finance"
-            error={errors.division}
-          />
-          <FieldError msg={errors.division} />
-        </View>
-
-        <View style={styles.field}>
           <FieldLabel text="Cost Center" required />
           <StyledInput
             value={costCenter}
-            onChangeText={(v) => { setCostCenter(v); markDirty(); if (errors.costCenter) setErrors((e) => ({ ...e, costCenter: undefined })); }}
-            placeholder="e.g. CC-001"
-            autoCapitalize="characters"
+            onChangeText={(v) => { const filtered = v.replace(/[^0-9]/g, ""); setCostCenter(filtered); markDirty(); if (errors.costCenter) setErrors((e) => ({ ...e, costCenter: undefined })); }}
+            placeholder="e.g. 1234"
+            keyboardType="number-pad"
             error={errors.costCenter}
           />
           <FieldError msg={errors.costCenter} />

@@ -36,7 +36,6 @@ export const EXCHANGE_CURRENCIES: Currency[] = [
 export interface General {
   id: number;
   workerNumber: string;
-  division: string;
   month: number;
   year: number;
   costCenter: string;
@@ -57,7 +56,6 @@ export interface Receipt {
   currency: Currency;
   date: string;
   numberOfPeople: number;
-  division: string;
   costCenter: string;
   selfDeclaration: boolean;
   note: string;

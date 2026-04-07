@@ -35,7 +35,6 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
     CREATE TABLE IF NOT EXISTS General (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       workerNumber TEXT NOT NULL DEFAULT '',
-      division TEXT NOT NULL DEFAULT '',
       month INTEGER NOT NULL DEFAULT 1,
       year INTEGER NOT NULL DEFAULT 2025,
       costCenter TEXT NOT NULL DEFAULT ''
@@ -231,7 +230,6 @@ function toGeneral(r: Record<string, unknown>): General {
   return {
     id: r["id"] as number,
     workerNumber: r["workerNumber"] as string,
-    division: r["division"] as string,
     month: r["month"] as number,
     year: r["year"] as number,
     costCenter: r["costCenter"] as string,
@@ -246,7 +244,6 @@ function toReceipt(r: Record<string, unknown>): Receipt {
     currency: r["currency"] as Receipt["currency"],
     date: r["date"] as string,
     numberOfPeople: r["numberOfPeople"] as number,
-    division: r["division"] as string,
     costCenter: r["costCenter"] as string,
     selfDeclaration: (r["selfDeclaration"] as number) === 1,
     note: r["note"] as string,
@@ -349,13 +346,13 @@ export const GeneralDB = {
       const existing = await GeneralDB.get();
       if (existing) {
         await db.runAsync(
-          "UPDATE General SET workerNumber=?, division=?, month=?, year=?, costCenter=? WHERE id=?",
-          [data.workerNumber, data.division, data.month, data.year, data.costCenter, existing.id]
+          "UPDATE General SET workerNumber=?, month=?, year=?, costCenter=? WHERE id=?",
+          [data.workerNumber, data.month, data.year, data.costCenter, existing.id]
         );
       } else {
         await db.runAsync(
-          "INSERT INTO General (workerNumber, division, month, year, costCenter) VALUES (?, ?, ?, ?, ?)",
-          [data.workerNumber, data.division, data.month, data.year, data.costCenter]
+          "INSERT INTO General (workerNumber, month, year, costCenter) VALUES (?, ?, ?, ?)",
+          [data.workerNumber, data.month, data.year, data.costCenter]
         );
       }
     });
@@ -382,9 +379,9 @@ export const ReceiptDB = {
     let lastId = 0;
     await db.withTransactionAsync(async () => {
       const res = await db.runAsync(
-        `INSERT INTO Receipts (type, amount, currency, date, numberOfPeople, division, costCenter, selfDeclaration, note, photo, photo_checksum, budget, status, export, deleted_at, paymentMethod)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
-        [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.division, r.costCenter,
+        `INSERT INTO Receipts (type, amount, currency, date, numberOfPeople, costCenter, selfDeclaration, note, photo, photo_checksum, budget, status, export, deleted_at, paymentMethod)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+        [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.costCenter,
          r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.photo_checksum ?? null,
          r.budget ?? "", r.status, r.export ? 1 : 0, r.paymentMethod ?? "cash"]
       );
@@ -396,8 +393,8 @@ export const ReceiptDB = {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        `UPDATE Receipts SET type=?, amount=?, currency=?, date=?, numberOfPeople=?, division=?, costCenter=?, selfDeclaration=?, note=?, photo=?, photo_checksum=?, budget=?, status=?, export=?, paymentMethod=? WHERE id=?`,
-        [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.division, r.costCenter,
+        `UPDATE Receipts SET type=?, amount=?, currency=?, date=?, numberOfPeople=?, costCenter=?, selfDeclaration=?, note=?, photo=?, photo_checksum=?, budget=?, status=?, export=?, paymentMethod=? WHERE id=?`,
+        [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.costCenter,
          r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.photo_checksum ?? null,
          r.budget ?? "", r.status, r.export ? 1 : 0, r.paymentMethod ?? "cash", r.id]
       );

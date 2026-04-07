@@ -21,8 +21,8 @@ export function buildXLSXBase64(
   const wb = XLSX.utils.book_new();
 
   const wsGeneral = XLSX.utils.aoa_to_sheet([
-    ["WorkerNumber", "Division", "Month", "Year", "CostCenter"],
-    ...(general ? [[general.workerNumber, general.division, general.month, general.year, general.costCenter]] : []),
+    ["WorkerNumber", "Month", "Year", "CostCenter"],
+    ...(general ? [[general.workerNumber, general.month, general.year, general.costCenter]] : []),
   ]);
   XLSX.utils.book_append_sheet(wb, wsGeneral, "General");
 
@@ -45,10 +45,10 @@ export function buildXLSXBase64(
   XLSX.utils.book_append_sheet(wb, wsTravels, "Hotel Nights");
 
   const wsReceipts = XLSX.utils.aoa_to_sheet([
-    ["Type", "Amount", "Currency", "Date", "NumberOfPeople", "Division", "CostCenter",
+    ["Type", "Amount", "Currency", "Date", "NumberOfPeople", "CostCenter",
       "SelfDeclaration", "Note", "Budget", "PaymentMethod", "Photo"],
     ...receipts.map((e) => [e.type, e.amount, e.currency, e.date, e.numberOfPeople,
-      e.division, e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.budget, e.paymentMethod ?? "card", pn(e.photo, uriToName)]),
+      e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.budget, e.paymentMethod ?? "card", pn(e.photo, uriToName)]),
   ]);
   XLSX.utils.book_append_sheet(wb, wsReceipts, "Expenses");
 

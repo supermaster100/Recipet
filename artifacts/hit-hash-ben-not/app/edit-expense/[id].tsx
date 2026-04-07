@@ -32,7 +32,6 @@ interface FormErrors {
   currency?: string;
   date?: string;
   numberOfPeople?: string;
-  division?: string;
   costCenter?: string;
 }
 
@@ -168,7 +167,6 @@ export default function EditExpenseScreen() {
   const [currency, setCurrency] = useState<Currency>(receipt?.currency ?? "ILS");
   const [date, setDate] = useState(receipt?.date ?? "");
   const [numberOfPeople, setNumberOfPeople] = useState(String(receipt?.numberOfPeople ?? "1"));
-  const [division, setDivision] = useState(receipt?.division ?? "");
   const [costCenter, setCostCenter] = useState(receipt?.costCenter ?? "");
   const [photo, setPhoto] = useState(receipt?.photo ?? "");
   const [selfDeclaration, setSelfDeclaration] = useState(receipt?.selfDeclaration ?? true);
@@ -240,7 +238,6 @@ export default function EditExpenseScreen() {
     const nop = Number(numberOfPeople);
     if (!numberOfPeople.trim() || isNaN(nop) || nop < 1)
       e.numberOfPeople = "Enter at least 1 person";
-    if (!division.trim()) e.division = "Division is required";
     if (!costCenter.trim()) e.costCenter = "Cost center is required";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -254,7 +251,6 @@ export default function EditExpenseScreen() {
     !!currency &&
     date.trim().length > 0 &&
     numberOfPeople.trim().length > 0 &&
-    division.trim().length > 0 &&
     costCenter.trim().length > 0;
 
   async function handleSave() {
@@ -273,7 +269,6 @@ export default function EditExpenseScreen() {
         currency,
         date,
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
-        division: division.trim(),
         costCenter: costCenter.trim(),
         selfDeclaration,
         note: note.trim(),
@@ -480,23 +475,12 @@ export default function EditExpenseScreen() {
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Division" required />
-          <StyledInput
-            value={division}
-            onChangeText={(v) => { setDivision(v); markDirty(); if (errors.division) setErrors((e) => ({ ...e, division: undefined })); }}
-            placeholder="e.g. Finance"
-            error={errors.division}
-          />
-          <FieldError msg={errors.division} />
-        </View>
-
-        <View style={styles.field}>
           <FieldLabel text="Cost Center" required />
           <StyledInput
             value={costCenter}
-            onChangeText={(v) => { setCostCenter(v); markDirty(); if (errors.costCenter) setErrors((e) => ({ ...e, costCenter: undefined })); }}
-            placeholder="e.g. CC-001"
-            autoCapitalize="characters"
+            onChangeText={(v) => { const filtered = v.replace(/[^0-9]/g, ""); setCostCenter(filtered); markDirty(); if (errors.costCenter) setErrors((e) => ({ ...e, costCenter: undefined })); }}
+            placeholder="e.g. 1234"
+            keyboardType="number-pad"
             error={errors.costCenter}
           />
           <FieldError msg={errors.costCenter} />

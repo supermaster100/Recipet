@@ -209,7 +209,7 @@ export default function MoreScreen() {
           <SettingsRow
             icon="user"
             label="General Data"
-            subtitle="Worker number, division, cost center"
+            subtitle="Worker number, month, year, cost center"
             color={colors.primary}
             onPress={() => router.push("/general-data")}
             isFirst

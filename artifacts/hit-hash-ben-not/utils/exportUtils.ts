@@ -26,6 +26,7 @@ import {
 } from "@/db/database";
 import { buildCSV } from "./csvGenerator";
 import { buildXLSXBase64 } from "./xlsxGenerator";
+import { saveCostCenter } from "@/db/costCenterStore";
 
 const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 const TARGET_HIGH_BYTES = 350 * 1024;
@@ -55,9 +56,6 @@ export function validateExportData(data: ExportData): ValidationError | null {
   }
   if (!g.workerNumber.trim()) {
     return { message: "Worker Number is required in General Data.", screen: "General Data" };
-  }
-  if (!g.division.trim()) {
-    return { message: "Division is required in General Data.", screen: "General Data" };
   }
   if (!g.month) {
     return { message: "Month is required in General Data.", screen: "General Data" };
@@ -228,9 +226,14 @@ export async function runExport(
 
     const wasSent = result.status === MailComposer.MailComposerStatus.SENT;
 
-    if (wasSent && clearAfter) {
-      onProgress("Clearing trip data…");
-      await clearAllData(data);
+    if (wasSent) {
+      if (data.general?.costCenter?.trim()) {
+        await saveCostCenter(data.general.costCenter.trim()).catch(() => {});
+      }
+      if (clearAfter) {
+        onProgress("Clearing trip data…");
+        await clearAllData(data);
+      }
     }
 
     if (result.status === MailComposer.MailComposerStatus.SENT) return "sent";

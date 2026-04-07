@@ -41,7 +41,6 @@ export default function AddTripReceiptScreen() {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]>("USD");
   const [type, setType] = useState<ReceiptType>("MEALS");
-  const [division, setDivision] = useState("");
   const [costCenter, setCostCenter] = useState("");
   const [photo, setPhoto] = useState("");
   const [selfDeclaration, setSelfDeclaration] = useState(true);
@@ -65,7 +64,6 @@ export default function AddTripReceiptScreen() {
         currency,
         date,
         numberOfPeople: 1,
-        division,
         costCenter,
         selfDeclaration: effectiveSelfDecl,
         note: note ? `[Trip #${id}] ${note}` : `[Trip #${id}]`,
@@ -204,23 +202,14 @@ export default function AddTripReceiptScreen() {
           </ScrollView>
         </View>
         <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>DIVISION</Text>
-          <TextInput
-            style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
-            value={division}
-            onChangeText={setDivision}
-            placeholder="e.g. Marketing"
-            placeholderTextColor={colors.mutedForeground}
-          />
-        </View>
-        <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>COST CENTER</Text>
           <TextInput
             style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
             value={costCenter}
-            onChangeText={setCostCenter}
-            placeholder="e.g. CC-1234"
+            onChangeText={(v) => setCostCenter(v.replace(/[^0-9]/g, ""))}
+            placeholder="e.g. 1234"
             placeholderTextColor={colors.mutedForeground}
+            keyboardType="number-pad"
           />
         </View>
         <View style={styles.field}>
