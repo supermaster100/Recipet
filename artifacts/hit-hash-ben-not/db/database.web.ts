@@ -26,6 +26,9 @@ export const ExchangeDB = {
 
 export const LegDB = {
   getAll: (): Promise<Leg[]> => Promise.resolve([]),
+  getFirst: (): Promise<Leg | null> => Promise.resolve(null),
+  upsertSingleton: (_l: Omit<Leg, "id">): Promise<Leg> =>
+    Promise.resolve({ id: 0, ..._l } as Leg),
   insert: (_l: Omit<Leg, "id">): Promise<number> => Promise.resolve(0),
   update: (_l: Leg): Promise<void> => Promise.resolve(),
   delete: (_id: number): Promise<void> => Promise.resolve(),
@@ -34,6 +37,7 @@ export const LegDB = {
 export const TravelDB = {
   getAll: (): Promise<Travel[]> => Promise.resolve([]),
   getById: (_id: number): Promise<Travel | null> => Promise.resolve(null),
+  getByLegId: (_legId: number): Promise<Travel[]> => Promise.resolve([]),
   insert: (_t: Omit<Travel, "id">): Promise<number> => Promise.resolve(0),
   update: (_t: Travel): Promise<void> => Promise.resolve(),
   delete: (_id: number): Promise<void> => Promise.resolve(),
