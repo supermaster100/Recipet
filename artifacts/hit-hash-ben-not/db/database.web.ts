@@ -1,86 +1,372 @@
 import type { ATMWithdrawal, Budget, ClientTransfer, Exchange, General, Leg, MoneyTransfer, Receipt, Travel, TrashItem } from "./types";
 
-export async function getDatabase(): Promise<null> {
-  return null;
+const KEYS = {
+  general: "hhbn_general",
+  receipts: "hhbn_receipts",
+  exchanges: "hhbn_exchanges",
+  legs: "hhbn_legs",
+  travels: "hhbn_travels",
+  atm: "hhbn_atm",
+  budgets: "hhbn_budgets",
+  moneyTransfers: "hhbn_money_transfers",
+  clientTransfers: "hhbn_client_transfers",
+  seq: (table: string) => `hhbn_seq_${table}`,
+};
+
+function load<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    return JSON.parse(raw) as T[];
+  } catch {
+    return [];
+  }
+}
+
+function save<T>(key: string, data: T[]): void {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+function nextId(table: string): number {
+  const seqKey = KEYS.seq(table);
+  const current = parseInt(localStorage.getItem(seqKey) ?? "0", 10);
+  const next = current + 1;
+  localStorage.setItem(seqKey, String(next));
+  return next;
+}
+
+function loadSingle<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function saveSingle<T>(key: string, data: T): void {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+export async function getDatabase(): Promise<Record<string, never>> {
+  return {};
 }
 
 export const GeneralDB = {
-  get: (): Promise<General | null> => Promise.resolve(null),
-  upsert: (_d: Omit<General, "id">): Promise<void> => Promise.resolve(),
+  async get(): Promise<General | null> {
+    return loadSingle<General>(KEYS.general);
+  },
+  async upsert(data: Omit<General, "id">): Promise<void> {
+    const existing = loadSingle<General>(KEYS.general);
+    const id = existing?.id ?? nextId("general");
+    saveSingle<General>(KEYS.general, { id, ...data });
+  },
 };
 
 export const ReceiptDB = {
-  getAll: (): Promise<Receipt[]> => Promise.resolve([]),
-  getDeleted: (): Promise<Receipt[]> => Promise.resolve([]),
-  insert: (_r: Omit<Receipt, "id">): Promise<number> => Promise.resolve(0),
-  update: (_r: Receipt): Promise<void> => Promise.resolve(),
-  softDelete: (_id: number): Promise<void> => Promise.resolve(),
-  restore: (_id: number): Promise<void> => Promise.resolve(),
-  hardDelete: (_id: number): Promise<void> => Promise.resolve(),
-  purgeExpired: (): Promise<Array<{ photo: string | null; deleted_at: string | null }>> => Promise.resolve([]),
-  delete: (_id: number): Promise<void> => Promise.resolve(),
+  async getAll(): Promise<Receipt[]> {
+    return load<Receipt>(KEYS.receipts)
+      .filter((r) => r.deleted_at == null)
+      .sort((a, b) => b.date > a.date ? 1 : b.date < a.date ? -1 : b.id - a.id);
+  },
+  async getDeleted(): Promise<Receipt[]> {
+    return load<Receipt>(KEYS.receipts)
+      .filter((r) => r.deleted_at != null)
+      .sort((a, b) => (b.deleted_at! > a.deleted_at! ? 1 : -1));
+  },
+  async insert(r: Omit<Receipt, "id">): Promise<number> {
+    const rows = load<Receipt>(KEYS.receipts);
+    const id = nextId("receipts");
+    rows.push({ id, ...r, deleted_at: null });
+    save(KEYS.receipts, rows);
+    return id;
+  },
+  async update(r: Receipt): Promise<void> {
+    const rows = load<Receipt>(KEYS.receipts);
+    const idx = rows.findIndex((x) => x.id === r.id);
+    if (idx !== -1) rows[idx] = r;
+    save(KEYS.receipts, rows);
+  },
+  async softDelete(id: number): Promise<void> {
+    const rows = load<Receipt>(KEYS.receipts);
+    const idx = rows.findIndex((x) => x.id === id);
+    if (idx !== -1) rows[idx] = { ...rows[idx], deleted_at: new Date().toISOString() };
+    save(KEYS.receipts, rows);
+  },
+  async restore(id: number): Promise<void> {
+    const rows = load<Receipt>(KEYS.receipts);
+    const idx = rows.findIndex((x) => x.id === id);
+    if (idx !== -1) rows[idx] = { ...rows[idx], deleted_at: null };
+    save(KEYS.receipts, rows);
+  },
+  async hardDelete(id: number): Promise<void> {
+    const rows = load<Receipt>(KEYS.receipts).filter((x) => x.id !== id);
+    save(KEYS.receipts, rows);
+  },
+  async purgeExpired(): Promise<Array<{ photo: string | null; deleted_at: string | null }>> {
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const rows = load<Receipt>(KEYS.receipts);
+    const expired = rows.filter((r) => r.deleted_at != null && r.deleted_at < cutoff);
+    const kept = rows.filter((r) => !(r.deleted_at != null && r.deleted_at < cutoff));
+    save(KEYS.receipts, kept);
+    return expired.map((r) => ({ photo: r.photo, deleted_at: r.deleted_at }));
+  },
+  async delete(id: number): Promise<void> {
+    return ReceiptDB.softDelete(id);
+  },
 };
 
 export const ExchangeDB = {
-  getAll: (): Promise<Exchange[]> => Promise.resolve([]),
-  getDeleted: (): Promise<Exchange[]> => Promise.resolve([]),
-  insert: (_e: Omit<Exchange, "id">): Promise<number> => Promise.resolve(0),
-  update: (_e: Exchange): Promise<void> => Promise.resolve(),
-  softDelete: (_id: number): Promise<void> => Promise.resolve(),
-  restore: (_id: number): Promise<void> => Promise.resolve(),
-  hardDelete: (_id: number): Promise<void> => Promise.resolve(),
-  purgeExpired: (): Promise<Array<{ photo: string | null; deleted_at: string | null }>> => Promise.resolve([]),
-  delete: (_id: number): Promise<void> => Promise.resolve(),
+  async getAll(): Promise<Exchange[]> {
+    return load<Exchange>(KEYS.exchanges)
+      .filter((e) => e.deleted_at == null)
+      .sort((a, b) => b.date > a.date ? 1 : b.date < a.date ? -1 : b.id - a.id);
+  },
+  async getDeleted(): Promise<Exchange[]> {
+    return load<Exchange>(KEYS.exchanges)
+      .filter((e) => e.deleted_at != null)
+      .sort((a, b) => (b.deleted_at! > a.deleted_at! ? 1 : -1));
+  },
+  async insert(e: Omit<Exchange, "id">): Promise<number> {
+    const rows = load<Exchange>(KEYS.exchanges);
+    const id = nextId("exchanges");
+    rows.push({ id, ...e, deleted_at: null });
+    save(KEYS.exchanges, rows);
+    return id;
+  },
+  async update(e: Exchange): Promise<void> {
+    const rows = load<Exchange>(KEYS.exchanges);
+    const idx = rows.findIndex((x) => x.id === e.id);
+    if (idx !== -1) rows[idx] = e;
+    save(KEYS.exchanges, rows);
+  },
+  async softDelete(id: number): Promise<void> {
+    const rows = load<Exchange>(KEYS.exchanges);
+    const idx = rows.findIndex((x) => x.id === id);
+    if (idx !== -1) rows[idx] = { ...rows[idx], deleted_at: new Date().toISOString() };
+    save(KEYS.exchanges, rows);
+  },
+  async restore(id: number): Promise<void> {
+    const rows = load<Exchange>(KEYS.exchanges);
+    const idx = rows.findIndex((x) => x.id === id);
+    if (idx !== -1) rows[idx] = { ...rows[idx], deleted_at: null };
+    save(KEYS.exchanges, rows);
+  },
+  async hardDelete(id: number): Promise<void> {
+    const rows = load<Exchange>(KEYS.exchanges).filter((x) => x.id !== id);
+    save(KEYS.exchanges, rows);
+  },
+  async purgeExpired(): Promise<Array<{ photo: string | null; deleted_at: string | null }>> {
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const rows = load<Exchange>(KEYS.exchanges);
+    const expired = rows.filter((e) => e.deleted_at != null && e.deleted_at < cutoff);
+    const kept = rows.filter((e) => !(e.deleted_at != null && e.deleted_at < cutoff));
+    save(KEYS.exchanges, kept);
+    return expired.map((e) => ({ photo: e.photo, deleted_at: e.deleted_at }));
+  },
+  async delete(id: number): Promise<void> {
+    return ExchangeDB.softDelete(id);
+  },
 };
 
 export const ATMDB = {
-  getAll: (): Promise<ATMWithdrawal[]> => Promise.resolve([]),
-  getById: (_id: number): Promise<ATMWithdrawal | null> => Promise.resolve(null),
-  insert: (_a: Omit<ATMWithdrawal, "id">): Promise<number> => Promise.resolve(0),
-  update: (_a: ATMWithdrawal): Promise<void> => Promise.resolve(),
-  delete: (_id: number): Promise<void> => Promise.resolve(),
+  async getAll(): Promise<ATMWithdrawal[]> {
+    return load<ATMWithdrawal>(KEYS.atm)
+      .sort((a, b) => b.date > a.date ? 1 : b.date < a.date ? -1 : b.id - a.id);
+  },
+  async getById(id: number): Promise<ATMWithdrawal | null> {
+    return load<ATMWithdrawal>(KEYS.atm).find((a) => a.id === id) ?? null;
+  },
+  async insert(a: Omit<ATMWithdrawal, "id">): Promise<number> {
+    const rows = load<ATMWithdrawal>(KEYS.atm);
+    const id = nextId("atm");
+    rows.push({ id, ...a });
+    save(KEYS.atm, rows);
+    return id;
+  },
+  async update(a: ATMWithdrawal): Promise<void> {
+    const rows = load<ATMWithdrawal>(KEYS.atm);
+    const idx = rows.findIndex((x) => x.id === a.id);
+    if (idx !== -1) rows[idx] = a;
+    save(KEYS.atm, rows);
+  },
+  async delete(id: number): Promise<void> {
+    const rows = load<ATMWithdrawal>(KEYS.atm).filter((x) => x.id !== id);
+    save(KEYS.atm, rows);
+  },
 };
 
 export const LegDB = {
-  getAll: (): Promise<Leg[]> => Promise.resolve([]),
-  getFirst: (): Promise<Leg | null> => Promise.resolve(null),
-  upsertSingleton: (_l: Omit<Leg, "id">): Promise<Leg> =>
-    Promise.resolve({ id: 0, ..._l } as Leg),
-  insert: (_l: Omit<Leg, "id">): Promise<number> => Promise.resolve(0),
-  update: (_l: Leg): Promise<void> => Promise.resolve(),
-  softDelete: (_id: number): Promise<void> => Promise.resolve(),
-  delete: (_id: number): Promise<void> => Promise.resolve(),
+  async getAll(): Promise<Leg[]> {
+    return load<Leg>(KEYS.legs).filter((l) => l.deleted_at == null);
+  },
+  async getFirst(): Promise<Leg | null> {
+    const legs = load<Leg>(KEYS.legs).filter((l) => l.deleted_at == null);
+    return legs[0] ?? null;
+  },
+  async upsertSingleton(l: Omit<Leg, "id">): Promise<Leg> {
+    const rows = load<Leg>(KEYS.legs);
+    const existing = rows.find((x) => x.deleted_at == null);
+    if (existing) {
+      const updated = { ...existing, ...l };
+      const idx = rows.findIndex((x) => x.id === existing.id);
+      rows[idx] = updated;
+      save(KEYS.legs, rows);
+      return updated;
+    }
+    const id = nextId("legs");
+    const newLeg: Leg = { id, ...l, deleted_at: null };
+    rows.push(newLeg);
+    save(KEYS.legs, rows);
+    return newLeg;
+  },
+  async insert(l: Omit<Leg, "id">): Promise<number> {
+    const rows = load<Leg>(KEYS.legs);
+    const id = nextId("legs");
+    rows.push({ id, ...l, deleted_at: null });
+    save(KEYS.legs, rows);
+    return id;
+  },
+  async update(l: Leg): Promise<void> {
+    const rows = load<Leg>(KEYS.legs);
+    const idx = rows.findIndex((x) => x.id === l.id);
+    if (idx !== -1) rows[idx] = l;
+    save(KEYS.legs, rows);
+  },
+  async softDelete(id: number): Promise<void> {
+    const rows = load<Leg>(KEYS.legs);
+    const idx = rows.findIndex((x) => x.id === id);
+    if (idx !== -1) rows[idx] = { ...rows[idx], deleted_at: new Date().toISOString() };
+    save(KEYS.legs, rows);
+  },
+  async delete(id: number): Promise<void> {
+    return LegDB.softDelete(id);
+  },
 };
 
 export const TravelDB = {
-  getAll: (): Promise<Travel[]> => Promise.resolve([]),
-  getById: (_id: number): Promise<Travel | null> => Promise.resolve(null),
-  getByLegId: (_legId: number): Promise<Travel[]> => Promise.resolve([]),
-  insert: (_t: Omit<Travel, "id">): Promise<number> => Promise.resolve(0),
-  update: (_t: Travel): Promise<void> => Promise.resolve(),
-  softDelete: (_id: number): Promise<void> => Promise.resolve(),
-  delete: (_id: number): Promise<void> => Promise.resolve(),
+  async getAll(): Promise<Travel[]> {
+    return load<Travel>(KEYS.travels)
+      .filter((t) => t.deleted_at == null)
+      .sort((a, b) => b.departureDate > a.departureDate ? 1 : b.departureDate < a.departureDate ? -1 : b.id - a.id);
+  },
+  async getById(id: number): Promise<Travel | null> {
+    return load<Travel>(KEYS.travels).find((t) => t.id === id) ?? null;
+  },
+  async getByLegId(legId: number): Promise<Travel[]> {
+    return load<Travel>(KEYS.travels).filter((t) => t.lId === legId && t.deleted_at == null);
+  },
+  async insert(t: Omit<Travel, "id">): Promise<number> {
+    const rows = load<Travel>(KEYS.travels);
+    const id = nextId("travels");
+    rows.push({ id, ...t, deleted_at: null });
+    save(KEYS.travels, rows);
+    return id;
+  },
+  async update(t: Travel): Promise<void> {
+    const rows = load<Travel>(KEYS.travels);
+    const idx = rows.findIndex((x) => x.id === t.id);
+    if (idx !== -1) rows[idx] = t;
+    save(KEYS.travels, rows);
+  },
+  async softDelete(id: number): Promise<void> {
+    const rows = load<Travel>(KEYS.travels);
+    const idx = rows.findIndex((x) => x.id === id);
+    if (idx !== -1) rows[idx] = { ...rows[idx], deleted_at: new Date().toISOString() };
+    save(KEYS.travels, rows);
+  },
+  async delete(id: number): Promise<void> {
+    return TravelDB.softDelete(id);
+  },
 };
 
 export const BudgetDB = {
-  getAll: (): Promise<Budget[]> => Promise.resolve([]),
-  insert: (_b: Omit<Budget, "id">): Promise<number> => Promise.resolve(0),
-  update: (_b: Budget): Promise<void> => Promise.resolve(),
-  delete: (_id: number): Promise<void> => Promise.resolve(),
+  async getAll(): Promise<Budget[]> {
+    return load<Budget>(KEYS.budgets);
+  },
+  async insert(b: Omit<Budget, "id">): Promise<number> {
+    const rows = load<Budget>(KEYS.budgets);
+    const id = nextId("budgets");
+    rows.push({ id, ...b });
+    save(KEYS.budgets, rows);
+    return id;
+  },
+  async update(b: Budget): Promise<void> {
+    const rows = load<Budget>(KEYS.budgets);
+    const idx = rows.findIndex((x) => x.id === b.id);
+    if (idx !== -1) rows[idx] = b;
+    save(KEYS.budgets, rows);
+  },
+  async delete(id: number): Promise<void> {
+    const rows = load<Budget>(KEYS.budgets).filter((x) => x.id !== id);
+    save(KEYS.budgets, rows);
+  },
 };
 
 export const MoneyTransferDB = {
-  getAll: (): Promise<MoneyTransfer[]> => Promise.resolve([]),
-  insert: (_m: Omit<MoneyTransfer, "id">): Promise<number> => Promise.resolve(0),
-  delete: (_id: number): Promise<void> => Promise.resolve(),
+  async getAll(): Promise<MoneyTransfer[]> {
+    return load<MoneyTransfer>(KEYS.moneyTransfers)
+      .sort((a, b) => b.date > a.date ? 1 : b.date < a.date ? -1 : b.id - a.id);
+  },
+  async insert(m: Omit<MoneyTransfer, "id">): Promise<number> {
+    const rows = load<MoneyTransfer>(KEYS.moneyTransfers);
+    const id = nextId("moneyTransfers");
+    rows.push({ id, ...m });
+    save(KEYS.moneyTransfers, rows);
+    return id;
+  },
+  async delete(id: number): Promise<void> {
+    const rows = load<MoneyTransfer>(KEYS.moneyTransfers).filter((x) => x.id !== id);
+    save(KEYS.moneyTransfers, rows);
+  },
 };
 
 export const ClientTransferDB = {
-  getAll: (): Promise<ClientTransfer[]> => Promise.resolve([]),
-  insert: (_c: Omit<ClientTransfer, "id">): Promise<number> => Promise.resolve(0),
-  delete: (_id: number): Promise<void> => Promise.resolve(),
+  async getAll(): Promise<ClientTransfer[]> {
+    return load<ClientTransfer>(KEYS.clientTransfers)
+      .sort((a, b) => b.date > a.date ? 1 : b.date < a.date ? -1 : b.id - a.id);
+  },
+  async insert(c: Omit<ClientTransfer, "id">): Promise<number> {
+    const rows = load<ClientTransfer>(KEYS.clientTransfers);
+    const id = nextId("clientTransfers");
+    rows.push({ id, ...c });
+    save(KEYS.clientTransfers, rows);
+    return id;
+  },
+  async delete(id: number): Promise<void> {
+    const rows = load<ClientTransfer>(KEYS.clientTransfers).filter((x) => x.id !== id);
+    save(KEYS.clientTransfers, rows);
+  },
 };
 
 export async function getTrashItems(): Promise<TrashItem[]> {
-  return [];
+  const deletedReceipts = await ReceiptDB.getDeleted();
+  const deletedExchanges = await ExchangeDB.getDeleted();
+
+  const receiptItems: TrashItem[] = deletedReceipts.map((r) => ({
+    id: r.id,
+    tableSource: "Receipts" as const,
+    type: r.type,
+    amount: r.amount,
+    currency: r.currency,
+    date: r.date,
+    deleted_at: r.deleted_at!,
+    photo: r.photo,
+  }));
+
+  const exchangeItems: TrashItem[] = deletedExchanges.map((e) => ({
+    id: e.id,
+    tableSource: "Exchanges" as const,
+    type: "EXCHANGE",
+    amount: e.amountSpent,
+    currency: e.spentCurrency,
+    date: e.date,
+    deleted_at: e.deleted_at!,
+    photo: e.photo,
+  }));
+
+  return [...receiptItems, ...exchangeItems].sort((a, b) =>
+    b.deleted_at > a.deleted_at ? 1 : -1
+  );
 }
