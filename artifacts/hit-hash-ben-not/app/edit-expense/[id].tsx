@@ -19,8 +19,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppContext } from "@/context/AppContext";
-import { ReceiptDB } from "@/db/database";
-import { CURRENCIES, RECEIPT_TYPES, type Currency, type ReceiptType } from "@/db/types";
+import { CashWalletDB, ReceiptDB } from "@/db/database";
+import { CURRENCIES, RECEIPT_TYPES, type Currency, type PaymentMethod, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 import { ImageField } from "@/components/ui/ImageField";
 import { deletePhotoFromLocal } from "@/utils/photoUtils";
@@ -158,7 +158,7 @@ export default function EditExpenseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { refreshReceipts, receipts, budgets } = useAppContext();
+  const { refreshReceipts, receipts, budgets, refreshCashWallet } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const receipt = receipts.find((e) => e.id === Number(id));
@@ -174,6 +174,7 @@ export default function EditExpenseScreen() {
   const [selfDeclaration, setSelfDeclaration] = useState(receipt?.selfDeclaration ?? true);
   const [note, setNote] = useState(receipt?.note ?? "");
   const [budgetId, setBudgetId] = useState(receipt?.budget ?? "");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(receipt?.paymentMethod ?? "cash");
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -260,10 +261,15 @@ export default function EditExpenseScreen() {
     if (!receipt || !validate()) return;
     setSaving(true);
     try {
+      const prevPaymentMethod = receipt.paymentMethod ?? "cash";
+      const prevAmount = receipt.amount;
+      const prevCurrency = receipt.currency;
+      const newAmount = parseFloat(Number(amount).toFixed(2));
+
       await ReceiptDB.update({
         id: receipt.id,
         type,
-        amount: parseFloat(Number(amount).toFixed(2)),
+        amount: newAmount,
         currency,
         date,
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
@@ -277,7 +283,23 @@ export default function EditExpenseScreen() {
         status: receipt.status,
         export: receipt.export,
         deleted_at: receipt.deleted_at ?? null,
+        paymentMethod,
       });
+
+      await CashWalletDB.deleteByRef(receipt.id, "Receipts");
+      if (paymentMethod === "cash") {
+        await CashWalletDB.insert({
+          currency,
+          amount: -newAmount,
+          entryType: "expense_cash",
+          refId: receipt.id,
+          refTable: "Receipts",
+          note: `Expense: ${RECEIPT_TYPES.find((r) => r.key === type)?.label ?? type}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      await refreshCashWallet();
+
       await refreshReceipts();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setDirty(false);
@@ -297,8 +319,10 @@ export default function EditExpenseScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
+          await CashWalletDB.deleteByRef(receipt.id, "Receipts");
           await ReceiptDB.softDelete(receipt.id);
           await refreshReceipts();
+          await refreshCashWallet();
           router.back();
         },
       },
@@ -523,6 +547,42 @@ export default function EditExpenseScreen() {
         </View>
 
         <View style={styles.field}>
+          <FieldLabel text="Payment Method" />
+          <View style={styles.paymentToggleRow}>
+            <TouchableOpacity
+              onPress={() => { setPaymentMethod("cash"); markDirty(); }}
+              style={[
+                styles.paymentOption,
+                {
+                  backgroundColor: paymentMethod === "cash" ? colors.primary : colors.card,
+                  borderColor: paymentMethod === "cash" ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Feather name="dollar-sign" size={16} color={paymentMethod === "cash" ? "#fff" : colors.mutedForeground} />
+              <Text style={[styles.paymentOptionText, { color: paymentMethod === "cash" ? "#fff" : colors.foreground }]}>
+                Cash
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => { setPaymentMethod("card"); markDirty(); }}
+              style={[
+                styles.paymentOption,
+                {
+                  backgroundColor: paymentMethod === "card" ? colors.primary : colors.card,
+                  borderColor: paymentMethod === "card" ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Feather name="credit-card" size={16} color={paymentMethod === "card" ? "#fff" : colors.mutedForeground} />
+              <Text style={[styles.paymentOptionText, { color: paymentMethod === "card" ? "#fff" : colors.foreground }]}>
+                Card
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.field}>
           <FieldLabel text="Note (optional)" />
           <StyledInput
             value={note}
@@ -622,6 +682,18 @@ const styles = StyleSheet.create({
   toggleInfo: { flex: 1, gap: 2 },
   toggleTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
   toggleSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  paymentToggleRow: { flexDirection: "row", gap: 8 },
+  paymentOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  paymentOptionText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   notFoundText: { fontSize: 15, fontFamily: "Inter_400Regular" },
   photoBanner: {

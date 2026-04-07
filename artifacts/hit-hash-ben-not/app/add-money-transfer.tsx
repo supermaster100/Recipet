@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
-import { MoneyTransferDB } from "@/db/database";
+import { CashWalletDB, MoneyTransferDB } from "@/db/database";
 import { CURRENCIES } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
@@ -32,7 +32,7 @@ function nowIso(): string {
 export default function AddMoneyTransferScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refreshMoneyTransfers, general } = useAppContext();
+  const { refreshMoneyTransfers, general, refreshCashWallet } = useAppContext();
 
   const [receiptName, setReceiptName] = useState("");
   const [giverName, setGiverName] = useState("");
@@ -58,7 +58,7 @@ export default function AddMoneyTransferScreen() {
   async function doSave(photoPath: string) {
     setSaving(true);
     try {
-      await MoneyTransferDB.insert({
+      const newId = await MoneyTransferDB.insert({
         receiptName: receiptName.trim(),
         giverName: giverName.trim(),
         workerNumber: workerNumber.trim(),
@@ -68,7 +68,17 @@ export default function AddMoneyTransferScreen() {
         photo: photoPath || null,
         createdAt: nowIso(),
       });
+      await CashWalletDB.insert({
+        currency,
+        amount: parseFloat(Number(amount).toFixed(2)),
+        entryType: "money_transfer_in",
+        refId: newId,
+        refTable: "MoneyTransfers",
+        note: `Money received from ${giverName.trim()}`,
+        createdAt: nowIso(),
+      });
       await refreshMoneyTransfers();
+      await refreshCashWallet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {

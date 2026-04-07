@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
-import { ATMDB } from "@/db/database";
+import { ATMDB, CashWalletDB } from "@/db/database";
 import type { ATMWithdrawal } from "@/db/types";
 import { EXCHANGE_CURRENCIES } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
@@ -26,7 +26,7 @@ export default function EditATMScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refreshATM } = useAppContext();
+  const { refreshATM, refreshCashWallet } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const imageFieldRef = useRef<ImageFieldHandle>(null);
 
@@ -56,15 +56,27 @@ export default function EditATMScreen() {
     if (!atm || !canSave) return;
     setSaving(true);
     try {
+      const newAmount = Number(amount);
       await ATMDB.update({
         ...atm,
         date,
         cardLastFour,
-        amount: Number(amount),
+        amount: newAmount,
         currency,
         photo: photo || null,
       });
+      await CashWalletDB.deleteByRef(atm.id, "ATMWithdrawals");
+      await CashWalletDB.insert({
+        currency,
+        amount: newAmount,
+        entryType: "atm_withdrawal",
+        refId: atm.id,
+        refTable: "ATMWithdrawals",
+        note: `ATM withdrawal (card ****${cardLastFour})`,
+        createdAt: new Date().toISOString(),
+      });
       await refreshATM();
+      await refreshCashWallet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {
@@ -83,8 +95,10 @@ export default function EditATMScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
+          await CashWalletDB.deleteByRef(atm.id, "ATMWithdrawals");
           await ATMDB.delete(atm.id);
           await refreshATM();
+          await refreshCashWallet();
           router.back();
         },
       },

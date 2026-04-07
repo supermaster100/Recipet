@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
-import { ATMDB } from "@/db/database";
+import { ATMDB, CashWalletDB } from "@/db/database";
 import { EXCHANGE_CURRENCIES } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
@@ -28,7 +28,7 @@ function today(): string {
 export default function AddATMScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refreshATM } = useAppContext();
+  const { refreshATM, refreshCashWallet } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const imageFieldRef = useRef<ImageFieldHandle>(null);
 
@@ -44,7 +44,7 @@ export default function AddATMScreen() {
   async function doSave(photoPath: string) {
     setSaving(true);
     try {
-      await ATMDB.insert({
+      const newId = await ATMDB.insert({
         date,
         cardLastFour,
         amount: Number(amount),
@@ -52,7 +52,17 @@ export default function AddATMScreen() {
         photo: photoPath || null,
         createdAt: new Date().toISOString(),
       });
+      await CashWalletDB.insert({
+        currency,
+        amount: Number(amount),
+        entryType: "atm_withdrawal",
+        refId: newId,
+        refTable: "ATMWithdrawals",
+        note: `ATM withdrawal (card ****${cardLastFour})`,
+        createdAt: new Date().toISOString(),
+      });
       await refreshATM();
+      await refreshCashWallet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {

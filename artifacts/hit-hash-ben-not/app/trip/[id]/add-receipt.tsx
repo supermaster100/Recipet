@@ -17,10 +17,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
-import { ReceiptDB } from "@/db/database";
+import { CashWalletDB, ReceiptDB } from "@/db/database";
 import {
   CURRENCIES,
   RECEIPT_TYPES,
+  type PaymentMethod,
   type ReceiptType,
 } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
@@ -44,6 +45,7 @@ export default function AddTripReceiptScreen() {
   const [costCenter, setCostCenter] = useState("");
   const [photo, setPhoto] = useState("");
   const [selfDeclaration, setSelfDeclaration] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [saving, setSaving] = useState(false);
 
   const imageFieldRef = useRef<ImageFieldHandle>(null);
@@ -57,7 +59,7 @@ export default function AddTripReceiptScreen() {
     setSaving(true);
     const effectiveSelfDecl = forceNoPhoto ? true : selfDeclaration;
     try {
-      await ReceiptDB.insert({
+      const newId = await ReceiptDB.insert({
         type,
         amount: Number(amount),
         currency,
@@ -73,7 +75,19 @@ export default function AddTripReceiptScreen() {
         status: "",
         export: false,
         deleted_at: null,
+        paymentMethod,
       });
+      if (paymentMethod === "cash") {
+        await CashWalletDB.insert({
+          currency,
+          amount: -parseFloat(Number(amount).toFixed(2)),
+          entryType: "expense_cash",
+          refId: newId,
+          refTable: "Receipts",
+          note: `Expense: ${type}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {
@@ -212,6 +226,23 @@ export default function AddTripReceiptScreen() {
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>PHOTO</Text>
           <ImageField ref={imageFieldRef} value={photo} onChange={setPhoto} />
+        </View>
+        <View style={styles.field}>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>PAYMENT METHOD</Text>
+          <View style={styles.chipRow}>
+            <Pressable
+              onPress={() => setPaymentMethod("card")}
+              style={[styles.chip, { flex: 1, justifyContent: "center", backgroundColor: paymentMethod === "card" ? colors.primary : colors.card, borderColor: paymentMethod === "card" ? colors.primary : colors.border }]}
+            >
+              <Text style={[styles.chipText, { color: paymentMethod === "card" ? colors.primaryForeground : colors.foreground }]}>Card</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setPaymentMethod("cash")}
+              style={[styles.chip, { flex: 1, justifyContent: "center", backgroundColor: paymentMethod === "cash" ? colors.primary : colors.card, borderColor: paymentMethod === "cash" ? colors.primary : colors.border }]}
+            >
+              <Text style={[styles.chipText, { color: paymentMethod === "cash" ? colors.primaryForeground : colors.foreground }]}>Cash</Text>
+            </Pressable>
+          </View>
         </View>
         <View style={[styles.field, styles.toggleRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={{ flex: 1, gap: 2 }}>

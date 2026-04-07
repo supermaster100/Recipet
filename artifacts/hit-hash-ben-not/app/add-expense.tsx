@@ -19,8 +19,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppContext } from "@/context/AppContext";
-import { ReceiptDB } from "@/db/database";
-import { CURRENCIES, RECEIPT_TYPES, type Currency, type ReceiptType } from "@/db/types";
+import { CashWalletDB, ReceiptDB } from "@/db/database";
+import { CURRENCIES, RECEIPT_TYPES, type Currency, type PaymentMethod, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { saveDraft, loadDraft, clearDraft } from "@/db/draftManager";
@@ -43,6 +43,7 @@ interface ExpenseDraft {
   selfDeclaration: boolean;
   note: string;
   budgetId: string;
+  paymentMethod: PaymentMethod;
 }
 
 function today(): string {
@@ -180,7 +181,7 @@ export default function AddExpenseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { refreshReceipts, general, budgets } = useAppContext();
+  const { refreshReceipts, general, budgets, refreshCashWallet } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const [type, setType] = useState<ReceiptType>("MEALS");
@@ -194,6 +195,7 @@ export default function AddExpenseScreen() {
   const [selfDeclaration, setSelfDeclaration] = useState(true);
   const [note, setNote] = useState("");
   const [budgetId, setBudgetId] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 
   const imageFieldRef = useRef<ImageFieldHandle>(null);
 
@@ -244,6 +246,7 @@ export default function AddExpenseScreen() {
               setSelfDeclaration(draft.selfDeclaration);
               setNote(draft.note);
               setBudgetId(draft.budgetId ?? "");
+              setPaymentMethod(draft.paymentMethod ?? "cash");
               setDirty(true);
               setDraftLoaded(true);
             },
@@ -265,7 +268,8 @@ export default function AddExpenseScreen() {
     selfDeclaration,
     note,
     budgetId,
-  }), [type, amount, currency, date, numberOfPeople, division, costCenter, photo, selfDeclaration, note, budgetId]);
+    paymentMethod,
+  }), [type, amount, currency, date, numberOfPeople, division, costCenter, photo, selfDeclaration, note, budgetId, paymentMethod]);
 
   useEffect(() => {
     if (!dirty || saved) return;
@@ -279,7 +283,7 @@ export default function AddExpenseScreen() {
     if (dirty && !saved) {
       saveDraft(DRAFT_KEY, getDraftData());
     }
-  }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, division, costCenter, photo, selfDeclaration, note, budgetId]);
+  }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, division, costCenter, photo, selfDeclaration, note, budgetId, paymentMethod]);
 
   const confirmDiscard = useCallback(() => {
     return new Promise<boolean>((resolve) => {
@@ -408,7 +412,7 @@ export default function AddExpenseScreen() {
         }
       }
 
-      await ReceiptDB.insert({
+      const newId = await ReceiptDB.insert({
         type,
         amount: parseFloat(Number(amount).toFixed(2)),
         currency,
@@ -424,7 +428,20 @@ export default function AddExpenseScreen() {
         status: "",
         export: false,
         deleted_at: null,
+        paymentMethod,
       });
+      if (paymentMethod === "cash") {
+        await CashWalletDB.insert({
+          currency,
+          amount: -parseFloat(Number(amount).toFixed(2)),
+          entryType: "expense_cash",
+          refId: newId,
+          refTable: "Receipts",
+          note: `Expense: ${RECEIPT_TYPES.find((r) => r.key === type)?.label ?? type}`,
+          createdAt: new Date().toISOString(),
+        });
+        await refreshCashWallet();
+      }
       await clearDraft(DRAFT_KEY);
       await refreshReceipts();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -467,6 +484,7 @@ export default function AddExpenseScreen() {
     setPhoto("");
     setNote("");
     setBudgetId("");
+    setPaymentMethod("cash");
     setErrors({});
     setDirty(false);
     setSaved(false);
@@ -686,6 +704,42 @@ export default function AddExpenseScreen() {
         </View>
 
         <View style={styles.field}>
+          <FieldLabel text="Payment Method" />
+          <View style={styles.paymentToggleRow}>
+            <TouchableOpacity
+              onPress={() => { setPaymentMethod("cash"); markDirty(); }}
+              style={[
+                styles.paymentOption,
+                {
+                  backgroundColor: paymentMethod === "cash" ? colors.primary : colors.card,
+                  borderColor: paymentMethod === "cash" ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Feather name="dollar-sign" size={16} color={paymentMethod === "cash" ? "#fff" : colors.mutedForeground} />
+              <Text style={[styles.paymentOptionText, { color: paymentMethod === "cash" ? "#fff" : colors.foreground }]}>
+                Cash
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => { setPaymentMethod("card"); markDirty(); }}
+              style={[
+                styles.paymentOption,
+                {
+                  backgroundColor: paymentMethod === "card" ? colors.primary : colors.card,
+                  borderColor: paymentMethod === "card" ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Feather name="credit-card" size={16} color={paymentMethod === "card" ? "#fff" : colors.mutedForeground} />
+              <Text style={[styles.paymentOptionText, { color: paymentMethod === "card" ? "#fff" : colors.foreground }]}>
+                Card
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.field}>
           <FieldLabel text="Note (optional)" />
           <StyledInput
             value={note}
@@ -785,6 +839,18 @@ const styles = StyleSheet.create({
   toggleInfo: { flex: 1, gap: 2 },
   toggleTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
   toggleSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  paymentToggleRow: { flexDirection: "row", gap: 8 },
+  paymentOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  paymentOptionText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   successContainer: {
     flex: 1,
     alignItems: "center",

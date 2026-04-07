@@ -48,6 +48,8 @@ export interface Budget {
   budgetNumberName: string;
 }
 
+export type PaymentMethod = "cash" | "card";
+
 export interface Receipt {
   id: number;
   type: ReceiptType;
@@ -65,6 +67,26 @@ export interface Receipt {
   status: string;
   export: boolean;
   deleted_at: string | null;
+  paymentMethod: PaymentMethod;
+}
+
+export type CashWalletEntryType =
+  | "initial"
+  | "expense_cash"
+  | "atm_withdrawal"
+  | "money_transfer_in"
+  | "client_transfer_out"
+  | "manual_adjustment";
+
+export interface CashWalletEntry {
+  id: number;
+  currency: Currency;
+  amount: number;
+  entryType: CashWalletEntryType;
+  refId: number | null;
+  refTable: string | null;
+  note: string;
+  createdAt: string;
 }
 
 export interface Exchange {

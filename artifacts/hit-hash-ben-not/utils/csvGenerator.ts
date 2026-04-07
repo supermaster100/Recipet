@@ -1,4 +1,4 @@
-import type { Exchange, General, Leg, Receipt, Travel, ATMWithdrawal, MoneyTransfer, ClientTransfer } from "@/db/types";
+import type { CashWalletEntry, Exchange, General, Leg, Receipt, Travel, ATMWithdrawal, MoneyTransfer, ClientTransfer } from "@/db/types";
 
 function esc(v: unknown): string {
   const s = v === null || v === undefined ? "" : String(v);
@@ -27,6 +27,7 @@ export function buildCSV(
   moneyTransfers: MoneyTransfer[],
   clientTransfers: ClientTransfer[],
   uriToName: Map<string, string> = new Map(),
+  cashWalletEntries: CashWalletEntry[] = [],
 ): string {
   const lines: string[] = [];
 
@@ -60,10 +61,10 @@ export function buildCSV(
   lines.push("");
 
   lines.push("# EXPENSES");
-  lines.push("Row,Type,Amount,Currency,Date,NumberOfPeople,Division,CostCenter,SelfDeclaration,Note,Budget,Photo");
+  lines.push("Row,Type,Amount,Currency,Date,NumberOfPeople,Division,CostCenter,SelfDeclaration,Note,Budget,PaymentMethod,Photo");
   for (const e of receipts) {
     lines.push(row("E", e.type, e.amount, e.currency, e.date, e.numberOfPeople,
-      e.division, e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.budget, photoName(e.photo, uriToName)));
+      e.division, e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.budget, e.paymentMethod ?? "card", photoName(e.photo, uriToName)));
   }
   lines.push("");
 
@@ -92,6 +93,26 @@ export function buildCSV(
   lines.push("Row,ClientName,GiverName,Date,Amount,Currency,Photo");
   for (const c of clientTransfers) {
     lines.push(row("CT", c.clientName, c.giverName, c.date, c.amount, c.currency, photoName(c.photo, uriToName)));
+  }
+  lines.push("");
+
+  if (cashWalletEntries.length > 0) {
+    lines.push("# CASH WALLET LEDGER");
+    lines.push("Row,EntryType,Currency,Amount,Note,Date");
+    for (const w of cashWalletEntries) {
+      lines.push(row("CW", w.entryType, w.currency, w.amount, w.note, w.createdAt.split("T")[0] ?? w.createdAt));
+    }
+    lines.push("");
+
+    const balances: Record<string, number> = {};
+    for (const w of cashWalletEntries) {
+      balances[w.currency] = (balances[w.currency] ?? 0) + w.amount;
+    }
+    lines.push("# CASH WALLET BALANCES");
+    lines.push("Row,Currency,Balance");
+    for (const [currency, balance] of Object.entries(balances)) {
+      lines.push(row("CB", currency, balance.toFixed(2)));
+    }
   }
 
   return lines.join("\n");

@@ -2,12 +2,15 @@ import * as SQLite from "expo-sqlite";
 import type {
   ATMWithdrawal,
   Budget,
+  CashWalletEntry,
+  CashWalletEntryType,
   ClientTransfer,
   Currency,
   Exchange,
   General,
   Leg,
   MoneyTransfer,
+  PaymentMethod,
   Receipt,
   ReceiptType,
   Travel,
@@ -177,6 +180,19 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
     );
   `);
 
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS CashWalletLedger (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      currency TEXT NOT NULL DEFAULT 'ILS',
+      amount REAL NOT NULL DEFAULT 0,
+      entryType TEXT NOT NULL DEFAULT 'manual_adjustment',
+      refId INTEGER,
+      refTable TEXT,
+      note TEXT NOT NULL DEFAULT '',
+      createdAt TEXT NOT NULL DEFAULT ''
+    );
+  `);
+
   await runSchemaMigrations(db);
 }
 
@@ -186,6 +202,7 @@ async function runSchemaMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
     await db.execAsync(`ALTER TABLE Receipts ADD COLUMN budget TEXT NOT NULL DEFAULT ''`).catch(() => {});
     await db.execAsync(`ALTER TABLE Receipts ADD COLUMN photo_checksum TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE Receipts ADD COLUMN deleted_at TEXT`).catch(() => {});
+    await db.execAsync(`ALTER TABLE Receipts ADD COLUMN paymentMethod TEXT NOT NULL DEFAULT 'cash'`).catch(() => {});
     await db.execAsync(`ALTER TABLE Exchanges ADD COLUMN photo_checksum TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE Exchanges ADD COLUMN deleted_at TEXT`).catch(() => {});
     const legMigrations = [
@@ -239,6 +256,7 @@ function toReceipt(r: Record<string, unknown>): Receipt {
     status: r["status"] as string,
     export: (r["export"] as number) === 1,
     deleted_at: (r["deleted_at"] as string | null) ?? null,
+    paymentMethod: ((r["paymentMethod"] as string) ?? "cash") as PaymentMethod,
   };
 }
 
@@ -364,11 +382,11 @@ export const ReceiptDB = {
     let lastId = 0;
     await db.withTransactionAsync(async () => {
       const res = await db.runAsync(
-        `INSERT INTO Receipts (type, amount, currency, date, numberOfPeople, division, costCenter, selfDeclaration, note, photo, photo_checksum, budget, status, export, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+        `INSERT INTO Receipts (type, amount, currency, date, numberOfPeople, division, costCenter, selfDeclaration, note, photo, photo_checksum, budget, status, export, deleted_at, paymentMethod)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
         [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.division, r.costCenter,
          r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.photo_checksum ?? null,
-         r.budget ?? "", r.status, r.export ? 1 : 0]
+         r.budget ?? "", r.status, r.export ? 1 : 0, r.paymentMethod ?? "cash"]
       );
       lastId = res.lastInsertRowId;
     });
@@ -378,10 +396,10 @@ export const ReceiptDB = {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        `UPDATE Receipts SET type=?, amount=?, currency=?, date=?, numberOfPeople=?, division=?, costCenter=?, selfDeclaration=?, note=?, photo=?, photo_checksum=?, budget=?, status=?, export=? WHERE id=?`,
+        `UPDATE Receipts SET type=?, amount=?, currency=?, date=?, numberOfPeople=?, division=?, costCenter=?, selfDeclaration=?, note=?, photo=?, photo_checksum=?, budget=?, status=?, export=?, paymentMethod=? WHERE id=?`,
         [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.division, r.costCenter,
          r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.photo_checksum ?? null,
-         r.budget ?? "", r.status, r.export ? 1 : 0, r.id]
+         r.budget ?? "", r.status, r.export ? 1 : 0, r.paymentMethod ?? "cash", r.id]
       );
     });
   },
@@ -805,6 +823,72 @@ export const ATMDB = {
   },
   async delete(id: number): Promise<void> {
     return ATMDB.softDelete(id);
+  },
+};
+
+function toCashWalletEntry(r: Record<string, unknown>): CashWalletEntry {
+  return {
+    id: r["id"] as number,
+    currency: r["currency"] as Currency,
+    amount: r["amount"] as number,
+    entryType: r["entryType"] as CashWalletEntryType,
+    refId: (r["refId"] as number | null) ?? null,
+    refTable: (r["refTable"] as string | null) ?? null,
+    note: (r["note"] as string) ?? "",
+    createdAt: r["createdAt"] as string,
+  };
+}
+
+export const CashWalletDB = {
+  async getAll(): Promise<CashWalletEntry[]> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      "SELECT * FROM CashWalletLedger ORDER BY createdAt ASC, id ASC"
+    );
+    return rows.map(toCashWalletEntry);
+  },
+  async insert(entry: Omit<CashWalletEntry, "id">): Promise<number> {
+    const db = await getDatabase();
+    const res = await db.runAsync(
+      `INSERT INTO CashWalletLedger (currency, amount, entryType, refId, refTable, note, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [entry.currency, entry.amount, entry.entryType, entry.refId ?? null, entry.refTable ?? null, entry.note, entry.createdAt]
+    );
+    return res.lastInsertRowId;
+  },
+  async deleteByRef(refId: number, refTable: string): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync(
+      "DELETE FROM CashWalletLedger WHERE refId = ? AND refTable = ?",
+      [refId, refTable]
+    );
+  },
+  async delete(id: number): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM CashWalletLedger WHERE id = ?", [id]);
+  },
+  async getBalances(): Promise<Record<string, number>> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      "SELECT currency, SUM(amount) as total FROM CashWalletLedger GROUP BY currency"
+    );
+    const result: Record<string, number> = {};
+    for (const r of rows) {
+      result[r["currency"] as string] = (r["total"] as number) ?? 0;
+    }
+    return result;
+  },
+  async getBalanceByCurrency(currency: string): Promise<number> {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<Record<string, unknown>>(
+      "SELECT COALESCE(SUM(amount), 0) as total FROM CashWalletLedger WHERE currency = ?",
+      [currency]
+    );
+    return (row?.["total"] as number) ?? 0;
+  },
+  async clearAll(): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM CashWalletLedger");
   },
 };
 

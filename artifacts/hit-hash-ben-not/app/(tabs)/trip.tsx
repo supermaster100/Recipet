@@ -744,6 +744,29 @@ export default function TripScreen() {
             </View>
           )}
         </View>
+
+        <View style={styles.cashWalletSection}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Cash Wallet</Text>
+          <TouchableOpacity
+            onPress={() => router.push("/cash-wallet")}
+            style={[styles.cashWalletBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <View style={styles.cashWalletBtnContent}>
+              <View style={[styles.cashWalletIcon, { backgroundColor: colors.primary + "22" }]}>
+                <Feather name="dollar-sign" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cashWalletBtnTitle, { color: colors.foreground }]}>
+                  Manage Cash Wallet
+                </Text>
+                <Text style={[styles.cashWalletBtnDesc, { color: colors.mutedForeground }]}>
+                  Track cash balances, log initial amounts, reconcile
+                </Text>
+              </View>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {anyPickerOpen && (
@@ -854,6 +877,21 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   noCitiesNote: { fontSize: 13, fontFamily: "Inter_400Regular", fontStyle: "italic", paddingVertical: 10 },
   hotelList: { gap: 8 },
+  cashWalletSection: { gap: 12 },
+  cashWalletBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  cashWalletBtnContent: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  cashWalletIcon: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  cashWalletBtnTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  cashWalletBtnDesc: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   hotelRow: {
     flexDirection: "row",
     alignItems: "center",

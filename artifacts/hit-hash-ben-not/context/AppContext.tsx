@@ -14,6 +14,7 @@ import { getExchangeRates, isRatesStale, type ExchangeRates } from "@/utils/exch
 import {
   ATMDB,
   BudgetDB,
+  CashWalletDB,
   ClientTransferDB,
   ExchangeDB,
   LegDB,
@@ -27,6 +28,7 @@ import {
 import type {
   ATMWithdrawal,
   Budget,
+  CashWalletEntry,
   ClientTransfer,
   Exchange,
   General,
@@ -54,6 +56,7 @@ interface AppContextValue {
   moneyTransfers: MoneyTransfer[];
   clientTransfers: ClientTransfer[];
   trashItems: TrashItem[];
+  cashWalletEntries: CashWalletEntry[];
   refreshGeneral: () => Promise<void>;
   refreshReceipts: () => Promise<void>;
   refreshTravels: () => Promise<void>;
@@ -64,6 +67,7 @@ interface AppContextValue {
   refreshMoneyTransfers: () => Promise<void>;
   refreshClientTransfers: () => Promise<void>;
   refreshTrash: () => Promise<void>;
+  refreshCashWallet: () => Promise<void>;
   exchangeRates: ExchangeRates;
   refreshRates: (force?: boolean) => Promise<void>;
   refreshAll: () => Promise<void>;
@@ -84,6 +88,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [moneyTransfers, setMoneyTransfers] = useState<MoneyTransfer[]>([]);
   const [clientTransfers, setClientTransfers] = useState<ClientTransfer[]>([]);
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
+  const [cashWalletEntries, setCashWalletEntries] = useState<CashWalletEntry[]>([]);
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({});
   const dbRef = useRef<SQLite.SQLiteDatabase | null>(null);
 
@@ -137,6 +142,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTrashItems(data);
   }, []);
 
+  const refreshCashWallet = useCallback(async () => {
+    const data = await CashWalletDB.getAll();
+    setCashWalletEntries(data);
+  }, []);
+
   const refreshRates = useCallback(async (force = false) => {
     if (Platform.OS === "web") return;
     try {
@@ -157,8 +167,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       refreshMoneyTransfers(),
       refreshClientTransfers(),
       refreshTrash(),
+      refreshCashWallet(),
     ]);
-  }, [refreshGeneral, refreshReceipts, refreshTravels, refreshLegs, refreshExchanges, refreshATM, refreshBudgets, refreshMoneyTransfers, refreshClientTransfers, refreshTrash]);
+  }, [refreshGeneral, refreshReceipts, refreshTravels, refreshLegs, refreshExchanges, refreshATM, refreshBudgets, refreshMoneyTransfers, refreshClientTransfers, refreshTrash, refreshCashWallet]);
 
   const runStartupCleanup = useCallback(async () => {
     if (Platform.OS === "web") return;
@@ -221,6 +232,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         moneyTransfers,
         clientTransfers,
         trashItems,
+        cashWalletEntries,
         refreshGeneral,
         refreshReceipts,
         refreshTravels,
@@ -231,6 +243,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshMoneyTransfers,
         refreshClientTransfers,
         refreshTrash,
+        refreshCashWallet,
         exchangeRates,
         refreshRates,
         refreshAll,

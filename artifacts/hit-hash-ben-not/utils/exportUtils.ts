@@ -5,6 +5,7 @@ import { Alert, Platform } from "react-native";
 
 import type {
   ATMWithdrawal,
+  CashWalletEntry,
   ClientTransfer,
   Exchange,
   General,
@@ -15,6 +16,7 @@ import type {
 } from "@/db/types";
 import {
   ATMDB,
+  CashWalletDB,
   ClientTransferDB,
   ExchangeDB,
   LegDB,
@@ -38,6 +40,7 @@ export interface ExportData {
   atmWithdrawals: ATMWithdrawal[];
   moneyTransfers: MoneyTransfer[];
   clientTransfers: ClientTransfer[];
+  cashWalletEntries: CashWalletEntry[];
 }
 
 export interface ValidationError {
@@ -194,7 +197,7 @@ export async function runExport(
     const csvContent = buildCSV(
       data.general, data.legs, data.travels, data.receipts,
       data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers,
-      uriToName
+      uriToName, data.cashWalletEntries
     );
 
     const csvPath = `${cacheDir}expenses_${dateTag}.csv`;
@@ -203,7 +206,7 @@ export async function runExport(
     const xlsxB64 = buildXLSXBase64(
       data.general, data.legs, data.travels, data.receipts,
       data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers,
-      uriToName
+      uriToName, data.cashWalletEntries
     );
     const xlsxPath = `${cacheDir}expenses_${dateTag}.xlsx`;
     await FileSystem.writeAsStringAsync(xlsxPath, xlsxB64, { encoding: FileSystem.EncodingType.Base64 });
@@ -261,4 +264,6 @@ async function clearAllData(snapshot: ExportData): Promise<void> {
   for (const uri of photoUris) {
     await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
   }
+
+  await CashWalletDB.clearAll().catch(() => {});
 }

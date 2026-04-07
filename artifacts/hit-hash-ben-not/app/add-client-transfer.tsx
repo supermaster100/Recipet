@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
-import { ClientTransferDB } from "@/db/database";
+import { CashWalletDB, ClientTransferDB } from "@/db/database";
 import { CURRENCIES } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
@@ -32,7 +32,7 @@ function nowIso(): string {
 export default function AddClientTransferScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refreshClientTransfers } = useAppContext();
+  const { refreshClientTransfers, refreshCashWallet } = useAppContext();
 
   const [clientName, setClientName] = useState("");
   const [giverName, setGiverName] = useState("");
@@ -56,7 +56,7 @@ export default function AddClientTransferScreen() {
   async function doSave(photoPath: string) {
     setSaving(true);
     try {
-      await ClientTransferDB.insert({
+      const newId = await ClientTransferDB.insert({
         clientName: clientName.trim(),
         giverName: giverName.trim(),
         date,
@@ -65,7 +65,17 @@ export default function AddClientTransferScreen() {
         photo: photoPath || null,
         createdAt: nowIso(),
       });
+      await CashWalletDB.insert({
+        currency,
+        amount: -parseFloat(Number(amount).toFixed(2)),
+        entryType: "client_transfer_out",
+        refId: newId,
+        refTable: "ClientTransfers",
+        note: `Transfer to client: ${clientName.trim()}`,
+        createdAt: nowIso(),
+      });
       await refreshClientTransfers();
+      await refreshCashWallet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {

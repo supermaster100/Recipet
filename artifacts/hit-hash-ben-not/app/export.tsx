@@ -67,7 +67,7 @@ export default function ExportScreen() {
   const insets = useSafeAreaInsets();
   const {
     general, receipts, travels, legs, exchanges,
-    atmWithdrawals, moneyTransfers, clientTransfers, refreshAll,
+    atmWithdrawals, moneyTransfers, clientTransfers, cashWalletEntries, refreshAll,
   } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
@@ -98,7 +98,7 @@ export default function ExportScreen() {
 
     const data = {
       general, legs, travels, receipts,
-      exchanges, atmWithdrawals, moneyTransfers, clientTransfers,
+      exchanges, atmWithdrawals, moneyTransfers, clientTransfers, cashWalletEntries,
     };
 
     const err = validateExportData(data);
