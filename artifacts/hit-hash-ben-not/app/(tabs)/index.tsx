@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import {
@@ -13,10 +12,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
 interface QuickAction {
-  icon: keyof typeof Feather.glyphMap;
+  emoji: string;
   label: string;
   onPress: () => void;
-  color: string;
+  colorKey: "primary" | "success" | "warning" | "purple" | "destructive";
 }
 
 export default function AddScreen() {
@@ -26,39 +25,39 @@ export default function AddScreen() {
 
   const actions: QuickAction[] = [
     {
-      icon: "file-text",
+      emoji: "🧾",
       label: "General Expense",
-      color: colors.primary,
+      colorKey: "primary",
       onPress: () => router.push("/add-expense"),
     },
     {
-      icon: "credit-card",
+      emoji: "🏧",
       label: "ATM Withdrawal",
-      color: colors.success,
+      colorKey: "success",
       onPress: () => router.push("/add-atm"),
     },
     {
-      icon: "map",
+      emoji: "✈️",
       label: "Trip",
-      color: colors.warning,
+      colorKey: "warning",
       onPress: () => router.push("/(tabs)/trip"),
     },
     {
-      icon: "refresh-cw",
+      emoji: "💱",
       label: "Currency Exchange",
-      color: colors.purple,
+      colorKey: "purple",
       onPress: () => router.push("/add-exchange"),
     },
     {
-      icon: "user",
+      emoji: "🤝",
       label: "Client Transfer",
-      color: colors.destructive,
+      colorKey: "destructive",
       onPress: () => router.push("/add-client-transfer"),
     },
     {
-      icon: "send",
+      emoji: "📤",
       label: "Teammate Transfer",
-      color: colors.success,
+      colorKey: "success",
       onPress: () => router.push("/add-money-transfer"),
     },
   ];
@@ -75,32 +74,25 @@ export default function AddScreen() {
       ]}
     >
       <View style={styles.grid}>
-        {actions.map((action) => (
-          <TouchableOpacity
-            key={action.label}
-            onPress={action.onPress}
-            style={[
-              styles.card,
-              {
-                backgroundColor: colors.card,
-                shadowColor: colors.shadowColor,
-              },
-            ]}
-            activeOpacity={0.75}
-          >
-            <View
+        {actions.map((action) => {
+          const tint = colors[action.colorKey];
+          return (
+            <TouchableOpacity
+              key={action.label}
+              onPress={action.onPress}
               style={[
-                styles.iconWrap,
-                { backgroundColor: action.color + "18" },
+                styles.card,
+                { backgroundColor: tint + "22" },
               ]}
+              activeOpacity={0.75}
             >
-              <Feather name={action.icon} size={26} color={action.color} />
-            </View>
-            <Text style={[styles.label, { color: colors.foreground }]}>
-              {action.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text style={styles.emoji}>{action.emoji}</Text>
+              <Text style={[styles.label, { color: tint }]} numberOfLines={2}>
+                {action.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -115,29 +107,26 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 14,
     alignContent: "center",
   },
   card: {
     width: "47.5%",
-    borderRadius: 18,
-    padding: 22,
-    gap: 16,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  iconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 15,
+    aspectRatio: 1,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+    gap: 10,
+    padding: 16,
+  },
+  emoji: {
+    fontSize: 46,
+    lineHeight: 56,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-    lineHeight: 20,
+    textAlign: "center",
+    lineHeight: 18,
   },
 });
