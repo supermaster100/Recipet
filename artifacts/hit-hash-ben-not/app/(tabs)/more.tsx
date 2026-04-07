@@ -173,18 +173,25 @@ export default function MoreScreen() {
         </Text>
         <View style={styles.group}>
           <SettingsRow
+            icon="user"
+            label="General Data"
+            subtitle="Worker number, division, cost center"
+            color="#3077FF"
+            onPress={() => router.push("/general-data")}
+          />
+          <SettingsRow
+            icon="pie-chart"
+            label="Budgets"
+            subtitle="Manage budget codes"
+            color="#FF9500"
+            onPress={() => router.push("/budgets")}
+          />
+          <SettingsRow
             icon="download"
             label="Export to CSV"
             subtitle="Export all expenses and trips"
             color="#34C759"
             onPress={() => router.push("/export")}
-          />
-          <SettingsRow
-            icon="pie-chart"
-            label="Budgets"
-            subtitle="Set monthly spending limits"
-            color="#FF9500"
-            onPress={() => router.push("/budgets")}
           />
         </View>
 
