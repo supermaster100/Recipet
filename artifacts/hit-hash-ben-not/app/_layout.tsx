@@ -26,11 +26,6 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="add-expense" options={{ presentation: "modal" }} />
       <Stack.Screen name="edit-expense/[id]" options={{ presentation: "modal" }} />
-      <Stack.Screen name="add-trip" options={{ presentation: "modal" }} />
-      <Stack.Screen name="trip/[id]" />
-      <Stack.Screen name="trip/[id]/add-leg" options={{ presentation: "modal" }} />
-      <Stack.Screen name="trip/[id]/add-hotel" options={{ presentation: "modal" }} />
-      <Stack.Screen name="trip/[id]/add-receipt" options={{ presentation: "modal" }} />
       <Stack.Screen name="add-hotel-night" options={{ presentation: "modal" }} />
       <Stack.Screen name="edit-hotel-night/[id]" options={{ presentation: "modal" }} />
       <Stack.Screen name="add-exchange" options={{ presentation: "modal" }} />

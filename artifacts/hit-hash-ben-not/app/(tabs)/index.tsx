@@ -43,9 +43,9 @@ export default function AddScreen() {
     },
     {
       icon: "map",
-      label: "New Trip",
+      label: "Trip",
       color: colors.warning,
-      onPress: () => router.push("/add-trip"),
+      onPress: () => router.push("/(tabs)/trip"),
     },
     {
       icon: "refresh-cw",
