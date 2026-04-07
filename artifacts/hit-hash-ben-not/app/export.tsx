@@ -57,8 +57,6 @@ export default function ExportScreen() {
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [exportAll, setExportAll] = useState(false);
-  const [includePhotos] = useState(true);
   const [clearAfter, setClearAfter] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
@@ -72,7 +70,9 @@ export default function ExportScreen() {
     AsyncStorage.setItem(EMAIL_KEY, v).catch(() => {});
   }
 
-  const totalItems = receipts.length + travels.length + exchanges.length + atmWithdrawals.length;
+  const totalItems =
+    receipts.length + travels.length + exchanges.length +
+    atmWithdrawals.length + moneyTransfers.length + clientTransfers.length;
 
   function handleExport() {
     if (Platform.OS === "web") {
@@ -101,33 +101,30 @@ export default function ExportScreen() {
       return;
     }
 
-    if (clearAfter) {
-      Alert.alert(
-        "Clear After Export?",
-        "After sending the email, all trip data (receipts, hotel nights, exchanges, ATM withdrawals, money/client transfers, and legs) will be permanently cleared. General data and budgets are kept.\n\nContinue?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Continue",
-            onPress: () => doExport(data),
-          },
-        ]
-      );
-    } else {
-      doExport(data);
-    }
+    const clearLine = clearAfter
+      ? "\n\nAll trip data will be cleared after the email is sent."
+      : "";
+
+    Alert.alert(
+      "Export all?",
+      `${totalItems} item${totalItems !== 1 ? "s" : ""} will be exported to CSV & Excel and attached to an email.${clearLine}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Yes", onPress: () => doExport(data) },
+      ]
+    );
   }
 
   async function doExport(data: Parameters<typeof runExport>[0]) {
     setRunning(true);
     setProgress("Preparing…");
     try {
-      const result = await runExport(data, recipientEmail, clearAfter, includePhotos, setProgress);
+      const result = await runExport(data, recipientEmail, clearAfter, true, setProgress);
       if (result === "sent") {
         if (clearAfter) await refreshAll();
         Alert.alert("Export Complete", "Your expense report was sent successfully.");
         router.back();
-      } else if (result === "cancelled") {
+      } else if (result === "error") {
         setProgress("");
       }
     } finally {
@@ -136,7 +133,7 @@ export default function ExportScreen() {
     }
   }
 
-  const canExport = !running && exportAll && receipts.length > 0;
+  const canExport = !running && receipts.length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -175,16 +172,9 @@ export default function ExportScreen() {
 
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.sectionHeader}>
-            <Feather name="package" size={16} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>What to Export</Text>
+            <Feather name="settings" size={16} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Options</Text>
           </View>
-          <CheckRow
-            label="Export all?"
-            subtitle={`All ${totalItems} item${totalItems !== 1 ? "s" : ""} across every category will be included`}
-            checked={exportAll}
-            onToggle={() => setExportAll(!exportAll)}
-          />
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <CheckRow
             label="Clear all trip data after export"
             subtitle="Receipts, hotels, exchanges, transfers. General data and budgets are kept."

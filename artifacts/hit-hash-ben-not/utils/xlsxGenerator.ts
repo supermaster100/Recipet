@@ -36,11 +36,12 @@ export function buildXLSXBase64(
   XLSX.utils.book_append_sheet(wb, wsLegs, "Legs");
 
   const wsTravels = XLSX.utils.aoa_to_sheet([
-    ["Num", "DepartureDate", "DepartureCountry", "DepartureCity", "ReturnDate", "ArrivalCountry", "ArrivalCity",
+    ["Num", "Departure", "DepartureDate", "DepartureHour", "DepartureCountry", "DepartureCity",
+      "Arrival", "ReturnDate", "ArrivalHour", "ArrivalCountry", "ArrivalCity",
       "PlaceOfStaying", "Nights", "RatePerNight", "CurrencyPN", "Breakfast", "PaymentMethod",
       "HotelExtraFees", "CurrencyHEF", "Description", "Photo"],
-    ...travels.map((t) => [t.num, t.departureDate, t.departureCountry, t.departureCity,
-      t.returnDate, t.arrivalCountry, t.arrivalCity, t.placeOfStaying, t.nights, t.ratePerNight,
+    ...travels.map((t) => [t.num, t.departure, t.departureDate, t.departureHour, t.departureCountry, t.departureCity,
+      t.arrival, t.returnDate, t.arrivalHour, t.arrivalCountry, t.arrivalCity, t.placeOfStaying, t.nights, t.ratePerNight,
       t.currencyPN, t.breakfast ? "YES" : "NO", t.paymentMethod, t.hotelExtraFees, t.currencyHEF,
       t.description, photoName(t.photo, uriToName)]),
   ]);

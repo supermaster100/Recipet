@@ -46,8 +46,24 @@ export interface ValidationError {
 }
 
 export function validateExportData(data: ExportData): ValidationError | null {
-  if (!data.general || !data.general.workerNumber.trim()) {
-    return { message: "General Data is not filled in (Worker Number is required).", screen: "General Data" };
+  const g = data.general;
+  if (!g) {
+    return { message: "General Data has not been set up yet.", screen: "General Data" };
+  }
+  if (!g.workerNumber.trim()) {
+    return { message: "Worker Number is required in General Data.", screen: "General Data" };
+  }
+  if (!g.division.trim()) {
+    return { message: "Division is required in General Data.", screen: "General Data" };
+  }
+  if (!g.month) {
+    return { message: "Month is required in General Data.", screen: "General Data" };
+  }
+  if (!g.year) {
+    return { message: "Year is required in General Data.", screen: "General Data" };
+  }
+  if (!g.costCenter.trim()) {
+    return { message: "Cost Center is required in General Data.", screen: "General Data" };
   }
   if (data.receipts.length === 0) {
     return { message: "No expenses found. Please add at least one expense receipt before exporting.", screen: "Expenses" };
@@ -219,8 +235,9 @@ export async function runExport(
       await clearAllData(data);
     }
 
+    if (result.status === MailComposer.MailComposerStatus.SENT) return "sent";
     if (result.status === MailComposer.MailComposerStatus.CANCELLED) return "cancelled";
-    return "sent";
+    return "error";
   } catch (err) {
     console.error("Export error:", err);
     Alert.alert("Export Failed", "Something went wrong during export. Please try again.");
