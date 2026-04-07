@@ -114,6 +114,7 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
     );
   `);
 
+
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS Travels (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

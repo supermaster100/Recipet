@@ -411,7 +411,7 @@ export default function TripScreen() {
             await TravelDB.delete(id);
           }
           setSelectedIds(new Set());
-          const updated = legId ? await TravelDB.getByLegId(legId) : [];
+          const updated = legId !== null ? await TravelDB.getByLegId(legId) : [];
           setHotels(updated);
         },
       },
@@ -438,7 +438,7 @@ export default function TripScreen() {
   }
 
   function handleAddHotel() {
-    if (!legId) {
+    if (legId === null) {
       Alert.alert("Save Trip First", "Please save the trip data before adding hotel nights.");
       return;
     }
