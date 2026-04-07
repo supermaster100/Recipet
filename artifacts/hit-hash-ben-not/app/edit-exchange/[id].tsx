@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ImageField } from "@/components/ui/ImageField";
+import { deletePhotoFromLocal } from "@/utils/photoUtils";
 import { useAppContext } from "@/context/AppContext";
 import { ExchangeDB } from "@/db/database";
 import { CURRENCIES } from "@/db/types";
@@ -126,6 +127,7 @@ export default function EditExchangeScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
+          if (exchange.photo) await deletePhotoFromLocal(exchange.photo);
           await ExchangeDB.delete(exchange.id);
           await refreshExchanges();
           router.back();

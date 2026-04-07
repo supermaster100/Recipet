@@ -23,6 +23,7 @@ import { ReceiptDB } from "@/db/database";
 import { CURRENCIES, RECEIPT_TYPES, type Currency, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 import { ImageField } from "@/components/ui/ImageField";
+import { deletePhotoFromLocal } from "@/utils/photoUtils";
 
 interface FormErrors {
   type?: string;
@@ -287,6 +288,7 @@ export default function EditExpenseScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
+          if (receipt.photo) await deletePhotoFromLocal(receipt.photo);
           await ReceiptDB.softDelete(receipt.id);
           await refreshReceipts();
           router.back();
