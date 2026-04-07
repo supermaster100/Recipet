@@ -49,8 +49,11 @@ export function validateExportData(data: ExportData): ValidationError | null {
   if (!data.general || !data.general.workerNumber.trim()) {
     return { message: "General Data is not filled in (Worker Number is required).", screen: "General Data" };
   }
-  if (data.receipts.length === 0 && data.travels.length === 0) {
-    return { message: "No expenses found. Please add at least one expense or hotel night.", screen: "Expenses / Trip" };
+  const totalItems =
+    data.receipts.length + data.travels.length + data.exchanges.length +
+    data.atmWithdrawals.length + data.moneyTransfers.length + data.clientTransfers.length;
+  if (totalItems === 0) {
+    return { message: "Nothing to export. Add at least one expense, hotel night, or exchange.", screen: "Expenses / Trip / Exchange" };
   }
   return null;
 }
@@ -71,14 +74,41 @@ function tripDatesLabel(travels: Travel[], receipts: Receipt[]): string {
   return first === last ? first! : `${first} to ${last}`;
 }
 
-async function compressPhoto(uri: string, targetBytes: number): Promise<string> {
+interface PhotoEntry {
+  originalUri: string;
+  exportName: string;
+  attachmentUri: string;
+}
+
+function buildPhotoEntries(data: ExportData, cacheDir: string): PhotoEntry[] {
+  const entries: PhotoEntry[] = [];
+  const seen = new Set<string>();
+
+  function add(uri: string | null, prefix: string, id: number) {
+    if (!uri || seen.has(uri)) return;
+    seen.add(uri);
+    const exportName = `${prefix}_${id}.jpg`;
+    entries.push({ originalUri: uri, exportName, attachmentUri: `${cacheDir}${exportName}` });
+  }
+
+  for (const r of data.receipts) add(r.photo, "receipt", r.id);
+  for (const t of data.travels) add(t.photo, "hotel", t.id);
+  for (const x of data.exchanges) add(x.photo, "exchange", x.id);
+  for (const a of data.atmWithdrawals) add(a.photo, "atm", a.id);
+  for (const m of data.moneyTransfers) add(m.photo, "mtransfer", m.id);
+  for (const c of data.clientTransfers) add(c.photo, "ctransfer", c.id);
+
+  return entries;
+}
+
+async function compressToFile(originalUri: string, destUri: string, targetBytes: number): Promise<void> {
   const qual = targetBytes <= TARGET_LOW_BYTES ? 0.3 : 0.6;
   const res = await ImageManipulator.manipulateAsync(
-    uri,
+    originalUri,
     [{ resize: { width: 1200 } }],
     { compress: qual, format: ImageManipulator.SaveFormat.JPEG }
   );
-  return res.uri;
+  await FileSystem.moveAsync({ from: res.uri, to: destUri });
 }
 
 async function getFileSize(uri: string): Promise<number> {
@@ -90,27 +120,20 @@ async function getFileSize(uri: string): Promise<number> {
   }
 }
 
-function allPhotos(data: ExportData): string[] {
-  const paths: string[] = [];
-  for (const r of data.receipts) if (r.photo) paths.push(r.photo);
-  for (const t of data.travels) if (t.photo) paths.push(t.photo);
-  for (const x of data.exchanges) if (x.photo) paths.push(x.photo);
-  for (const a of data.atmWithdrawals) if (a.photo) paths.push(a.photo);
-  for (const m of data.moneyTransfers) if (m.photo) paths.push(m.photo);
-  for (const c of data.clientTransfers) if (c.photo) paths.push(c.photo);
-  return paths;
-}
-
 export async function runExport(
   data: ExportData,
   recipientEmail: string,
   clearAfter: boolean,
+  includePhotos: boolean,
   onProgress: (msg: string) => void,
 ): Promise<"sent" | "cancelled" | "error"> {
   if (Platform.OS === "web") {
     Alert.alert("Not Supported", "Email export is only available on a real device.");
     return "error";
   }
+
+  const cacheDir = FileSystem.cacheDirectory ?? "";
+  const dateTag = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 
   try {
     const isAvailable = await MailComposer.isAvailableAsync();
@@ -121,35 +144,37 @@ export async function runExport(
 
     onProgress("Preparing files…");
 
-    const photos = allPhotos(data);
-    const compressedUris: string[] = [];
+    const photoEntries = includePhotos ? buildPhotoEntries(data, cacheDir) : [];
+    const uriToName = new Map<string, string>(
+      photoEntries.map((e) => [e.originalUri, e.exportName])
+    );
 
-    if (photos.length > 0) {
+    if (photoEntries.length > 0) {
       onProgress("Compressing photos (pass 1)…");
-      for (const p of photos) {
-        const compressed = await compressPhoto(p, TARGET_HIGH_BYTES).catch(() => p);
-        compressedUris.push(compressed);
+      for (const entry of photoEntries) {
+        await compressToFile(entry.originalUri, entry.attachmentUri, TARGET_HIGH_BYTES).catch(() => {});
       }
 
-      const sizes = await Promise.all(compressedUris.map((u) => getFileSize(u)));
+      const sizes = await Promise.all(photoEntries.map((e) => getFileSize(e.attachmentUri)));
       const total = sizes.reduce((a, b) => a + b, 0);
 
       if (total > MAX_TOTAL_BYTES) {
         onProgress("Compressing photos (pass 2)…");
-        const recompressed: string[] = [];
-        for (const u of compressedUris) {
-          const r = await compressPhoto(u, TARGET_LOW_BYTES).catch(() => u);
-          recompressed.push(r);
+        for (const entry of photoEntries) {
+          await compressToFile(entry.attachmentUri, entry.attachmentUri + ".tmp.jpg", TARGET_LOW_BYTES).catch(() => {});
+          await FileSystem.moveAsync({ from: entry.attachmentUri + ".tmp.jpg", to: entry.attachmentUri }).catch(() => {});
         }
-        compressedUris.splice(0, compressedUris.length, ...recompressed);
 
-        const sizes2 = await Promise.all(compressedUris.map((u) => getFileSize(u)));
+        const sizes2 = await Promise.all(photoEntries.map((e) => getFileSize(e.attachmentUri)));
         const total2 = sizes2.reduce((a, b) => a + b, 0);
         if (total2 > MAX_TOTAL_BYTES) {
           Alert.alert(
             "Too Many Photos",
             "Your export exceeds 20 MB even after maximum compression. Please split into two separate exports (e.g., first half and second half of receipts)."
           );
+          for (const entry of photoEntries) {
+            await FileSystem.deleteAsync(entry.attachmentUri, { idempotent: true }).catch(() => {});
+          }
           return "error";
         }
       }
@@ -158,42 +183,49 @@ export async function runExport(
     onProgress("Generating CSV…");
     const csvContent = buildCSV(
       data.general, data.legs, data.travels, data.receipts,
-      data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers
+      data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers,
+      uriToName
     );
 
-    const cacheDir = FileSystem.cacheDirectory ?? "";
-    const dateTag = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const csvPath = `${cacheDir}expenses_${dateTag}.csv`;
     await FileSystem.writeAsStringAsync(csvPath, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
 
     onProgress("Generating Excel…");
     const xlsxB64 = buildXLSXBase64(
       data.general, data.legs, data.travels, data.receipts,
-      data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers
+      data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers,
+      uriToName
     );
     const xlsxPath = `${cacheDir}expenses_${dateTag}.xlsx`;
     await FileSystem.writeAsStringAsync(xlsxPath, xlsxB64, { encoding: FileSystem.EncodingType.Base64 });
 
     onProgress("Opening email…");
     const subject = `Expenses Export – ${tripDatesLabel(data.travels, data.receipts)}`;
+    const attachmentPaths = [csvPath, xlsxPath, ...photoEntries.map((e) => e.attachmentUri)];
     const result = await MailComposer.composeAsync({
       recipients: recipientEmail ? [recipientEmail] : [],
       subject,
       body: "Please find the expense report files and receipt photos attached.",
-      attachments: [csvPath, xlsxPath, ...compressedUris],
+      attachments: attachmentPaths,
     });
 
     await FileSystem.deleteAsync(csvPath, { idempotent: true }).catch(() => {});
     await FileSystem.deleteAsync(xlsxPath, { idempotent: true }).catch(() => {});
-
-    if (result.status === MailComposer.MailComposerStatus.SENT && clearAfter) {
-      onProgress("Clearing trip data…");
-      await clearAllData();
+    for (const entry of photoEntries) {
+      await FileSystem.deleteAsync(entry.attachmentUri, { idempotent: true }).catch(() => {});
     }
 
-    return result.status === MailComposer.MailComposerStatus.SENT ? "sent"
-      : result.status === MailComposer.MailComposerStatus.CANCELLED ? "cancelled"
-      : "sent";
+    const wasSent =
+      result.status === MailComposer.MailComposerStatus.SENT ||
+      result.status === MailComposer.MailComposerStatus.SAVED;
+
+    if (wasSent && clearAfter) {
+      onProgress("Clearing trip data…");
+      await clearAllData(data);
+    }
+
+    if (result.status === MailComposer.MailComposerStatus.CANCELLED) return "cancelled";
+    return "sent";
   } catch (err) {
     console.error("Export error:", err);
     Alert.alert("Export Failed", "Something went wrong during export. Please try again.");
@@ -201,29 +233,25 @@ export async function runExport(
   }
 }
 
-async function clearAllData(): Promise<void> {
-  const receipts = await ReceiptDB.getAll();
-  for (const r of receipts) await ReceiptDB.softDelete(r.id).catch(() => {});
+async function clearAllData(snapshot: ExportData): Promise<void> {
+  const photoUris: string[] = [
+    ...snapshot.receipts.map((r) => r.photo).filter(Boolean),
+    ...snapshot.travels.map((t) => t.photo).filter(Boolean),
+    ...snapshot.exchanges.map((x) => x.photo).filter(Boolean),
+    ...snapshot.atmWithdrawals.map((a) => a.photo).filter(Boolean),
+    ...snapshot.moneyTransfers.map((m) => m.photo).filter(Boolean),
+    ...snapshot.clientTransfers.map((c) => c.photo).filter(Boolean),
+  ] as string[];
 
-  const exchanges = await ExchangeDB.getAll();
-  for (const x of exchanges) await ExchangeDB.softDelete(x.id).catch(() => {});
+  for (const r of snapshot.receipts) await ReceiptDB.softDelete(r.id).catch(() => {});
+  for (const x of snapshot.exchanges) await ExchangeDB.softDelete(x.id).catch(() => {});
+  for (const t of snapshot.travels) await TravelDB.softDelete(t.id).catch(() => {});
+  for (const l of snapshot.legs) await LegDB.softDelete(l.id).catch(() => {});
+  for (const a of snapshot.atmWithdrawals) await ATMDB.delete(a.id).catch(() => {});
+  for (const m of snapshot.moneyTransfers) await MoneyTransferDB.delete(m.id).catch(() => {});
+  for (const c of snapshot.clientTransfers) await ClientTransferDB.delete(c.id).catch(() => {});
 
-  const travels = await TravelDB.getAll();
-  for (const t of travels) {
-    if (t.deleted_at === null) {
-      await TravelDB.softDelete(t.id).catch(() => {});
-    }
+  for (const uri of photoUris) {
+    await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
   }
-
-  const legs = await LegDB.getAll();
-  for (const l of legs) await LegDB.softDelete(l.id).catch(() => {});
-
-  const atm = await ATMDB.getAll();
-  for (const a of atm) await ATMDB.delete(a.id).catch(() => {});
-
-  const moneyTransfers = await MoneyTransferDB.getAll();
-  for (const m of moneyTransfers) await MoneyTransferDB.delete(m.id).catch(() => {});
-
-  const clientTransfers = await ClientTransferDB.getAll();
-  for (const c of clientTransfers) await ClientTransferDB.delete(c.id).catch(() => {});
 }

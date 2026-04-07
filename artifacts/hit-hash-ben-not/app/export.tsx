@@ -57,7 +57,7 @@ export default function ExportScreen() {
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [exportAll, setExportAll] = useState(true);
+  const [includePhotos, setIncludePhotos] = useState(true);
   const [clearAfter, setClearAfter] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
@@ -121,7 +121,7 @@ export default function ExportScreen() {
     setRunning(true);
     setProgress("Preparing…");
     try {
-      const result = await runExport(data, recipientEmail, clearAfter, setProgress);
+      const result = await runExport(data, recipientEmail, clearAfter, includePhotos, setProgress);
       if (result === "sent") {
         if (clearAfter) await refreshAll();
         Alert.alert("Export Complete", "Your expense report was sent successfully.");
@@ -178,10 +178,10 @@ export default function ExportScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>What to Export</Text>
           </View>
           <CheckRow
-            label="Export all data"
-            subtitle={`${totalItems} item${totalItems !== 1 ? "s" : ""} total`}
-            checked={exportAll}
-            onToggle={() => setExportAll(!exportAll)}
+            label="Include photo attachments"
+            subtitle={`${totalItems} item${totalItems !== 1 ? "s" : ""} total — attach receipt photos`}
+            checked={includePhotos}
+            onToggle={() => setIncludePhotos(!includePhotos)}
           />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <CheckRow

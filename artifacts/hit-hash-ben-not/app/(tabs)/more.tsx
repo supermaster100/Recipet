@@ -1,6 +1,7 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Modal,
@@ -8,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -15,6 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppHeader } from "@/components/ui/AppHeader";
 import { useColors } from "@/hooks/useColors";
+
+const EMAIL_KEY = "@export_recipient_email";
 
 const APP_VERSION = "1.0.0";
 
@@ -173,7 +177,12 @@ export default function MoreScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [showAbout, setShowAbout] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState("");
   const topInset = Platform.OS === "web" ? 67 : insets.top;
+
+  useEffect(() => {
+    AsyncStorage.getItem(EMAIL_KEY).then((v) => { if (v) setRecipientEmail(v); });
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -244,6 +253,43 @@ export default function MoreScreen() {
             onPress={() => router.push("/trash")}
             isLast
           />
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: 8 }]}>
+          SETTINGS
+        </Text>
+        <View style={[styles.group, { shadowColor: colors.shadowColor }]}>
+          <View style={[
+            styles.emailField,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}>
+            <View style={styles.emailHeader}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.primary + "18" }]}>
+                <Feather name="mail" size={18} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                  Export Recipient Email
+                </Text>
+                <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>
+                  Pre-fills the To: field when exporting
+                </Text>
+              </View>
+            </View>
+            <TextInput
+              style={[styles.emailInput, { color: colors.foreground, borderColor: colors.border }]}
+              value={recipientEmail}
+              onChangeText={(v) => {
+                setRecipientEmail(v);
+                AsyncStorage.setItem(EMAIL_KEY, v).catch(() => {});
+              }}
+              placeholder="accountant@company.com"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
         </View>
 
         <Text
@@ -406,5 +452,24 @@ const styles = StyleSheet.create({
   closeBtnText: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
+  },
+  emailField: {
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 16,
+    gap: 12,
+  },
+  emailHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  emailInput: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
   },
 });

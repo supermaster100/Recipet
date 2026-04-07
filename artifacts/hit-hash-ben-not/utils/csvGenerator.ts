@@ -12,10 +12,9 @@ function row(...fields: unknown[]): string {
   return fields.map(esc).join(",");
 }
 
-function photoName(path: string | null): string {
+function photoName(path: string | null, uriToName: Map<string, string>): string {
   if (!path) return "";
-  const parts = path.split("/");
-  return parts[parts.length - 1] ?? "";
+  return uriToName.get(path) ?? (path.split("/").pop() ?? "");
 }
 
 export function buildCSV(
@@ -27,6 +26,7 @@ export function buildCSV(
   atmWithdrawals: ATMWithdrawal[],
   moneyTransfers: MoneyTransfer[],
   clientTransfers: ClientTransfer[],
+  uriToName: Map<string, string> = new Map(),
 ): string {
   const lines: string[] = [];
 
@@ -55,7 +55,7 @@ export function buildCSV(
     lines.push(row("H", t.num, t.departure, t.departureDate, t.departureHour, t.departureCountry, t.departureCity,
       t.arrival, t.returnDate, t.arrivalHour, t.arrivalCountry, t.arrivalCity,
       t.placeOfStaying, t.nights, t.ratePerNight, t.currencyPN, t.breakfast ? "YES" : "NO",
-      t.paymentMethod, t.hotelExtraFees, t.currencyHEF, t.description, photoName(t.photo)));
+      t.paymentMethod, t.hotelExtraFees, t.currencyHEF, t.description, photoName(t.photo, uriToName)));
   }
   lines.push("");
 
@@ -63,35 +63,35 @@ export function buildCSV(
   lines.push("Row,Type,Amount,Currency,Date,NumberOfPeople,Division,CostCenter,SelfDeclaration,Note,Budget,Photo");
   for (const e of receipts) {
     lines.push(row("E", e.type, e.amount, e.currency, e.date, e.numberOfPeople,
-      e.division, e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.budget, photoName(e.photo)));
+      e.division, e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.budget, photoName(e.photo, uriToName)));
   }
   lines.push("");
 
   lines.push("# EXCHANGES");
   lines.push("Row,Date,AmountSpent,SpentCurrency,AmountReceived,ReceivedCurrency,Note,Photo");
   for (const x of exchanges) {
-    lines.push(row("X", x.date, x.amountSpent, x.spentCurrency, x.amountReceived, x.receivedCurrency, x.note, photoName(x.photo)));
+    lines.push(row("X", x.date, x.amountSpent, x.spentCurrency, x.amountReceived, x.receivedCurrency, x.note, photoName(x.photo, uriToName)));
   }
   lines.push("");
 
   lines.push("# ATM WITHDRAWALS");
   lines.push("Row,Date,CardLastFour,Amount,Currency,Photo");
   for (const a of atmWithdrawals) {
-    lines.push(row("ATM", a.date, a.cardLastFour, a.amount, a.currency, photoName(a.photo)));
+    lines.push(row("ATM", a.date, a.cardLastFour, a.amount, a.currency, photoName(a.photo, uriToName)));
   }
   lines.push("");
 
   lines.push("# MONEY TRANSFERS");
   lines.push("Row,ReceiptName,GiverName,WorkerNumber,Date,Amount,Currency,Photo");
   for (const m of moneyTransfers) {
-    lines.push(row("MT", m.receiptName, m.giverName, m.workerNumber, m.date, m.amount, m.currency, photoName(m.photo)));
+    lines.push(row("MT", m.receiptName, m.giverName, m.workerNumber, m.date, m.amount, m.currency, photoName(m.photo, uriToName)));
   }
   lines.push("");
 
   lines.push("# CLIENT TRANSFERS");
   lines.push("Row,ClientName,GiverName,Date,Amount,Currency,Photo");
   for (const c of clientTransfers) {
-    lines.push(row("CT", c.clientName, c.giverName, c.date, c.amount, c.currency, photoName(c.photo)));
+    lines.push(row("CT", c.clientName, c.giverName, c.date, c.amount, c.currency, photoName(c.photo, uriToName)));
   }
 
   return lines.join("\n");
