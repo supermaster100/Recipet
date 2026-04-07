@@ -25,7 +25,7 @@ interface QuickAction {
 export default function AddScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { expenses, travels, exchanges } = useAppContext();
+  const { receipts, travels, exchanges } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const actions: QuickAction[] = [
@@ -118,7 +118,7 @@ export default function AddScreen() {
         >
           <View style={styles.stat}>
             <Text style={[styles.statValue, { color: colors.primary }]}>
-              {expenses.length}
+              {receipts.length}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
               Expenses

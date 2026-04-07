@@ -17,7 +17,7 @@ import { AppHeader } from "@/components/ui/AppHeader";
 import { CategoryPill } from "@/components/ui/CategoryPill";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppContext } from "@/context/AppContext";
-import type { GeneralExpense } from "@/db/types";
+import type { Receipt } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
 const MONTHS = [
@@ -29,7 +29,7 @@ function ExpenseCard({
   expense,
   onPress,
 }: {
-  expense: GeneralExpense;
+  expense: Receipt;
   onPress: () => void;
 }) {
   const colors = useColors();
@@ -52,7 +52,7 @@ function ExpenseCard({
             style={[styles.cardDescription, { color: colors.foreground }]}
             numberOfLines={1}
           >
-            {expense.description || "—"}
+            {expense.note || "—"}
           </Text>
           <Text style={[styles.cardDate, { color: colors.mutedForeground }]}>
             {expense.date}
@@ -65,7 +65,7 @@ function ExpenseCard({
         />
       </View>
       <View style={styles.cardBottom}>
-        <CategoryPill category={expense.category} />
+        <CategoryPill category={expense.type} />
         {expense.division ? (
           <Text style={[styles.division, { color: colors.mutedForeground }]}>
             {expense.division}
@@ -79,17 +79,17 @@ function ExpenseCard({
 export default function ExpensesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { expenses, isDbReady } = useAppContext();
+  const { receipts, isDbReady } = useAppContext();
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
 
+  const monthStr = String(selectedYear) + "-" + String(selectedMonth).padStart(2, "0");
+
   const filtered = useMemo(() => {
-    return expenses.filter(
-      (e) => e.month === selectedMonth && e.year === selectedYear
-    );
-  }, [expenses, selectedMonth, selectedYear]);
+    return receipts.filter((e) => e.date.startsWith(monthStr));
+  }, [receipts, monthStr]);
 
   const total = useMemo(() => {
     const byCurrency: Record<string, number> = {};

@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import type { ExpenseCategory } from "@/db/types";
-import { EXPENSE_CATEGORIES } from "@/db/types";
+import type { ReceiptType } from "@/db/types";
+import { RECEIPT_TYPES } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
-const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
+const RECEIPT_TYPE_COLORS: Record<ReceiptType, string> = {
   MEALS: "#FF9500",
   ACCOMMODATION: "#5856D6",
   TRANSPORT: "#34C759",
@@ -15,14 +15,14 @@ const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
 };
 
 interface CategoryPillProps {
-  category: ExpenseCategory;
+  category: ReceiptType;
 }
 
 export function CategoryPill({ category }: CategoryPillProps) {
   const colors = useColors();
   const label =
-    EXPENSE_CATEGORIES.find((c) => c.key === category)?.label ?? category;
-  const color = CATEGORY_COLORS[category] ?? colors.mutedForeground;
+    RECEIPT_TYPES.find((c) => c.key === category)?.label ?? category;
+  const color = RECEIPT_TYPE_COLORS[category] ?? colors.mutedForeground;
 
   return (
     <View style={[styles.pill, { backgroundColor: color + "22" }]}>
@@ -31,7 +31,7 @@ export function CategoryPill({ category }: CategoryPillProps) {
   );
 }
 
-export { CATEGORY_COLORS };
+export { RECEIPT_TYPE_COLORS };
 
 const styles = StyleSheet.create({
   pill: {

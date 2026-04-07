@@ -45,7 +45,7 @@ function ExchangeCard({
             style={[styles.currencyBadge, { backgroundColor: colors.primary + "22" }]}
           >
             <Text style={[styles.currencyCode, { color: colors.primary }]}>
-              {exchange.fromCurrency}
+              {exchange.spentCurrency}
             </Text>
           </View>
           <Feather name="arrow-right" size={14} color={colors.mutedForeground} />
@@ -53,7 +53,7 @@ function ExchangeCard({
             style={[styles.currencyBadge, { backgroundColor: colors.secondary }]}
           >
             <Text style={[styles.currencyCode, { color: colors.foreground }]}>
-              {exchange.toCurrency}
+              {exchange.receivedCurrency}
             </Text>
           </View>
         </View>
@@ -63,16 +63,16 @@ function ExchangeCard({
       </View>
       <View style={styles.amounts}>
         <Text style={[styles.fromAmount, { color: colors.mutedForeground }]}>
-          {exchange.amountFrom.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {exchange.fromCurrency}
+          {exchange.amountSpent.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {exchange.spentCurrency}
         </Text>
         <Text style={[styles.arrow, { color: colors.mutedForeground }]}>→</Text>
         <Text style={[styles.toAmount, { color: colors.foreground }]}>
-          {exchange.amountTo.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {exchange.toCurrency}
+          {exchange.amountReceived.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {exchange.receivedCurrency}
         </Text>
       </View>
       <Text style={[styles.rate, { color: colors.mutedForeground }]}>
-        Rate: 1 {exchange.fromCurrency} = {exchange.rate.toFixed(4)} {exchange.toCurrency}
-        {exchange.description ? ` · ${exchange.description}` : ""}
+        {exchange.spentCurrency} → {exchange.receivedCurrency}
+        {exchange.note ? ` · ${exchange.note}` : ""}
       </Text>
     </Pressable>
   );

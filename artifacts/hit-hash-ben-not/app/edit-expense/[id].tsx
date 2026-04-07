@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Alert,
   Platform,
@@ -16,12 +16,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppContext } from "@/context/AppContext";
-import { GeneralExpenseDB } from "@/db/database";
+import { ReceiptDB } from "@/db/database";
 import {
   CURRENCIES,
-  EXPENSE_CATEGORIES,
-  type ExpenseCategory,
-  type GeneralExpense,
+  RECEIPT_TYPES,
+  type ReceiptType,
 } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
@@ -29,40 +28,42 @@ export default function EditExpenseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refreshExpenses, expenses } = useAppContext();
+  const { refreshReceipts, receipts } = useAppContext();
 
-  const expense = expenses.find((e) => e.id === Number(id));
-  const [date, setDate] = useState(expense?.date ?? "");
-  const [description, setDescription] = useState(expense?.description ?? "");
-  const [amount, setAmount] = useState(String(expense?.amount ?? ""));
-  const [currency, setCurrency] = useState(expense?.currency ?? "ILS");
-  const [category, setCategory] = useState<ExpenseCategory>(expense?.category ?? "OTHER");
-  const [division, setDivision] = useState(expense?.division ?? "");
-  const [costCenter, setCostCenter] = useState(expense?.costCenter ?? "");
-  const [notes, setNotes] = useState(expense?.notes ?? "");
+  const receipt = receipts.find((e) => e.id === Number(id));
+  const [date, setDate] = useState(receipt?.date ?? "");
+  const [note, setNote] = useState(receipt?.note ?? "");
+  const [amount, setAmount] = useState(String(receipt?.amount ?? ""));
+  const [currency, setCurrency] = useState(receipt?.currency ?? "ILS");
+  const [type, setType] = useState<ReceiptType>(receipt?.type ?? "OTHER");
+  const [division, setDivision] = useState(receipt?.division ?? "");
+  const [costCenter, setCostCenter] = useState(receipt?.costCenter ?? "");
+  const [numberOfPeople, setNumberOfPeople] = useState(String(receipt?.numberOfPeople ?? "1"));
+  const [selfDeclaration, setSelfDeclaration] = useState(receipt?.selfDeclaration ?? false);
   const [saving, setSaving] = useState(false);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   async function handleSave() {
-    if (!expense || !amount || isNaN(Number(amount))) return;
+    if (!receipt || !amount || isNaN(Number(amount))) return;
     setSaving(true);
     try {
-      await GeneralExpenseDB.update({
-        id: expense.id,
-        date,
-        month: expense.month,
-        year: expense.year,
-        description,
+      await ReceiptDB.update({
+        id: receipt.id,
+        type,
         amount: Number(amount),
         currency,
-        category,
+        date,
+        numberOfPeople: Number(numberOfPeople) || 1,
         division,
         costCenter,
-        notes,
-        receiptPath: expense.receiptPath,
+        selfDeclaration,
+        note,
+        photo: receipt.photo,
+        status: receipt.status,
+        export: receipt.export,
       });
-      await refreshExpenses();
+      await refreshReceipts();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {
@@ -73,26 +74,26 @@ export default function EditExpenseScreen() {
   }
 
   async function handleDelete() {
-    if (!expense) return;
-    Alert.alert("Delete Expense", "Are you sure?", [
+    if (!receipt) return;
+    Alert.alert("Delete Receipt", "Are you sure?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await GeneralExpenseDB.delete(expense.id);
-          await refreshExpenses();
+          await ReceiptDB.delete(receipt.id);
+          await refreshReceipts();
           router.back();
         },
       },
     ]);
   }
 
-  if (!expense) {
+  if (!receipt) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Text style={{ color: colors.foreground, textAlign: "center", marginTop: 100 }}>
-          Expense not found
+          Receipt not found
         </Text>
       </View>
     );
@@ -110,7 +111,7 @@ export default function EditExpenseScreen() {
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          Edit Expense
+          Edit Receipt
         </Text>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={handleDelete} hitSlop={8}>
@@ -151,12 +152,12 @@ export default function EditExpenseScreen() {
           />
         </View>
         <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>DESCRIPTION</Text>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>NOTE</Text>
           <TextInput
             style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder="What was this expense for?"
+            value={note}
+            onChangeText={setNote}
+            placeholder="What was this receipt for?"
             placeholderTextColor={colors.mutedForeground}
           />
         </View>
@@ -188,16 +189,16 @@ export default function EditExpenseScreen() {
           </ScrollView>
         </View>
         <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>CATEGORY</Text>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>TYPE</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipRow}>
-              {EXPENSE_CATEGORIES.map((cat) => (
+              {RECEIPT_TYPES.map((rt) => (
                 <Pressable
-                  key={cat.key}
-                  onPress={() => setCategory(cat.key)}
-                  style={[styles.chip, { backgroundColor: category === cat.key ? colors.primary : colors.card, borderColor: category === cat.key ? colors.primary : colors.border }]}
+                  key={rt.key}
+                  onPress={() => setType(rt.key)}
+                  style={[styles.chip, { backgroundColor: type === rt.key ? colors.primary : colors.card, borderColor: type === rt.key ? colors.primary : colors.border }]}
                 >
-                  <Text style={[styles.chipText, { color: category === cat.key ? colors.primaryForeground : colors.foreground }]}>{cat.label}</Text>
+                  <Text style={[styles.chipText, { color: type === rt.key ? colors.primaryForeground : colors.foreground }]}>{rt.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -224,16 +225,37 @@ export default function EditExpenseScreen() {
           />
         </View>
         <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>NOTES</Text>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>NUMBER OF PEOPLE</Text>
           <TextInput
-            style={[styles.input, styles.textArea, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Additional notes..."
+            style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
+            value={numberOfPeople}
+            onChangeText={setNumberOfPeople}
+            placeholder="1"
             placeholderTextColor={colors.mutedForeground}
-            multiline
-            numberOfLines={3}
+            keyboardType="number-pad"
           />
+        </View>
+        <View style={styles.field}>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>SELF DECLARATION</Text>
+          <Pressable
+            onPress={() => setSelfDeclaration((v) => !v)}
+            style={[
+              styles.toggle,
+              {
+                backgroundColor: selfDeclaration ? colors.primary + "22" : colors.card,
+                borderColor: selfDeclaration ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            <Feather
+              name={selfDeclaration ? "check-square" : "square"}
+              size={18}
+              color={selfDeclaration ? colors.primary : colors.mutedForeground}
+            />
+            <Text style={[styles.chipText, { color: colors.foreground }]}>
+              Self declaration receipt
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </View>
@@ -257,8 +279,8 @@ const styles = StyleSheet.create({
   field: { gap: 6 },
   fieldLabel: { fontSize: 12, fontFamily: "Inter_500Medium", letterSpacing: 0.3 },
   input: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, fontFamily: "Inter_400Regular" },
-  textArea: { minHeight: 80, textAlignVertical: "top" },
   chipRow: { flexDirection: "row", gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  toggle: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12 },
 });

@@ -1,3 +1,4 @@
+import * as SQLite from "expo-sqlite";
 import React, {
   createContext,
   useCallback,
@@ -5,29 +6,41 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { Platform } from "react-native";
 
 import {
   BudgetDB,
   ExchangeDB,
-  GeneralExpenseDB,
+  LegDB,
+  ReceiptDB,
   TravelDB,
+  GeneralDB,
   getDatabase,
 } from "@/db/database";
 import type {
   Budget,
   Exchange,
-  GeneralExpense,
+  General,
+  Leg,
+  Receipt,
   Travel,
 } from "@/db/types";
 
+type Database = SQLite.SQLiteDatabase | null;
+
 interface AppContextValue {
+  db: Database;
   isDbReady: boolean;
-  expenses: GeneralExpense[];
+  general: General | null;
+  receipts: Receipt[];
   travels: Travel[];
+  legs: Leg[];
   exchanges: Exchange[];
   budgets: Budget[];
-  refreshExpenses: () => Promise<void>;
+  refreshGeneral: () => Promise<void>;
+  refreshReceipts: () => Promise<void>;
   refreshTravels: () => Promise<void>;
+  refreshLegs: () => Promise<void>;
   refreshExchanges: () => Promise<void>;
   refreshBudgets: () => Promise<void>;
   refreshAll: () => Promise<void>;
@@ -36,20 +49,33 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [db, setDb] = useState<Database>(null);
   const [isDbReady, setIsDbReady] = useState(false);
-  const [expenses, setExpenses] = useState<GeneralExpense[]>([]);
+  const [general, setGeneral] = useState<General | null>(null);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [travels, setTravels] = useState<Travel[]>([]);
+  const [legs, setLegs] = useState<Leg[]>([]);
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
 
-  const refreshExpenses = useCallback(async () => {
-    const data = await GeneralExpenseDB.getAll();
-    setExpenses(data);
+  const refreshGeneral = useCallback(async () => {
+    const data = await GeneralDB.get();
+    setGeneral(data);
+  }, []);
+
+  const refreshReceipts = useCallback(async () => {
+    const data = await ReceiptDB.getAll();
+    setReceipts(data);
   }, []);
 
   const refreshTravels = useCallback(async () => {
     const data = await TravelDB.getAll();
     setTravels(data);
+  }, []);
+
+  const refreshLegs = useCallback(async () => {
+    const data = await LegDB.getAll();
+    setLegs(data);
   }, []);
 
   const refreshExchanges = useCallback(async () => {
@@ -64,16 +90,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const refreshAll = useCallback(async () => {
     await Promise.all([
-      refreshExpenses(),
+      refreshGeneral(),
+      refreshReceipts(),
       refreshTravels(),
+      refreshLegs(),
       refreshExchanges(),
       refreshBudgets(),
     ]);
-  }, [refreshExpenses, refreshTravels, refreshExchanges, refreshBudgets]);
+  }, [refreshGeneral, refreshReceipts, refreshTravels, refreshLegs, refreshExchanges, refreshBudgets]);
 
   useEffect(() => {
     getDatabase()
-      .then(() => {
+      .then((database) => {
+        if (Platform.OS !== "web") {
+          setDb(database as SQLite.SQLiteDatabase);
+        }
         setIsDbReady(true);
         return refreshAll();
       })
@@ -86,13 +117,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
+        db,
         isDbReady,
-        expenses,
+        general,
+        receipts,
         travels,
+        legs,
         exchanges,
         budgets,
-        refreshExpenses,
+        refreshGeneral,
+        refreshReceipts,
         refreshTravels,
+        refreshLegs,
         refreshExchanges,
         refreshBudgets,
         refreshAll,

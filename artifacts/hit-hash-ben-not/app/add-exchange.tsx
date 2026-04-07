@@ -29,31 +29,29 @@ export default function AddExchangeScreen() {
   const { refreshExchanges } = useAppContext();
 
   const [date, setDate] = useState(today());
-  const [fromCurrency, setFromCurrency] = useState<(typeof CURRENCIES)[number]>("USD");
-  const [toCurrency, setToCurrency] = useState<(typeof CURRENCIES)[number]>("ILS");
-  const [amountFrom, setAmountFrom] = useState("");
-  const [rate, setRate] = useState("");
-  const [description, setDescription] = useState("");
+  const [spentCurrency, setSpentCurrency] = useState<(typeof CURRENCIES)[number]>("USD");
+  const [receivedCurrency, setReceivedCurrency] = useState<(typeof CURRENCIES)[number]>("ILS");
+  const [amountSpent, setAmountSpent] = useState("");
+  const [amountReceived, setAmountReceived] = useState("");
+  const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
-  const amountTo =
-    amountFrom && rate
-      ? (Number(amountFrom) * Number(rate)).toFixed(2)
-      : "—";
 
   async function handleSave() {
-    if (!amountFrom || !rate) return;
+    if (!amountSpent || !amountReceived) return;
     setSaving(true);
     try {
       await ExchangeDB.insert({
         date,
-        fromCurrency,
-        toCurrency,
-        amountFrom: Number(amountFrom),
-        rate: Number(rate),
-        amountTo: Number(amountFrom) * Number(rate),
-        description,
+        amountSpent: Number(amountSpent),
+        spentCurrency,
+        amountReceived: Number(amountReceived),
+        receivedCurrency,
+        note,
+        photo: null,
+        status: "",
+        export: false,
       });
       await refreshExchanges();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -81,7 +79,7 @@ export default function AddExchangeScreen() {
         </Text>
         <TouchableOpacity
           onPress={handleSave}
-          disabled={saving || !amountFrom || !rate}
+          disabled={saving || !amountSpent || !amountReceived}
           hitSlop={8}
         >
           <Text
@@ -89,7 +87,7 @@ export default function AddExchangeScreen() {
               styles.saveBtn,
               {
                 color:
-                  !amountFrom || !rate
+                  !amountSpent || !amountReceived
                     ? colors.mutedForeground
                     : colors.primary,
               },
@@ -109,7 +107,7 @@ export default function AddExchangeScreen() {
       >
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            Date
+            DATE
           </Text>
           <TextInput
             style={[
@@ -125,26 +123,26 @@ export default function AddExchangeScreen() {
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            From Currency
+            SPENT CURRENCY
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipRow}>
               {CURRENCIES.map((c) => (
                 <Pressable
                   key={c}
-                  onPress={() => setFromCurrency(c)}
+                  onPress={() => setSpentCurrency(c)}
                   style={[
                     styles.chip,
                     {
-                      backgroundColor: fromCurrency === c ? colors.primary : colors.card,
-                      borderColor: fromCurrency === c ? colors.primary : colors.border,
+                      backgroundColor: spentCurrency === c ? colors.primary : colors.card,
+                      borderColor: spentCurrency === c ? colors.primary : colors.border,
                     },
                   ]}
                 >
                   <Text
                     style={[
                       styles.chipText,
-                      { color: fromCurrency === c ? colors.primaryForeground : colors.foreground },
+                      { color: spentCurrency === c ? colors.primaryForeground : colors.foreground },
                     ]}
                   >
                     {c}
@@ -157,26 +155,26 @@ export default function AddExchangeScreen() {
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            To Currency
+            RECEIVED CURRENCY
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipRow}>
               {CURRENCIES.map((c) => (
                 <Pressable
                   key={c}
-                  onPress={() => setToCurrency(c)}
+                  onPress={() => setReceivedCurrency(c)}
                   style={[
                     styles.chip,
                     {
-                      backgroundColor: toCurrency === c ? colors.primary : colors.card,
-                      borderColor: toCurrency === c ? colors.primary : colors.border,
+                      backgroundColor: receivedCurrency === c ? colors.primary : colors.card,
+                      borderColor: receivedCurrency === c ? colors.primary : colors.border,
                     },
                   ]}
                 >
                   <Text
                     style={[
                       styles.chipText,
-                      { color: toCurrency === c ? colors.primaryForeground : colors.foreground },
+                      { color: receivedCurrency === c ? colors.primaryForeground : colors.foreground },
                     ]}
                   >
                     {c}
@@ -189,15 +187,15 @@ export default function AddExchangeScreen() {
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            Amount ({fromCurrency})
+            AMOUNT SPENT ({spentCurrency})
           </Text>
           <TextInput
             style={[
               styles.input,
               { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
             ]}
-            value={amountFrom}
-            onChangeText={setAmountFrom}
+            value={amountSpent}
+            onChangeText={setAmountSpent}
             placeholder="0.00"
             placeholderTextColor={colors.mutedForeground}
             keyboardType="decimal-pad"
@@ -206,46 +204,32 @@ export default function AddExchangeScreen() {
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            Rate (1 {fromCurrency} = ? {toCurrency})
+            AMOUNT RECEIVED ({receivedCurrency})
           </Text>
           <TextInput
             style={[
               styles.input,
               { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
             ]}
-            value={rate}
-            onChangeText={setRate}
-            placeholder="0.0000"
+            value={amountReceived}
+            onChangeText={setAmountReceived}
+            placeholder="0.00"
             placeholderTextColor={colors.mutedForeground}
             keyboardType="decimal-pad"
           />
         </View>
 
-        <View
-          style={[
-            styles.resultBox,
-            { backgroundColor: colors.primary + "11", borderColor: colors.primary + "33" },
-          ]}
-        >
-          <Text style={[styles.resultLabel, { color: colors.mutedForeground }]}>
-            Result
-          </Text>
-          <Text style={[styles.resultValue, { color: colors.primary }]}>
-            {amountTo} {toCurrency}
-          </Text>
-        </View>
-
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            Description
+            NOTE
           </Text>
           <TextInput
             style={[
               styles.input,
               { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
             ]}
-            value={description}
-            onChangeText={setDescription}
+            value={note}
+            onChangeText={setNote}
             placeholder="Optional note"
             placeholderTextColor={colors.mutedForeground}
           />
@@ -284,7 +268,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     letterSpacing: 0.3,
-    textTransform: "uppercase",
   },
   input: {
     borderRadius: 10,
@@ -307,22 +290,5 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-  },
-  resultBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
-    alignItems: "center",
-    gap: 4,
-  },
-  resultLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  resultValue: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
   },
 });

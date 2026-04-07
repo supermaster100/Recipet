@@ -1,13 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View, Alert } from "react-native";
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AmountBadge } from "@/components/ui/AmountBadge";
 import { useAppContext } from "@/context/AppContext";
 import { ExchangeDB } from "@/db/database";
 import { useColors } from "@/hooks/useColors";
-import { AmountBadge } from "@/components/ui/AmountBadge";
 
 export default function EditExchangeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -67,30 +67,27 @@ export default function EditExchangeScreen() {
           <View style={styles.pairRow}>
             <View style={[styles.currencyBadge, { backgroundColor: colors.primary + "22" }]}>
               <Text style={[styles.currencyCode, { color: colors.primary }]}>
-                {exchange.fromCurrency}
+                {exchange.spentCurrency}
               </Text>
             </View>
             <Feather name="arrow-right" size={18} color={colors.mutedForeground} />
             <View style={[styles.currencyBadge, { backgroundColor: colors.secondary }]}>
               <Text style={[styles.currencyCode, { color: colors.foreground }]}>
-                {exchange.toCurrency}
+                {exchange.receivedCurrency}
               </Text>
             </View>
           </View>
           <View style={styles.amountRow}>
-            <AmountBadge amount={exchange.amountFrom} currency={exchange.fromCurrency} size="lg" />
+            <AmountBadge amount={exchange.amountSpent} currency={exchange.spentCurrency} size="lg" />
             <Text style={[styles.arrow, { color: colors.mutedForeground }]}>→</Text>
-            <AmountBadge amount={exchange.amountTo} currency={exchange.toCurrency} size="lg" />
+            <AmountBadge amount={exchange.amountReceived} currency={exchange.receivedCurrency} size="lg" />
           </View>
-          <Text style={[styles.rate, { color: colors.mutedForeground }]}>
-            Rate: 1 {exchange.fromCurrency} = {exchange.rate.toFixed(4)} {exchange.toCurrency}
-          </Text>
           <Text style={[styles.date, { color: colors.mutedForeground }]}>
             {exchange.date}
           </Text>
-          {exchange.description ? (
+          {exchange.note ? (
             <Text style={[styles.desc, { color: colors.foreground }]}>
-              {exchange.description}
+              {exchange.note}
             </Text>
           ) : null}
         </View>
@@ -123,7 +120,6 @@ const styles = StyleSheet.create({
   currencyCode: { fontSize: 14, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   amountRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   arrow: { fontSize: 18 },
-  rate: { fontSize: 13, fontFamily: "Inter_400Regular" },
   date: { fontSize: 13, fontFamily: "Inter_400Regular" },
   desc: { fontSize: 14, fontFamily: "Inter_500Medium", textAlign: "center" },
 });

@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,32 +15,29 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppContext } from "@/context/AppContext";
-import { TravelDB } from "@/db/database";
+import { LegDB } from "@/db/database";
 import { useColors } from "@/hooks/useColors";
 
-function today(): string {
-  return new Date().toISOString().split("T")[0] ?? "";
-}
+const LEG_TYPES = ["Business", "Personal", "Conference", "Training", "Other"];
+const LEG_STATUSES = ["Planned", "In Progress", "Completed", "Cancelled"];
 
 export default function AddTripScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refreshTravels } = useAppContext();
+  const { refreshLegs } = useAppContext();
 
-  const [name, setName] = useState("");
-  const [purpose, setPurpose] = useState("");
-  const [startDate, setStartDate] = useState(today());
-  const [endDate, setEndDate] = useState(today());
+  const [type, setType] = useState("Business");
+  const [status, setStatus] = useState("Planned");
   const [saving, setSaving] = useState(false);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   async function handleSave() {
-    if (!name.trim()) return;
+    if (!type.trim()) return;
     setSaving(true);
     try {
-      const id = await TravelDB.insert({ name, purpose, startDate, endDate });
-      await refreshTravels();
+      const id = await LegDB.insert({ type, status });
+      await refreshLegs();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace(`/trip/${id}`);
     } catch (e) {
@@ -65,13 +63,13 @@ export default function AddTripScreen() {
         </Text>
         <TouchableOpacity
           onPress={handleSave}
-          disabled={saving || !name.trim()}
+          disabled={saving || !type.trim()}
           hitSlop={8}
         >
           <Text
             style={[
               styles.saveBtn,
-              { color: !name.trim() ? colors.mutedForeground : colors.primary },
+              { color: !type.trim() ? colors.mutedForeground : colors.primary },
             ]}
           >
             Create
@@ -86,34 +84,61 @@ export default function AddTripScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        {[
-          { label: "Trip Name", value: name, setter: setName, placeholder: "e.g. NYC Conference 2025" },
-          { label: "Purpose", value: purpose, setter: setPurpose, placeholder: "e.g. Business meeting" },
-          { label: "Start Date", value: startDate, setter: setStartDate, placeholder: "YYYY-MM-DD" },
-          { label: "End Date", value: endDate, setter: setEndDate, placeholder: "YYYY-MM-DD" },
-        ].map((field) => (
-          <View key={field.label} style={styles.field}>
-            <Text
-              style={[styles.fieldLabel, { color: colors.mutedForeground }]}
-            >
-              {field.label.toUpperCase()}
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  color: colors.foreground,
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
-              ]}
-              value={field.value}
-              onChangeText={field.setter}
-              placeholder={field.placeholder}
-              placeholderTextColor={colors.mutedForeground}
-            />
+        <View style={styles.field}>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>TRIP TYPE</Text>
+          <View style={styles.chipRow}>
+            {LEG_TYPES.map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => setType(t)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: type === t ? colors.primary : colors.card,
+                    borderColor: type === t ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    { color: type === t ? colors.primaryForeground : colors.foreground },
+                  ]}
+                >
+                  {t}
+                </Text>
+              </Pressable>
+            ))}
           </View>
-        ))}
+        </View>
+
+        <View style={styles.field}>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>STATUS</Text>
+          <View style={styles.chipRow}>
+            {LEG_STATUSES.map((s) => (
+              <Pressable
+                key={s}
+                onPress={() => setStatus(s)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: status === s ? colors.primary : colors.card,
+                    borderColor: status === s ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    { color: status === s ? colors.primaryForeground : colors.foreground },
+                  ]}
+                >
+                  {s}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -129,32 +154,12 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
-  },
-  saveBtn: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-  form: {
-    padding: 16,
-    gap: 16,
-  },
-  field: {
-    gap: 6,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    letterSpacing: 0.3,
-  },
-  input: {
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
+  headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  saveBtn: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  form: { padding: 16, gap: 16 },
+  field: { gap: 8 },
+  fieldLabel: { fontSize: 12, fontFamily: "Inter_500Medium", letterSpacing: 0.3 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8, borderWidth: 1 },
+  chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
 });

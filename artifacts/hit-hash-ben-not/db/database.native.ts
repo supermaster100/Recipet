@@ -2,21 +2,20 @@ import * as SQLite from "expo-sqlite";
 import type {
   Budget,
   Exchange,
-  ExpenseCategory,
-  GeneralExpense,
-  Hotel,
+  General,
   Leg,
+  Receipt,
+  ReceiptType,
   Travel,
-  TripReceipt,
 } from "./types";
 
-let db: SQLite.SQLiteDatabase | null = null;
+let _db: SQLite.SQLiteDatabase | null = null;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
-  if (db) return db;
-  db = await SQLite.openDatabaseAsync("hithasbbennot.db");
-  await initDatabase(db);
-  return db;
+  if (_db) return _db;
+  _db = await SQLite.openDatabaseAsync("hithasbbennot.db");
+  await initDatabase(_db);
+  return _db;
 }
 
 async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -24,575 +23,368 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`PRAGMA foreign_keys = ON;`);
 
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS general_expenses (
+    CREATE TABLE IF NOT EXISTS General (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      date TEXT NOT NULL,
-      month INTEGER NOT NULL,
-      year INTEGER NOT NULL,
-      description TEXT NOT NULL DEFAULT '',
+      workerNumber TEXT NOT NULL DEFAULT '',
+      division TEXT NOT NULL DEFAULT '',
+      month INTEGER NOT NULL DEFAULT 1,
+      year INTEGER NOT NULL DEFAULT 2025,
+      costCenter TEXT NOT NULL DEFAULT ''
+    );
+  `);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS Budgets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      budgetNumber INTEGER NOT NULL DEFAULT 0,
+      budgetNumberName TEXT NOT NULL DEFAULT ''
+    );
+  `);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS Receipts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL DEFAULT 'OTHER',
       amount REAL NOT NULL DEFAULT 0,
       currency TEXT NOT NULL DEFAULT 'ILS',
-      category TEXT NOT NULL DEFAULT 'OTHER',
+      date TEXT NOT NULL DEFAULT '',
+      numberOfPeople INTEGER NOT NULL DEFAULT 1,
       division TEXT NOT NULL DEFAULT '',
       costCenter TEXT NOT NULL DEFAULT '',
-      notes TEXT NOT NULL DEFAULT '',
-      receiptPath TEXT,
-      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+      selfDeclaration INTEGER NOT NULL DEFAULT 0,
+      note TEXT NOT NULL DEFAULT '',
+      photo TEXT,
+      status TEXT NOT NULL DEFAULT '',
+      export INTEGER NOT NULL DEFAULT 0
     );
   `);
 
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS travels (
+    CREATE TABLE IF NOT EXISTS Exchanges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL DEFAULT '',
-      purpose TEXT NOT NULL DEFAULT '',
-      startDate TEXT NOT NULL,
-      endDate TEXT NOT NULL,
-      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+      date TEXT NOT NULL DEFAULT '',
+      amountSpent REAL NOT NULL DEFAULT 0,
+      spentCurrency TEXT NOT NULL DEFAULT 'USD',
+      amountReceived REAL NOT NULL DEFAULT 0,
+      receivedCurrency TEXT NOT NULL DEFAULT 'ILS',
+      note TEXT NOT NULL DEFAULT '',
+      photo TEXT,
+      status TEXT NOT NULL DEFAULT '',
+      export INTEGER NOT NULL DEFAULT 0
     );
   `);
 
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS legs (
+    CREATE TABLE IF NOT EXISTS Legs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      travelId INTEGER NOT NULL,
+      type TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT ''
+    );
+  `);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS Travels (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lId INTEGER NOT NULL DEFAULT 0,
+      num INTEGER NOT NULL DEFAULT 1,
+      departure TEXT NOT NULL DEFAULT '',
       departureDate TEXT NOT NULL DEFAULT '',
       departureHour TEXT NOT NULL DEFAULT '',
       departureCountry TEXT NOT NULL DEFAULT '',
       departureCity TEXT NOT NULL DEFAULT '',
-      arrivalDate TEXT NOT NULL DEFAULT '',
+      arrival TEXT NOT NULL DEFAULT '',
+      returnDate TEXT NOT NULL DEFAULT '',
       arrivalHour TEXT NOT NULL DEFAULT '',
       arrivalCountry TEXT NOT NULL DEFAULT '',
       arrivalCity TEXT NOT NULL DEFAULT '',
-      transport TEXT NOT NULL DEFAULT '',
-      FOREIGN KEY (travelId) REFERENCES travels(id) ON DELETE CASCADE
-    );
-  `);
-
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS hotels (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      travelId INTEGER NOT NULL,
-      checkIn TEXT NOT NULL,
-      checkOut TEXT NOT NULL,
-      hotelName TEXT NOT NULL DEFAULT '',
-      city TEXT NOT NULL DEFAULT '',
-      country TEXT NOT NULL DEFAULT '',
-      pricePerNight REAL NOT NULL DEFAULT 0,
-      currency TEXT NOT NULL DEFAULT 'ILS',
-      nights INTEGER NOT NULL DEFAULT 1,
-      FOREIGN KEY (travelId) REFERENCES travels(id) ON DELETE CASCADE
-    );
-  `);
-
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS trip_receipts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      travelId INTEGER NOT NULL,
-      date TEXT NOT NULL,
+      budget REAL NOT NULL DEFAULT 0,
+      placeOfStaying TEXT NOT NULL DEFAULT '',
+      nights INTEGER NOT NULL DEFAULT 0,
+      arbitraryLocation TEXT NOT NULL DEFAULT '',
+      ratePerNight REAL NOT NULL DEFAULT 0,
+      currencyPN TEXT NOT NULL DEFAULT 'USD',
+      breakfast INTEGER NOT NULL DEFAULT 0,
+      paymentMethod TEXT NOT NULL DEFAULT '',
+      hotelExtraFees REAL NOT NULL DEFAULT 0,
+      currencyHEF TEXT NOT NULL DEFAULT 'USD',
       description TEXT NOT NULL DEFAULT '',
-      amount REAL NOT NULL DEFAULT 0,
-      currency TEXT NOT NULL DEFAULT 'ILS',
-      category TEXT NOT NULL DEFAULT 'OTHER',
-      division TEXT NOT NULL DEFAULT '',
-      costCenter TEXT NOT NULL DEFAULT '',
-      selfDeclaration INTEGER NOT NULL DEFAULT 0,
-      receiptPath TEXT,
-      notes TEXT NOT NULL DEFAULT '',
-      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (travelId) REFERENCES travels(id) ON DELETE CASCADE
-    );
-  `);
-
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS exchanges (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      date TEXT NOT NULL,
-      fromCurrency TEXT NOT NULL DEFAULT 'USD',
-      toCurrency TEXT NOT NULL DEFAULT 'ILS',
-      amountFrom REAL NOT NULL DEFAULT 0,
-      rate REAL NOT NULL DEFAULT 1,
-      amountTo REAL NOT NULL DEFAULT 0,
-      description TEXT NOT NULL DEFAULT '',
-      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
-
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS budgets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      category TEXT NOT NULL,
-      month INTEGER NOT NULL,
-      year INTEGER NOT NULL,
-      amount REAL NOT NULL DEFAULT 0,
-      currency TEXT NOT NULL DEFAULT 'ILS',
-      UNIQUE(category, month, year)
+      photo TEXT,
+      export INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (lId) REFERENCES Legs(id) ON DELETE SET NULL
     );
   `);
 }
 
-function rowToGeneralExpense(row: Record<string, unknown>): GeneralExpense {
+function toGeneral(r: Record<string, unknown>): General {
   return {
-    id: row["id"] as number,
-    date: row["date"] as string,
-    month: row["month"] as number,
-    year: row["year"] as number,
-    description: row["description"] as string,
-    amount: row["amount"] as number,
-    currency: row["currency"] as GeneralExpense["currency"],
-    category: row["category"] as ExpenseCategory,
-    division: row["division"] as string,
-    costCenter: row["costCenter"] as string,
-    notes: row["notes"] as string,
-    receiptPath: row["receiptPath"] as string | null,
-    createdAt: row["createdAt"] as string,
+    id: r["id"] as number,
+    workerNumber: r["workerNumber"] as string,
+    division: r["division"] as string,
+    month: r["month"] as number,
+    year: r["year"] as number,
+    costCenter: r["costCenter"] as string,
   };
 }
 
-function rowToExchange(row: Record<string, unknown>): Exchange {
+function toReceipt(r: Record<string, unknown>): Receipt {
   return {
-    id: row["id"] as number,
-    date: row["date"] as string,
-    fromCurrency: row["fromCurrency"] as Exchange["fromCurrency"],
-    toCurrency: row["toCurrency"] as Exchange["toCurrency"],
-    amountFrom: row["amountFrom"] as number,
-    rate: row["rate"] as number,
-    amountTo: row["amountTo"] as number,
-    description: row["description"] as string,
-    createdAt: row["createdAt"] as string,
+    id: r["id"] as number,
+    type: r["type"] as ReceiptType,
+    amount: r["amount"] as number,
+    currency: r["currency"] as Receipt["currency"],
+    date: r["date"] as string,
+    numberOfPeople: r["numberOfPeople"] as number,
+    division: r["division"] as string,
+    costCenter: r["costCenter"] as string,
+    selfDeclaration: (r["selfDeclaration"] as number) === 1,
+    note: r["note"] as string,
+    photo: r["photo"] as string | null,
+    status: r["status"] as string,
+    export: (r["export"] as number) === 1,
   };
 }
 
-function rowToTravel(row: Record<string, unknown>): Travel {
+function toExchange(r: Record<string, unknown>): Exchange {
   return {
-    id: row["id"] as number,
-    name: row["name"] as string,
-    purpose: row["purpose"] as string,
-    startDate: row["startDate"] as string,
-    endDate: row["endDate"] as string,
-    createdAt: row["createdAt"] as string,
+    id: r["id"] as number,
+    date: r["date"] as string,
+    amountSpent: r["amountSpent"] as number,
+    spentCurrency: r["spentCurrency"] as Exchange["spentCurrency"],
+    amountReceived: r["amountReceived"] as number,
+    receivedCurrency: r["receivedCurrency"] as Exchange["receivedCurrency"],
+    note: r["note"] as string,
+    photo: r["photo"] as string | null,
+    status: r["status"] as string,
+    export: (r["export"] as number) === 1,
   };
 }
 
-function rowToLeg(row: Record<string, unknown>): Leg {
+function toLeg(r: Record<string, unknown>): Leg {
   return {
-    id: row["id"] as number,
-    travelId: row["travelId"] as number,
-    departureDate: row["departureDate"] as string,
-    departureHour: row["departureHour"] as string,
-    departureCountry: row["departureCountry"] as string,
-    departureCity: row["departureCity"] as string,
-    arrivalDate: row["arrivalDate"] as string,
-    arrivalHour: row["arrivalHour"] as string,
-    arrivalCountry: row["arrivalCountry"] as string,
-    arrivalCity: row["arrivalCity"] as string,
-    transport: row["transport"] as string,
+    id: r["id"] as number,
+    type: r["type"] as string,
+    status: r["status"] as string,
   };
 }
 
-function rowToHotel(row: Record<string, unknown>): Hotel {
+function toTravel(r: Record<string, unknown>): Travel {
   return {
-    id: row["id"] as number,
-    travelId: row["travelId"] as number,
-    checkIn: row["checkIn"] as string,
-    checkOut: row["checkOut"] as string,
-    hotelName: row["hotelName"] as string,
-    city: row["city"] as string,
-    country: row["country"] as string,
-    pricePerNight: row["pricePerNight"] as number,
-    currency: row["currency"] as Hotel["currency"],
-    nights: row["nights"] as number,
+    id: r["id"] as number,
+    lId: r["lId"] as number,
+    num: r["num"] as number,
+    departure: r["departure"] as string,
+    departureDate: r["departureDate"] as string,
+    departureHour: r["departureHour"] as string,
+    departureCountry: r["departureCountry"] as string,
+    departureCity: r["departureCity"] as string,
+    arrival: r["arrival"] as string,
+    returnDate: r["returnDate"] as string,
+    arrivalHour: r["arrivalHour"] as string,
+    arrivalCountry: r["arrivalCountry"] as string,
+    arrivalCity: r["arrivalCity"] as string,
+    budget: r["budget"] as number,
+    placeOfStaying: r["placeOfStaying"] as string,
+    nights: r["nights"] as number,
+    arbitraryLocation: r["arbitraryLocation"] as string,
+    ratePerNight: r["ratePerNight"] as number,
+    currencyPN: r["currencyPN"] as Travel["currencyPN"],
+    breakfast: (r["breakfast"] as number) === 1,
+    paymentMethod: r["paymentMethod"] as string,
+    hotelExtraFees: r["hotelExtraFees"] as number,
+    currencyHEF: r["currencyHEF"] as Travel["currencyHEF"],
+    description: r["description"] as string,
+    photo: r["photo"] as string | null,
+    export: (r["export"] as number) === 1,
   };
 }
 
-function rowToTripReceipt(row: Record<string, unknown>): TripReceipt {
+function toBudget(r: Record<string, unknown>): Budget {
   return {
-    id: row["id"] as number,
-    travelId: row["travelId"] as number,
-    date: row["date"] as string,
-    description: row["description"] as string,
-    amount: row["amount"] as number,
-    currency: row["currency"] as TripReceipt["currency"],
-    category: row["category"] as ExpenseCategory,
-    division: row["division"] as string,
-    costCenter: row["costCenter"] as string,
-    selfDeclaration: (row["selfDeclaration"] as number) === 1,
-    receiptPath: row["receiptPath"] as string | null,
-    notes: row["notes"] as string,
-    createdAt: row["createdAt"] as string,
+    id: r["id"] as number,
+    budgetNumber: r["budgetNumber"] as number,
+    budgetNumberName: r["budgetNumberName"] as string,
   };
 }
 
-function rowToBudget(row: Record<string, unknown>): Budget {
-  return {
-    id: row["id"] as number,
-    category: row["category"] as ExpenseCategory,
-    month: row["month"] as number,
-    year: row["year"] as number,
-    amount: row["amount"] as number,
-    currency: row["currency"] as Budget["currency"],
-  };
-}
-
-export const GeneralExpenseDB = {
-  async getAll(): Promise<GeneralExpense[]> {
-    const database = await getDatabase();
-    const rows = await database.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM general_expenses ORDER BY date DESC, id DESC"
+export const GeneralDB = {
+  async get(): Promise<General | null> {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<Record<string, unknown>>(
+      "SELECT * FROM General LIMIT 1"
     );
-    return rows.map(rowToGeneralExpense);
+    return row ? toGeneral(row) : null;
   },
-
-  async getByMonthYear(month: number, year: number): Promise<GeneralExpense[]> {
-    const database = await getDatabase();
-    const rows = await database.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM general_expenses WHERE month = ? AND year = ? ORDER BY date DESC, id DESC",
-      [month, year]
-    );
-    return rows.map(rowToGeneralExpense);
-  },
-
-  async insert(expense: Omit<GeneralExpense, "id" | "createdAt">): Promise<number> {
-    const database = await getDatabase();
-    const result = await database.runAsync(
-      `INSERT INTO general_expenses (date, month, year, description, amount, currency, category, division, costCenter, notes, receiptPath)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        expense.date,
-        expense.month,
-        expense.year,
-        expense.description,
-        expense.amount,
-        expense.currency,
-        expense.category,
-        expense.division,
-        expense.costCenter,
-        expense.notes,
-        expense.receiptPath ?? null,
-      ]
-    );
-    return result.lastInsertRowId;
-  },
-
-  async update(expense: Omit<GeneralExpense, "createdAt">): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync(
-      `UPDATE general_expenses SET date=?, month=?, year=?, description=?, amount=?, currency=?, category=?, division=?, costCenter=?, notes=?, receiptPath=? WHERE id=?`,
-      [
-        expense.date,
-        expense.month,
-        expense.year,
-        expense.description,
-        expense.amount,
-        expense.currency,
-        expense.category,
-        expense.division,
-        expense.costCenter,
-        expense.notes,
-        expense.receiptPath ?? null,
-        expense.id,
-      ]
-    );
-  },
-
-  async delete(id: number): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync("DELETE FROM general_expenses WHERE id = ?", [id]);
+  async upsert(data: Omit<General, "id">): Promise<void> {
+    const db = await getDatabase();
+    const existing = await GeneralDB.get();
+    if (existing) {
+      await db.runAsync(
+        "UPDATE General SET workerNumber=?, division=?, month=?, year=?, costCenter=? WHERE id=?",
+        [data.workerNumber, data.division, data.month, data.year, data.costCenter, existing.id]
+      );
+    } else {
+      await db.runAsync(
+        "INSERT INTO General (workerNumber, division, month, year, costCenter) VALUES (?, ?, ?, ?, ?)",
+        [data.workerNumber, data.division, data.month, data.year, data.costCenter]
+      );
+    }
   },
 };
 
-export const TravelDB = {
-  async getAll(): Promise<Travel[]> {
-    const database = await getDatabase();
-    const rows = await database.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM travels ORDER BY startDate DESC"
+export const ReceiptDB = {
+  async getAll(): Promise<Receipt[]> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      "SELECT * FROM Receipts ORDER BY date DESC, id DESC"
     );
-    return rows.map(rowToTravel);
+    return rows.map(toReceipt);
   },
-
-  async getById(id: number): Promise<Travel | null> {
-    const database = await getDatabase();
-    const row = await database.getFirstAsync<Record<string, unknown>>(
-      "SELECT * FROM travels WHERE id = ?",
-      [id]
+  async insert(r: Omit<Receipt, "id">): Promise<number> {
+    const db = await getDatabase();
+    const res = await db.runAsync(
+      `INSERT INTO Receipts (type, amount, currency, date, numberOfPeople, division, costCenter, selfDeclaration, note, photo, status, export)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.division, r.costCenter,
+       r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.status, r.export ? 1 : 0]
     );
-    return row ? rowToTravel(row) : null;
+    return res.lastInsertRowId;
   },
-
-  async insert(travel: Omit<Travel, "id" | "createdAt">): Promise<number> {
-    const database = await getDatabase();
-    const result = await database.runAsync(
-      `INSERT INTO travels (name, purpose, startDate, endDate) VALUES (?, ?, ?, ?)`,
-      [travel.name, travel.purpose, travel.startDate, travel.endDate]
-    );
-    return result.lastInsertRowId;
-  },
-
-  async update(travel: Omit<Travel, "createdAt">): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync(
-      `UPDATE travels SET name=?, purpose=?, startDate=?, endDate=? WHERE id=?`,
-      [travel.name, travel.purpose, travel.startDate, travel.endDate, travel.id]
+  async update(r: Receipt): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync(
+      `UPDATE Receipts SET type=?, amount=?, currency=?, date=?, numberOfPeople=?, division=?, costCenter=?, selfDeclaration=?, note=?, photo=?, status=?, export=? WHERE id=?`,
+      [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.division, r.costCenter,
+       r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.status, r.export ? 1 : 0, r.id]
     );
   },
-
   async delete(id: number): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync("DELETE FROM travels WHERE id = ?", [id]);
-  },
-};
-
-export const LegDB = {
-  async getByTravelId(travelId: number): Promise<Leg[]> {
-    const database = await getDatabase();
-    const rows = await database.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM legs WHERE travelId = ? ORDER BY departureDate, departureHour",
-      [travelId]
-    );
-    return rows.map(rowToLeg);
-  },
-
-  async insert(leg: Omit<Leg, "id">): Promise<number> {
-    const database = await getDatabase();
-    const result = await database.runAsync(
-      `INSERT INTO legs (travelId, departureDate, departureHour, departureCountry, departureCity, arrivalDate, arrivalHour, arrivalCountry, arrivalCity, transport)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        leg.travelId,
-        leg.departureDate,
-        leg.departureHour,
-        leg.departureCountry,
-        leg.departureCity,
-        leg.arrivalDate,
-        leg.arrivalHour,
-        leg.arrivalCountry,
-        leg.arrivalCity,
-        leg.transport,
-      ]
-    );
-    return result.lastInsertRowId;
-  },
-
-  async update(leg: Leg): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync(
-      `UPDATE legs SET travelId=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrivalDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=?, transport=? WHERE id=?`,
-      [
-        leg.travelId,
-        leg.departureDate,
-        leg.departureHour,
-        leg.departureCountry,
-        leg.departureCity,
-        leg.arrivalDate,
-        leg.arrivalHour,
-        leg.arrivalCountry,
-        leg.arrivalCity,
-        leg.transport,
-        leg.id,
-      ]
-    );
-  },
-
-  async delete(id: number): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync("DELETE FROM legs WHERE id = ?", [id]);
-  },
-};
-
-export const HotelDB = {
-  async getByTravelId(travelId: number): Promise<Hotel[]> {
-    const database = await getDatabase();
-    const rows = await database.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM hotels WHERE travelId = ? ORDER BY checkIn",
-      [travelId]
-    );
-    return rows.map(rowToHotel);
-  },
-
-  async insert(hotel: Omit<Hotel, "id">): Promise<number> {
-    const database = await getDatabase();
-    const result = await database.runAsync(
-      `INSERT INTO hotels (travelId, checkIn, checkOut, hotelName, city, country, pricePerNight, currency, nights)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        hotel.travelId,
-        hotel.checkIn,
-        hotel.checkOut,
-        hotel.hotelName,
-        hotel.city,
-        hotel.country,
-        hotel.pricePerNight,
-        hotel.currency,
-        hotel.nights,
-      ]
-    );
-    return result.lastInsertRowId;
-  },
-
-  async update(hotel: Hotel): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync(
-      `UPDATE hotels SET travelId=?, checkIn=?, checkOut=?, hotelName=?, city=?, country=?, pricePerNight=?, currency=?, nights=? WHERE id=?`,
-      [
-        hotel.travelId,
-        hotel.checkIn,
-        hotel.checkOut,
-        hotel.hotelName,
-        hotel.city,
-        hotel.country,
-        hotel.pricePerNight,
-        hotel.currency,
-        hotel.nights,
-        hotel.id,
-      ]
-    );
-  },
-
-  async delete(id: number): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync("DELETE FROM hotels WHERE id = ?", [id]);
-  },
-};
-
-export const TripReceiptDB = {
-  async getByTravelId(travelId: number): Promise<TripReceipt[]> {
-    const database = await getDatabase();
-    const rows = await database.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM trip_receipts WHERE travelId = ? ORDER BY date DESC",
-      [travelId]
-    );
-    return rows.map(rowToTripReceipt);
-  },
-
-  async insert(receipt: Omit<TripReceipt, "id" | "createdAt">): Promise<number> {
-    const database = await getDatabase();
-    const result = await database.runAsync(
-      `INSERT INTO trip_receipts (travelId, date, description, amount, currency, category, division, costCenter, selfDeclaration, receiptPath, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        receipt.travelId,
-        receipt.date,
-        receipt.description,
-        receipt.amount,
-        receipt.currency,
-        receipt.category,
-        receipt.division,
-        receipt.costCenter,
-        receipt.selfDeclaration ? 1 : 0,
-        receipt.receiptPath ?? null,
-        receipt.notes,
-      ]
-    );
-    return result.lastInsertRowId;
-  },
-
-  async update(receipt: Omit<TripReceipt, "createdAt">): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync(
-      `UPDATE trip_receipts SET travelId=?, date=?, description=?, amount=?, currency=?, category=?, division=?, costCenter=?, selfDeclaration=?, receiptPath=?, notes=? WHERE id=?`,
-      [
-        receipt.travelId,
-        receipt.date,
-        receipt.description,
-        receipt.amount,
-        receipt.currency,
-        receipt.category,
-        receipt.division,
-        receipt.costCenter,
-        receipt.selfDeclaration ? 1 : 0,
-        receipt.receiptPath ?? null,
-        receipt.notes,
-        receipt.id,
-      ]
-    );
-  },
-
-  async delete(id: number): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync("DELETE FROM trip_receipts WHERE id = ?", [id]);
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM Receipts WHERE id = ?", [id]);
   },
 };
 
 export const ExchangeDB = {
   async getAll(): Promise<Exchange[]> {
-    const database = await getDatabase();
-    const rows = await database.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM exchanges ORDER BY date DESC, id DESC"
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      "SELECT * FROM Exchanges ORDER BY date DESC, id DESC"
     );
-    return rows.map(rowToExchange);
+    return rows.map(toExchange);
   },
-
-  async insert(exchange: Omit<Exchange, "id" | "createdAt">): Promise<number> {
-    const database = await getDatabase();
-    const result = await database.runAsync(
-      `INSERT INTO exchanges (date, fromCurrency, toCurrency, amountFrom, rate, amountTo, description)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        exchange.date,
-        exchange.fromCurrency,
-        exchange.toCurrency,
-        exchange.amountFrom,
-        exchange.rate,
-        exchange.amountTo,
-        exchange.description,
-      ]
+  async insert(e: Omit<Exchange, "id">): Promise<number> {
+    const db = await getDatabase();
+    const res = await db.runAsync(
+      `INSERT INTO Exchanges (date, amountSpent, spentCurrency, amountReceived, receivedCurrency, note, photo, status, export)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [e.date, e.amountSpent, e.spentCurrency, e.amountReceived, e.receivedCurrency,
+       e.note, e.photo ?? null, e.status, e.export ? 1 : 0]
     );
-    return result.lastInsertRowId;
+    return res.lastInsertRowId;
   },
-
-  async update(exchange: Omit<Exchange, "createdAt">): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync(
-      `UPDATE exchanges SET date=?, fromCurrency=?, toCurrency=?, amountFrom=?, rate=?, amountTo=?, description=? WHERE id=?`,
-      [
-        exchange.date,
-        exchange.fromCurrency,
-        exchange.toCurrency,
-        exchange.amountFrom,
-        exchange.rate,
-        exchange.amountTo,
-        exchange.description,
-        exchange.id,
-      ]
+  async update(e: Exchange): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync(
+      `UPDATE Exchanges SET date=?, amountSpent=?, spentCurrency=?, amountReceived=?, receivedCurrency=?, note=?, photo=?, status=?, export=? WHERE id=?`,
+      [e.date, e.amountSpent, e.spentCurrency, e.amountReceived, e.receivedCurrency,
+       e.note, e.photo ?? null, e.status, e.export ? 1 : 0, e.id]
     );
   },
-
   async delete(id: number): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync("DELETE FROM exchanges WHERE id = ?", [id]);
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM Exchanges WHERE id = ?", [id]);
+  },
+};
+
+export const LegDB = {
+  async getAll(): Promise<Leg[]> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>("SELECT * FROM Legs");
+    return rows.map(toLeg);
+  },
+  async insert(l: Omit<Leg, "id">): Promise<number> {
+    const db = await getDatabase();
+    const res = await db.runAsync(
+      "INSERT INTO Legs (type, status) VALUES (?, ?)",
+      [l.type, l.status]
+    );
+    return res.lastInsertRowId;
+  },
+  async update(l: Leg): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync("UPDATE Legs SET type=?, status=? WHERE id=?", [l.type, l.status, l.id]);
+  },
+  async delete(id: number): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM Legs WHERE id = ?", [id]);
+  },
+};
+
+export const TravelDB = {
+  async getAll(): Promise<Travel[]> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      "SELECT * FROM Travels ORDER BY departureDate DESC, id DESC"
+    );
+    return rows.map(toTravel);
+  },
+  async getById(id: number): Promise<Travel | null> {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<Record<string, unknown>>(
+      "SELECT * FROM Travels WHERE id = ?", [id]
+    );
+    return row ? toTravel(row) : null;
+  },
+  async insert(t: Omit<Travel, "id">): Promise<number> {
+    const db = await getDatabase();
+    const res = await db.runAsync(
+      `INSERT INTO Travels (lId, num, departure, departureDate, departureHour, departureCountry, departureCity, arrival, returnDate, arrivalHour, arrivalCountry, arrivalCity, budget, placeOfStaying, nights, arbitraryLocation, ratePerNight, currencyPN, breakfast, paymentMethod, hotelExtraFees, currencyHEF, description, photo, export)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [t.lId, t.num, t.departure, t.departureDate, t.departureHour, t.departureCountry, t.departureCity,
+       t.arrival, t.returnDate, t.arrivalHour, t.arrivalCountry, t.arrivalCity, t.budget, t.placeOfStaying,
+       t.nights, t.arbitraryLocation, t.ratePerNight, t.currencyPN, t.breakfast ? 1 : 0, t.paymentMethod,
+       t.hotelExtraFees, t.currencyHEF, t.description, t.photo ?? null, t.export ? 1 : 0]
+    );
+    return res.lastInsertRowId;
+  },
+  async update(t: Travel): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync(
+      `UPDATE Travels SET lId=?, num=?, departure=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrival=?, returnDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=?, budget=?, placeOfStaying=?, nights=?, arbitraryLocation=?, ratePerNight=?, currencyPN=?, breakfast=?, paymentMethod=?, hotelExtraFees=?, currencyHEF=?, description=?, photo=?, export=? WHERE id=?`,
+      [t.lId, t.num, t.departure, t.departureDate, t.departureHour, t.departureCountry, t.departureCity,
+       t.arrival, t.returnDate, t.arrivalHour, t.arrivalCountry, t.arrivalCity, t.budget, t.placeOfStaying,
+       t.nights, t.arbitraryLocation, t.ratePerNight, t.currencyPN, t.breakfast ? 1 : 0, t.paymentMethod,
+       t.hotelExtraFees, t.currencyHEF, t.description, t.photo ?? null, t.export ? 1 : 0, t.id]
+    );
+  },
+  async delete(id: number): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM Travels WHERE id = ?", [id]);
   },
 };
 
 export const BudgetDB = {
   async getAll(): Promise<Budget[]> {
-    const database = await getDatabase();
-    const rows = await database.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM budgets ORDER BY year DESC, month DESC"
-    );
-    return rows.map(rowToBudget);
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>("SELECT * FROM Budgets");
+    return rows.map(toBudget);
   },
-
-  async getByMonthYear(month: number, year: number): Promise<Budget[]> {
-    const database = await getDatabase();
-    const rows = await database.getAllAsync<Record<string, unknown>>(
-      "SELECT * FROM budgets WHERE month = ? AND year = ?",
-      [month, year]
+  async insert(b: Omit<Budget, "id">): Promise<number> {
+    const db = await getDatabase();
+    const res = await db.runAsync(
+      "INSERT INTO Budgets (budgetNumber, budgetNumberName) VALUES (?, ?)",
+      [b.budgetNumber, b.budgetNumberName]
     );
-    return rows.map(rowToBudget);
+    return res.lastInsertRowId;
   },
-
-  async upsert(budget: Omit<Budget, "id">): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync(
-      `INSERT INTO budgets (category, month, year, amount, currency)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(category, month, year) DO UPDATE SET amount=excluded.amount, currency=excluded.currency`,
-      [budget.category, budget.month, budget.year, budget.amount, budget.currency]
+  async update(b: Budget): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync(
+      "UPDATE Budgets SET budgetNumber=?, budgetNumberName=? WHERE id=?",
+      [b.budgetNumber, b.budgetNumberName, b.id]
     );
   },
-
   async delete(id: number): Promise<void> {
-    const database = await getDatabase();
-    await database.runAsync("DELETE FROM budgets WHERE id = ?", [id]);
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM Budgets WHERE id = ?", [id]);
   },
 };

@@ -1,6 +1,7 @@
-export type Currency = "ILS" | "USD" | "EUR" | "GBP" | "JPY" | "CHF" | "CAD" | "AUD" | "CNY" | "AED";
+export type Currency =
+  | "ILS" | "USD" | "EUR" | "GBP" | "JPY" | "CHF" | "CAD" | "AUD" | "CNY" | "AED";
 
-export type ExpenseCategory =
+export type ReceiptType =
   | "MEALS"
   | "ACCOMMODATION"
   | "TRANSPORT"
@@ -9,7 +10,7 @@ export type ExpenseCategory =
   | "COMMUNICATION"
   | "OTHER";
 
-export const EXPENSE_CATEGORIES: { key: ExpenseCategory; label: string }[] = [
+export const RECEIPT_TYPES: { key: ReceiptType; label: string }[] = [
   { key: "MEALS", label: "Meals & Food" },
   { key: "ACCOMMODATION", label: "Accommodation" },
   { key: "TRANSPORT", label: "Transport" },
@@ -23,97 +24,81 @@ export const CURRENCIES: Currency[] = [
   "ILS", "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "CNY", "AED",
 ];
 
-export interface GeneralExpense {
+export interface General {
   id: number;
-  date: string;
+  workerNumber: string;
+  division: string;
   month: number;
   year: number;
-  description: string;
-  amount: number;
-  currency: Currency;
-  category: ExpenseCategory;
-  division: string;
   costCenter: string;
-  notes: string;
-  receiptPath: string | null;
-  createdAt: string;
 }
 
-export interface Travel {
+export interface Budget {
   id: number;
-  name: string;
-  purpose: string;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
+  budgetNumber: number;
+  budgetNumberName: string;
 }
 
-export interface Leg {
+export interface Receipt {
   id: number;
-  travelId: number;
-  departureDate: string;
-  departureHour: string;
-  departureCountry: string;
-  departureCity: string;
-  arrivalDate: string;
-  arrivalHour: string;
-  arrivalCountry: string;
-  arrivalCity: string;
-  transport: string;
-}
-
-export interface Hotel {
-  id: number;
-  travelId: number;
-  checkIn: string;
-  checkOut: string;
-  hotelName: string;
-  city: string;
-  country: string;
-  pricePerNight: number;
-  currency: Currency;
-  nights: number;
-}
-
-export interface TripReceipt {
-  id: number;
-  travelId: number;
-  date: string;
-  description: string;
+  type: ReceiptType;
   amount: number;
   currency: Currency;
-  category: ExpenseCategory;
+  date: string;
+  numberOfPeople: number;
   division: string;
   costCenter: string;
   selfDeclaration: boolean;
-  receiptPath: string | null;
-  notes: string;
-  createdAt: string;
+  note: string;
+  photo: string | null;
+  status: string;
+  export: boolean;
 }
 
 export interface Exchange {
   id: number;
   date: string;
-  fromCurrency: Currency;
-  toCurrency: Currency;
-  amountFrom: number;
-  rate: number;
-  amountTo: number;
-  description: string;
-  createdAt: string;
+  amountSpent: number;
+  spentCurrency: Currency;
+  amountReceived: number;
+  receivedCurrency: Currency;
+  note: string;
+  photo: string | null;
+  status: string;
+  export: boolean;
 }
 
-export interface Budget {
+export interface Leg {
   id: number;
-  category: ExpenseCategory;
-  month: number;
-  year: number;
-  amount: number;
-  currency: Currency;
+  type: string;
+  status: string;
 }
 
-export interface TravelWithDetails extends Travel {
-  legs: Leg[];
-  hotels: Hotel[];
-  receipts: TripReceipt[];
+export interface Travel {
+  id: number;
+  lId: number;
+  num: number;
+  departure: string;
+  departureDate: string;
+  departureHour: string;
+  departureCountry: string;
+  departureCity: string;
+  arrival: string;
+  returnDate: string;
+  arrivalHour: string;
+  arrivalCountry: string;
+  arrivalCity: string;
+  budget: number;
+  placeOfStaying: string;
+  nights: number;
+  arbitraryLocation: string;
+  ratePerNight: number;
+  currencyPN: Currency;
+  breakfast: boolean;
+  paymentMethod: string;
+  hotelExtraFees: number;
+  currencyHEF: Currency;
+  description: string;
+  photo: string | null;
+  export: boolean;
 }

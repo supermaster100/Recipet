@@ -19,15 +19,15 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="trip">
         <Icon sf={{ default: "airplane", selected: "airplane" }} />
-        <Label>Trips</Label>
+        <Label>Trip</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "plus.circle.fill", selected: "plus.circle.fill" }} />
-        <Label>Add</Label>
+        <Label>Add Receipt</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="exchanges">
         <Icon sf={{ default: "arrow.left.arrow.right", selected: "arrow.left.arrow.right" }} />
-        <Label>Exchanges</Label>
+        <Label>Exchange</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="more">
         <Icon sf={{ default: "ellipsis.circle", selected: "ellipsis.circle.fill" }} />
@@ -89,7 +89,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="trip"
         options={{
-          title: "Trips",
+          title: "Trip",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="airplane" tintColor={color} size={24} />
@@ -101,7 +101,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Add",
+          title: "Add Receipt",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="plus.circle.fill" tintColor={color} size={28} />
@@ -113,7 +113,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="exchanges"
         options={{
-          title: "Exchanges",
+          title: "Exchange",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="arrow.left.arrow.right" tintColor={color} size={24} />

@@ -15,11 +15,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppContext } from "@/context/AppContext";
-import { GeneralExpenseDB } from "@/db/database";
+import { ReceiptDB } from "@/db/database";
 import {
   CURRENCIES,
-  EXPENSE_CATEGORIES,
-  type ExpenseCategory,
+  RECEIPT_TYPES,
+  type ReceiptType,
 } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
@@ -27,24 +27,20 @@ function today(): string {
   return new Date().toISOString().split("T")[0] ?? "";
 }
 
-function getMonthYear() {
-  const d = new Date();
-  return { month: d.getMonth() + 1, year: d.getFullYear() };
-}
-
 export default function AddExpenseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refreshExpenses } = useAppContext();
+  const { refreshReceipts } = useAppContext();
 
   const [date, setDate] = useState(today());
-  const [description, setDescription] = useState("");
+  const [note, setNote] = useState("");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]>("ILS");
-  const [category, setCategory] = useState<ExpenseCategory>("OTHER");
+  const [type, setType] = useState<ReceiptType>("OTHER");
   const [division, setDivision] = useState("");
   const [costCenter, setCostCenter] = useState("");
-  const [notes, setNotes] = useState("");
+  const [numberOfPeople, setNumberOfPeople] = useState("1");
+  const [selfDeclaration, setSelfDeclaration] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
@@ -53,21 +49,21 @@ export default function AddExpenseScreen() {
     if (!amount || isNaN(Number(amount))) return;
     setSaving(true);
     try {
-      const { month, year } = getMonthYear();
-      await GeneralExpenseDB.insert({
-        date,
-        month,
-        year,
-        description,
+      await ReceiptDB.insert({
+        type,
         amount: Number(amount),
         currency,
-        category,
+        date,
+        numberOfPeople: Number(numberOfPeople) || 1,
         division,
         costCenter,
-        notes,
-        receiptPath: null,
+        selfDeclaration,
+        note,
+        photo: null,
+        status: "",
+        export: false,
       });
-      await refreshExpenses();
+      await refreshReceipts();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {
@@ -89,7 +85,7 @@ export default function AddExpenseScreen() {
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          New Expense
+          New Receipt
         </Text>
         <TouchableOpacity
           onPress={handleSave}
@@ -100,8 +96,7 @@ export default function AddExpenseScreen() {
             style={[
               styles.saveBtn,
               {
-                color:
-                  !amount ? colors.mutedForeground : colors.primary,
+                color: !amount ? colors.mutedForeground : colors.primary,
               },
             ]}
           >
@@ -134,7 +129,7 @@ export default function AddExpenseScreen() {
           />
         </Field>
 
-        <Field label="Description">
+        <Field label="Note">
           <TextInput
             style={[
               styles.input,
@@ -144,9 +139,9 @@ export default function AddExpenseScreen() {
                 borderColor: colors.border,
               },
             ]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder="What was this expense for?"
+            value={note}
+            onChangeText={setNote}
+            placeholder="What was this receipt for?"
             placeholderTextColor={colors.mutedForeground}
           />
         </Field>
@@ -182,13 +177,9 @@ export default function AddExpenseScreen() {
                     styles.currencyChip,
                     {
                       backgroundColor:
-                        currency === c
-                          ? colors.primary
-                          : colors.card,
+                        currency === c ? colors.primary : colors.card,
                       borderColor:
-                        currency === c
-                          ? colors.primary
-                          : colors.border,
+                        currency === c ? colors.primary : colors.border,
                     },
                   ]}
                 >
@@ -211,24 +202,20 @@ export default function AddExpenseScreen() {
           </View>
         </Field>
 
-        <Field label="Category">
+        <Field label="Type">
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipRow}>
-              {EXPENSE_CATEGORIES.map((cat) => (
+              {RECEIPT_TYPES.map((rt) => (
                 <Pressable
-                  key={cat.key}
-                  onPress={() => setCategory(cat.key)}
+                  key={rt.key}
+                  onPress={() => setType(rt.key)}
                   style={[
                     styles.categoryChip,
                     {
                       backgroundColor:
-                        category === cat.key
-                          ? colors.primary
-                          : colors.card,
+                        type === rt.key ? colors.primary : colors.card,
                       borderColor:
-                        category === cat.key
-                          ? colors.primary
-                          : colors.border,
+                        type === rt.key ? colors.primary : colors.border,
                     },
                   ]}
                 >
@@ -237,13 +224,13 @@ export default function AddExpenseScreen() {
                       styles.categoryChipText,
                       {
                         color:
-                          category === cat.key
+                          type === rt.key
                             ? colors.primaryForeground
                             : colors.foreground,
                       },
                     ]}
                   >
-                    {cat.label}
+                    {rt.label}
                   </Text>
                 </Pressable>
               ))}
@@ -285,24 +272,44 @@ export default function AddExpenseScreen() {
           />
         </Field>
 
-        <Field label="Notes">
+        <Field label="Number of People">
           <TextInput
             style={[
               styles.input,
-              styles.textArea,
               {
                 color: colors.foreground,
                 backgroundColor: colors.card,
                 borderColor: colors.border,
               },
             ]}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Additional notes..."
+            value={numberOfPeople}
+            onChangeText={setNumberOfPeople}
+            placeholder="1"
             placeholderTextColor={colors.mutedForeground}
-            multiline
-            numberOfLines={3}
+            keyboardType="number-pad"
           />
+        </Field>
+
+        <Field label="Self Declaration">
+          <Pressable
+            onPress={() => setSelfDeclaration((v) => !v)}
+            style={[
+              styles.toggle,
+              {
+                backgroundColor: selfDeclaration ? colors.primary + "22" : colors.card,
+                borderColor: selfDeclaration ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            <Feather
+              name={selfDeclaration ? "check-square" : "square"}
+              size={18}
+              color={selfDeclaration ? colors.primary : colors.mutedForeground}
+            />
+            <Text style={[styles.toggleLabel, { color: colors.foreground }]}>
+              Self declaration receipt
+            </Text>
+          </Pressable>
         </Field>
       </ScrollView>
     </View>
@@ -366,10 +373,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
   amountRow: {
     gap: 8,
   },
@@ -402,5 +405,18 @@ const styles = StyleSheet.create({
   categoryChipText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+  toggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  toggleLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
   },
 });
