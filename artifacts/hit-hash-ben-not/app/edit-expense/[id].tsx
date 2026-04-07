@@ -32,7 +32,7 @@ interface FormErrors {
   currency?: string;
   date?: string;
   numberOfPeople?: string;
-  costCenter?: string;
+  division?: string;
 }
 
 function FieldLabel({ text, required }: { text: string; required?: boolean }) {
@@ -157,7 +157,7 @@ export default function EditExpenseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { refreshReceipts, receipts, budgets, refreshCashWallet } = useAppContext();
+  const { refreshReceipts, receipts, costCenters, refreshCashWallet } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const receipt = receipts.find((e) => e.id === Number(id));
@@ -167,11 +167,11 @@ export default function EditExpenseScreen() {
   const [currency, setCurrency] = useState<Currency>(receipt?.currency ?? "ILS");
   const [date, setDate] = useState(receipt?.date ?? "");
   const [numberOfPeople, setNumberOfPeople] = useState(String(receipt?.numberOfPeople ?? "1"));
-  const [costCenter, setCostCenter] = useState(receipt?.costCenter ?? "");
+  const [division, setDivision] = useState(receipt?.division ?? "");
+  const [selectedCostCenter, setSelectedCostCenter] = useState(receipt?.costCenter ?? "");
   const [photo, setPhoto] = useState(receipt?.photo ?? "");
   const [selfDeclaration, setSelfDeclaration] = useState(receipt?.selfDeclaration ?? true);
   const [note, setNote] = useState(receipt?.note ?? "");
-  const [budgetId, setBudgetId] = useState(receipt?.budget ?? "");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(receipt?.paymentMethod ?? "cash");
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -181,7 +181,7 @@ export default function EditExpenseScreen() {
 
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
-  const [showBudgetPicker, setShowBudgetPicker] = useState(false);
+  const [showCostCenterPicker, setShowCostCenterPicker] = useState(false);
 
   useEffect(() => {
     setSelfDeclaration((photo ?? "").trim().length === 0);
@@ -238,7 +238,7 @@ export default function EditExpenseScreen() {
     const nop = Number(numberOfPeople);
     if (!numberOfPeople.trim() || isNaN(nop) || nop < 1)
       e.numberOfPeople = "Enter at least 1 person";
-    if (!costCenter.trim()) e.costCenter = "Cost center is required";
+    if (!division.trim()) e.division = "Division is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -251,7 +251,7 @@ export default function EditExpenseScreen() {
     !!currency &&
     date.trim().length > 0 &&
     numberOfPeople.trim().length > 0 &&
-    costCenter.trim().length > 0;
+    division.trim().length > 0;
 
   async function handleSave() {
     if (!receipt || !validate()) return;
@@ -269,12 +269,13 @@ export default function EditExpenseScreen() {
         currency,
         date,
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
-        costCenter: costCenter.trim(),
+        division: division.trim(),
+        costCenter: selectedCostCenter,
         selfDeclaration,
         note: note.trim(),
         photo: photo.trim() || null,
         photo_checksum: receipt.photo_checksum ?? null,
-        budget: budgetId,
+        budget: "",
         status: receipt.status,
         export: receipt.export,
         deleted_at: receipt.deleted_at ?? null,
@@ -351,7 +352,6 @@ export default function EditExpenseScreen() {
   }
 
   const selectedTypeLabel = RECEIPT_TYPES.find((r) => r.key === type)?.label ?? type;
-  const selectedBudget = budgets.find((b) => String(b.id) === budgetId);
 
   return (
     <KeyboardAvoidingView
@@ -407,22 +407,20 @@ export default function EditExpenseScreen() {
           <FieldError msg={errors.type} />
         </View>
 
-        {budgets.length > 0 && (
+        {costCenters.length > 0 && (
           <View style={styles.field}>
-            <FieldLabel text="Budget" />
+            <FieldLabel text="Cost Center" />
             <TouchableOpacity
-              onPress={() => setShowBudgetPicker(true)}
+              onPress={() => setShowCostCenterPicker(true)}
               style={[styles.pickerBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
             >
               <Text
                 style={[
                   styles.pickerBtnText,
-                  { color: selectedBudget ? colors.foreground : colors.mutedForeground },
+                  { color: selectedCostCenter ? colors.foreground : colors.mutedForeground },
                 ]}
               >
-                {selectedBudget
-                  ? `#${selectedBudget.budgetNumber} — ${selectedBudget.budgetNumberName}`
-                  : "Select budget (optional)"}
+                {selectedCostCenter || "Select cost center (optional)"}
               </Text>
               <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
@@ -475,15 +473,14 @@ export default function EditExpenseScreen() {
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Cost Center" required />
+          <FieldLabel text="Division" required />
           <StyledInput
-            value={costCenter}
-            onChangeText={(v) => { const filtered = v.replace(/[^0-9]/g, ""); setCostCenter(filtered); markDirty(); if (errors.costCenter) setErrors((e) => ({ ...e, costCenter: undefined })); }}
-            placeholder="e.g. 1234"
-            keyboardType="number-pad"
-            error={errors.costCenter}
+            value={division}
+            onChangeText={(v) => { setDivision(v); markDirty(); if (errors.division) setErrors((e) => ({ ...e, division: undefined })); }}
+            placeholder="e.g. Finance"
+            error={errors.division}
           />
-          <FieldError msg={errors.costCenter} />
+          <FieldError msg={errors.division} />
         </View>
 
         <View style={styles.field}>
@@ -594,19 +591,15 @@ export default function EditExpenseScreen() {
         onSelect={(v) => { setCurrency(v as Currency); markDirty(); }}
         onClose={() => setShowCurrencyPicker(false)}
       />
-      {budgets.length > 0 && (
+      {costCenters.length > 0 && (
         <PickerModal
-          visible={showBudgetPicker}
-          title="Budget"
-          options={["", ...budgets.map((b) => String(b.id))]}
-          value={budgetId}
-          renderLabel={(v) => {
-            if (!v) return "No budget";
-            const b = budgets.find((b) => String(b.id) === v);
-            return b ? `#${b.budgetNumber} — ${b.budgetNumberName}` : v;
-          }}
-          onSelect={(v) => { setBudgetId(v); markDirty(); }}
-          onClose={() => setShowBudgetPicker(false)}
+          visible={showCostCenterPicker}
+          title="Cost Center"
+          options={["", ...costCenters.map((c) => c.name)]}
+          value={selectedCostCenter}
+          renderLabel={(v) => v || "No cost center"}
+          onSelect={(v) => { setSelectedCostCenter(v); markDirty(); }}
+          onClose={() => setShowCostCenterPicker(false)}
         />
       )}
     </KeyboardAvoidingView>

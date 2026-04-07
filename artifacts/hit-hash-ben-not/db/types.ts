@@ -59,13 +59,11 @@ export interface General {
   workerNumber: string;
   month: number;
   year: number;
-  costCenter: string;
 }
 
-export interface Budget {
+export interface CostCenter {
   id: number;
-  budgetNumber: number;
-  budgetNumberName: string;
+  name: string;
 }
 
 export type PaymentMethod = "cash" | "card";

@@ -45,10 +45,10 @@ export function buildXLSXBase64(
   XLSX.utils.book_append_sheet(wb, wsTravels, "Hotel Nights");
 
   const wsReceipts = XLSX.utils.aoa_to_sheet([
-    ["Type", "Amount", "Currency", "Date", "NumberOfPeople", "CostCenter",
-      "SelfDeclaration", "Note", "Budget", "PaymentMethod", "Photo"],
+    ["Type", "Amount", "Currency", "Date", "NumberOfPeople", "Division", "CostCenter",
+      "SelfDeclaration", "Note", "PaymentMethod", "Photo"],
     ...receipts.map((e) => [e.type, e.amount, e.currency, e.date, e.numberOfPeople,
-      e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.budget, e.paymentMethod ?? "card", pn(e.photo, uriToName)]),
+      e.division, e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.paymentMethod ?? "card", pn(e.photo, uriToName)]),
   ]);
   XLSX.utils.book_append_sheet(wb, wsReceipts, "Expenses");
 

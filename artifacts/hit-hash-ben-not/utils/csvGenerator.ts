@@ -61,10 +61,10 @@ export function buildCSV(
   lines.push("");
 
   lines.push("# EXPENSES");
-  lines.push("Row,Type,Amount,Currency,Date,NumberOfPeople,CostCenter,SelfDeclaration,Note,Budget,PaymentMethod,Photo");
+  lines.push("Row,Type,Amount,Currency,Date,NumberOfPeople,Division,CostCenter,SelfDeclaration,Note,PaymentMethod,Photo");
   for (const e of receipts) {
     lines.push(row("E", e.type, e.amount, e.currency, e.date, e.numberOfPeople,
-      e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.budget, e.paymentMethod ?? "card", photoName(e.photo, uriToName)));
+      e.division, e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.paymentMethod ?? "card", photoName(e.photo, uriToName)));
   }
   lines.push("");
 

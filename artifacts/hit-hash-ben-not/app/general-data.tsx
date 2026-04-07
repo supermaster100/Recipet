@@ -18,12 +18,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GeneralDB } from "@/db/database";
 import { useAppContext } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-import {
-  getSavedCostCenters,
-  updateCostCenterLabel,
-  displayLabel,
-  type SavedCostCenter,
-} from "@/db/costCenterStore";
 
 const MONTHS = [
   { label: "January", value: "1" },
@@ -50,7 +44,6 @@ interface FormErrors {
   workerNumber?: string;
   month?: string;
   year?: string;
-  costCenter?: string;
 }
 
 function FormInput({
@@ -195,76 +188,6 @@ function PickerField({
   );
 }
 
-function RenameModal({
-  visible,
-  costCenterNumber,
-  currentLabel,
-  onSave,
-  onClose,
-}: {
-  visible: boolean;
-  costCenterNumber: string;
-  currentLabel: string;
-  onSave: (label: string) => void;
-  onClose: () => void;
-}) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const [labelText, setLabelText] = useState(currentLabel);
-
-  useEffect(() => {
-    setLabelText(currentLabel);
-  }, [currentLabel, visible]);
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="formSheet"
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        style={[renameStyles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View style={renameStyles.handle}>
-          <View style={[renameStyles.handleBar, { backgroundColor: colors.border }]} />
-        </View>
-        <View style={[renameStyles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={onClose} hitSlop={8}>
-            <Text style={[renameStyles.cancel, { color: colors.mutedForeground }]}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={[renameStyles.title, { color: colors.foreground }]}>Rename Cost Center</Text>
-          <TouchableOpacity onPress={() => onSave(labelText)} hitSlop={8}>
-            <Text style={[renameStyles.save, { color: colors.primary }]}>Save</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={[renameStyles.body, { paddingBottom: insets.bottom + 24 }]}>
-          <Text style={[renameStyles.desc, { color: colors.mutedForeground }]}>
-            Give cost center <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{costCenterNumber}</Text> a friendly display name.
-            The number is always used in exports; the label is only shown in the app.
-          </Text>
-          <TextInput
-            value={labelText}
-            onChangeText={setLabelText}
-            placeholder="e.g. Marketing"
-            placeholderTextColor={colors.mutedForeground}
-            autoFocus
-            style={[
-              renameStyles.input,
-              {
-                color: colors.foreground,
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
-            ]}
-          />
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
 export default function GeneralDataScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -274,43 +197,27 @@ export default function GeneralDataScreen() {
   const [workerNumber, setWorkerNumber] = useState("");
   const [month, setMonth] = useState(String(new Date().getMonth() + 1));
   const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [costCenter, setCostCenter] = useState("");
-  const [costCenterLabel, setCostCenterLabel] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
-  const [savedCostCenters, setSavedCostCenters] = useState<SavedCostCenter[]>([]);
-
-  const [renameVisible, setRenameVisible] = useState(false);
-  const [renamingCC, setRenamingCC] = useState<SavedCostCenter | null>(null);
 
   const isFormValid =
     workerNumber.trim().length > 0 &&
     month.length > 0 &&
-    year.length > 0 &&
-    costCenter.trim().length > 0;
+    year.length > 0;
 
   useEffect(() => {
     if (general) {
       setWorkerNumber(general.workerNumber);
       setMonth(String(general.month));
       setYear(String(general.year));
-      setCostCenter(general.costCenter);
-      const saved = savedCostCenters.find((c) => c.number === general.costCenter);
-      setCostCenterLabel(saved && saved.label !== saved.number ? saved.label : "");
     }
   }, [general]);
-
-  useEffect(() => {
-    getSavedCostCenters().then(setSavedCostCenters);
-  }, []);
 
   function validate(): boolean {
     const e: FormErrors = {};
     if (!workerNumber.trim()) e.workerNumber = "Worker number is required";
     if (!month) e.month = "Month is required";
     if (!year) e.year = "Year is required";
-    if (!costCenter.trim()) e.costCenter = "Cost center is required";
-    else if (!/^\d+$/.test(costCenter.trim())) e.costCenter = "Cost center must be a number";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -323,7 +230,6 @@ export default function GeneralDataScreen() {
         workerNumber: workerNumber.trim(),
         month: Number(month),
         year: Number(year),
-        costCenter: costCenter.trim(),
       });
       await refreshGeneral();
       if (Platform.OS === "web") {
@@ -338,46 +244,6 @@ export default function GeneralDataScreen() {
     } finally {
       setSaving(false);
     }
-  }
-
-  function handleSelectSavedCostCenter(cc: SavedCostCenter) {
-    setCostCenter(cc.number);
-    setCostCenterLabel(cc.label !== cc.number ? cc.label : "");
-    if (errors.costCenter) setErrors((e) => ({ ...e, costCenter: undefined }));
-
-    Alert.alert(
-      "Rename Cost Center?",
-      `Would you like to give cost center ${cc.number} a display name?`,
-      [
-        { text: "Skip", style: "cancel" },
-        {
-          text: "Rename",
-          onPress: () => {
-            setRenamingCC(cc);
-            setRenameVisible(true);
-          },
-        },
-      ]
-    );
-  }
-
-  async function handleRenameSave(label: string) {
-    if (!renamingCC) return;
-    setRenameVisible(false);
-    const trimmed = label.trim();
-    if (!trimmed) return;
-    setCostCenterLabel(trimmed !== renamingCC.number ? trimmed : "");
-    await updateCostCenterLabel(renamingCC.number, trimmed);
-    const updated = await getSavedCostCenters();
-    setSavedCostCenters(updated);
-  }
-
-  function getCostCenterDisplayValue(): string {
-    if (!costCenter.trim()) return "";
-    if (costCenterLabel.trim()) return `${costCenterLabel} (${costCenter})`;
-    const saved = savedCostCenters.find((c) => c.number === costCenter.trim());
-    if (saved && saved.label !== saved.number) return `${saved.label} (${saved.number})`;
-    return costCenter;
   }
 
   return (
@@ -426,6 +292,7 @@ export default function GeneralDataScreen() {
           This information is included in every exported report. All fields are required.
         </Text>
 
+
         <FormInput
           label="Worker Number"
           value={workerNumber}
@@ -459,90 +326,7 @@ export default function GeneralDataScreen() {
           }}
           error={errors.year}
         />
-
-        <View style={styles.fieldGroup}>
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Cost Center <Text style={{ color: colors.destructive }}>*</Text>
-          </Text>
-          <TextInput
-            value={costCenter}
-            onChangeText={(v) => {
-              const filtered = v.replace(/[^0-9]/g, "");
-              setCostCenter(filtered);
-              setCostCenterLabel("");
-              if (errors.costCenter) setErrors((e) => ({ ...e, costCenter: undefined }));
-            }}
-            placeholder="e.g. 1234"
-            placeholderTextColor={colors.mutedForeground}
-            keyboardType="number-pad"
-            style={[
-              styles.input,
-              {
-                backgroundColor: colors.card,
-                borderColor: errors.costCenter ? colors.destructive : colors.border,
-                color: colors.foreground,
-              },
-            ]}
-          />
-          {costCenter.trim().length > 0 && getCostCenterDisplayValue() !== costCenter && (
-            <Text style={[styles.displayLabel, { color: colors.primary }]}>
-              {getCostCenterDisplayValue()}
-            </Text>
-          )}
-          {errors.costCenter ? (
-            <Text style={[styles.errorText, { color: colors.destructive }]}>{errors.costCenter}</Text>
-          ) : null}
-
-          {savedCostCenters.length > 0 && (
-            <View style={styles.savedCCSection}>
-              <Text style={[styles.savedCCTitle, { color: colors.mutedForeground }]}>
-                Previously used:
-              </Text>
-              <View style={styles.savedCCChips}>
-                {savedCostCenters.map((cc) => (
-                  <TouchableOpacity
-                    key={cc.number}
-                    onPress={() => handleSelectSavedCostCenter(cc)}
-                    style={[
-                      styles.chip,
-                      {
-                        backgroundColor:
-                          costCenter === cc.number
-                            ? colors.primary + "22"
-                            : colors.card,
-                        borderColor:
-                          costCenter === cc.number ? colors.primary : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        {
-                          color:
-                            costCenter === cc.number
-                              ? colors.primary
-                              : colors.foreground,
-                        },
-                      ]}
-                    >
-                      {displayLabel(cc)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-        </View>
       </ScrollView>
-
-      <RenameModal
-        visible={renameVisible}
-        costCenterNumber={renamingCC?.number ?? ""}
-        currentLabel={renamingCC ? (renamingCC.label !== renamingCC.number ? renamingCC.label : "") : ""}
-        onSave={handleRenameSave}
-        onClose={() => setRenameVisible(false)}
-      />
     </KeyboardAvoidingView>
   );
 }
@@ -622,61 +406,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  displayLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    marginTop: -2,
-  },
-  savedCCSection: {
-    marginTop: 4,
-    gap: 6,
-  },
-  savedCCTitle: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
-  savedCCChips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-});
-
-const renameStyles = StyleSheet.create({
-  container: { flex: 1 },
-  handle: { alignItems: "center", paddingTop: 16, paddingBottom: 8 },
-  handleBar: { width: 36, height: 4, borderRadius: 2 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  cancel: { fontSize: 15, fontFamily: "Inter_400Regular", width: 60 },
-  title: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  save: { fontSize: 15, fontFamily: "Inter_600SemiBold", width: 60, textAlign: "right" },
-  body: { padding: 16, gap: 16 },
-  desc: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
 });

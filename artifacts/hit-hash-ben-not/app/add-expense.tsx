@@ -37,11 +37,11 @@ interface ExpenseDraft {
   currency: Currency;
   date: string;
   numberOfPeople: string;
-  costCenter: string;
+  division: string;
+  selectedCostCenter: string;
   photo: string;
   selfDeclaration: boolean;
   note: string;
-  budgetId: string;
   paymentMethod: PaymentMethod;
 }
 
@@ -55,7 +55,7 @@ interface FormErrors {
   currency?: string;
   date?: string;
   numberOfPeople?: string;
-  costCenter?: string;
+  division?: string;
 }
 
 function FieldLabel({ text, required }: { text: string; required?: boolean }) {
@@ -200,7 +200,7 @@ export default function AddExpenseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { refreshReceipts, general, budgets, refreshCashWallet } = useAppContext();
+  const { refreshReceipts, general, costCenters, refreshCashWallet } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const params = useLocalSearchParams<{
     photo?: string;
@@ -217,11 +217,11 @@ export default function AddExpenseScreen() {
   const [currency, setCurrency] = useState<Currency>((params.currency as Currency) ?? "ILS");
   const [date, setDate] = useState(params.date ?? today());
   const [numberOfPeople, setNumberOfPeople] = useState("1");
-  const [costCenter, setCostCenter] = useState("");
+  const [division, setDivision] = useState("");
   const [photo, setPhoto] = useState(params.photo ?? "");
   const [selfDeclaration, setSelfDeclaration] = useState(true);
   const [note, setNote] = useState("");
-  const [budgetId, setBudgetId] = useState<string>("");
+  const [selectedCostCenter, setSelectedCostCenter] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 
   const [autoFilledFields] = useState<Set<string>>(() => {
@@ -245,11 +245,11 @@ export default function AddExpenseScreen() {
 
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
-  const [showBudgetPicker, setShowBudgetPicker] = useState(false);
+  const [showCostCenterPicker, setShowCostCenterPicker] = useState(false);
 
   useEffect(() => {
     if (general && !draftLoaded) {
-      setCostCenter(general.costCenter);
+      setDivision(general.division);
     }
   }, [general, draftLoaded]);
 
@@ -277,11 +277,11 @@ export default function AddExpenseScreen() {
               setCurrency(draft.currency);
               setDate(draft.date);
               setNumberOfPeople(draft.numberOfPeople);
-              setCostCenter(draft.costCenter);
+              setDivision(draft.division);
+              setSelectedCostCenter(draft.selectedCostCenter ?? "");
               setPhoto(draft.photo ?? "");
               setSelfDeclaration(draft.selfDeclaration);
               setNote(draft.note);
-              setBudgetId(draft.budgetId ?? "");
               setPaymentMethod(draft.paymentMethod ?? "cash");
               setDirty(true);
               setDraftLoaded(true);
@@ -298,13 +298,13 @@ export default function AddExpenseScreen() {
     currency,
     date,
     numberOfPeople,
-    costCenter,
+    division,
+    selectedCostCenter,
     photo,
     selfDeclaration,
     note,
-    budgetId,
     paymentMethod,
-  }), [type, amount, currency, date, numberOfPeople, costCenter, photo, selfDeclaration, note, budgetId, paymentMethod]);
+  }), [type, amount, currency, date, numberOfPeople, division, selectedCostCenter, photo, selfDeclaration, note, paymentMethod]);
 
   useEffect(() => {
     if (!dirty || saved) return;
@@ -318,7 +318,7 @@ export default function AddExpenseScreen() {
     if (dirty && !saved) {
       saveDraft(DRAFT_KEY, getDraftData());
     }
-  }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, costCenter, photo, selfDeclaration, note, budgetId, paymentMethod]);
+  }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, division, selectedCostCenter, photo, selfDeclaration, note, paymentMethod]);
 
   const confirmDiscard = useCallback(() => {
     return new Promise<boolean>((resolve) => {
@@ -373,7 +373,7 @@ export default function AddExpenseScreen() {
     const nop = Number(numberOfPeople);
     if (!numberOfPeople.trim() || isNaN(nop) || nop < 1)
       e.numberOfPeople = "Enter at least 1 person";
-    if (!costCenter.trim()) e.costCenter = "Cost center is required";
+    if (!division.trim()) e.division = "Division is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -386,7 +386,7 @@ export default function AddExpenseScreen() {
     !!currency &&
     date.trim().length > 0 &&
     numberOfPeople.trim().length > 0 &&
-    costCenter.trim().length > 0;
+    division.trim().length > 0;
 
   async function handleSave() {
     if (!validate()) return;
@@ -451,12 +451,13 @@ export default function AddExpenseScreen() {
         currency,
         date,
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
-        costCenter: costCenter.trim(),
+        division: division.trim(),
+        costCenter: selectedCostCenter,
         selfDeclaration: effectiveSelfDecl,
         note: note.trim(),
         photo: finalPhotoPath,
         photo_checksum: photoChecksum,
-        budget: budgetId,
+        budget: "",
         status: "",
         export: false,
         deleted_at: null,
@@ -511,10 +512,10 @@ export default function AddExpenseScreen() {
     setCurrency("ILS");
     setDate(today());
     setNumberOfPeople("1");
-    setCostCenter(general?.costCenter ?? "");
+    setDivision(general?.division ?? "");
+    setSelectedCostCenter("");
     setPhoto("");
     setNote("");
-    setBudgetId("");
     setPaymentMethod("cash");
     setErrors({});
     setDirty(false);
@@ -561,7 +562,6 @@ export default function AddExpenseScreen() {
   }
 
   const selectedTypeLabel = RECEIPT_TYPES.find((r) => r.key === type)?.label ?? type;
-  const selectedBudget = budgets.find((b) => String(b.id) === budgetId);
 
   return (
     <KeyboardAvoidingView
@@ -621,11 +621,11 @@ export default function AddExpenseScreen() {
           <FieldError msg={errors.type} />
         </View>
 
-        {budgets.length > 0 && (
+        {costCenters.length > 0 && (
           <View style={styles.field}>
-            <FieldLabel text="Budget" />
+            <FieldLabel text="Cost Center" />
             <TouchableOpacity
-              onPress={() => setShowBudgetPicker(true)}
+              onPress={() => setShowCostCenterPicker(true)}
               style={[
                 styles.pickerBtn,
                 { backgroundColor: colors.card, borderColor: colors.border },
@@ -634,12 +634,10 @@ export default function AddExpenseScreen() {
               <Text
                 style={[
                   styles.pickerBtnText,
-                  { color: selectedBudget ? colors.foreground : colors.mutedForeground },
+                  { color: selectedCostCenter ? colors.foreground : colors.mutedForeground },
                 ]}
               >
-                {selectedBudget
-                  ? `#${selectedBudget.budgetNumber} — ${selectedBudget.budgetNumberName}`
-                  : "Select budget (optional)"}
+                {selectedCostCenter || "Select cost center (optional)"}
               </Text>
               <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
@@ -728,15 +726,14 @@ export default function AddExpenseScreen() {
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Cost Center" required />
+          <FieldLabel text="Division" required />
           <StyledInput
-            value={costCenter}
-            onChangeText={(v) => { const filtered = v.replace(/[^0-9]/g, ""); setCostCenter(filtered); markDirty(); if (errors.costCenter) setErrors((e) => ({ ...e, costCenter: undefined })); }}
-            placeholder="e.g. 1234"
-            keyboardType="number-pad"
-            error={errors.costCenter}
+            value={division}
+            onChangeText={(v) => { setDivision(v); markDirty(); if (errors.division) setErrors((e) => ({ ...e, division: undefined })); }}
+            placeholder="e.g. Finance"
+            error={errors.division}
           />
-          <FieldError msg={errors.costCenter} />
+          <FieldError msg={errors.division} />
         </View>
 
         <View style={styles.field}>
@@ -832,19 +829,15 @@ export default function AddExpenseScreen() {
         onSelect={(v) => { setCurrency(v as Currency); markDirty(); }}
         onClose={() => setShowCurrencyPicker(false)}
       />
-      {budgets.length > 0 && (
+      {costCenters.length > 0 && (
         <PickerModal
-          visible={showBudgetPicker}
-          title="Budget"
-          options={["", ...budgets.map((b) => String(b.id))]}
-          value={budgetId}
-          renderLabel={(v) => {
-            if (!v) return "No budget";
-            const b = budgets.find((b) => String(b.id) === v);
-            return b ? `#${b.budgetNumber} — ${b.budgetNumberName}` : v;
-          }}
-          onSelect={(v) => { setBudgetId(v); markDirty(); }}
-          onClose={() => setShowBudgetPicker(false)}
+          visible={showCostCenterPicker}
+          title="Cost Center"
+          options={["", ...costCenters.map((c) => c.name)]}
+          value={selectedCostCenter}
+          renderLabel={(v) => v || "No cost center"}
+          onSelect={(v) => { setSelectedCostCenter(v); markDirty(); }}
+          onClose={() => setShowCostCenterPicker(false)}
         />
       )}
     </KeyboardAvoidingView>

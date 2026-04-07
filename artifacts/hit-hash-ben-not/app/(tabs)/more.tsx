@@ -209,17 +209,17 @@ export default function MoreScreen() {
           <SettingsRow
             icon="user"
             label="General Data"
-            subtitle="Worker number, month, year, cost center"
+            subtitle="Worker number, division, period"
             color={colors.primary}
             onPress={() => router.push("/general-data")}
             isFirst
           />
           <SettingsRow
-            icon="pie-chart"
-            label="Budgets"
-            subtitle="Manage budget codes"
+            icon="layers"
+            label="Cost Centers"
+            subtitle="Manage cost centers for expenses"
             color={colors.warning}
-            onPress={() => router.push("/budgets")}
+            onPress={() => router.push("/cost-centers")}
           />
           <SettingsRow
             icon="download"

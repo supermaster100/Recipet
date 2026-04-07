@@ -16,53 +16,32 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/ui/EmptyState";
-import { BudgetDB } from "@/db/database";
+import { CostCenterDB } from "@/db/database";
 import { useAppContext } from "@/context/AppContext";
-import type { Budget } from "@/db/types";
+import type { CostCenter } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
-function BudgetRow({
-  budget,
-  selected,
-  onToggleSelect,
+function CostCenterRow({
+  costCenter,
   onDelete,
 }: {
-  budget: Budget;
-  selected: boolean;
-  onToggleSelect: () => void;
+  costCenter: CostCenter;
   onDelete: () => void;
 }) {
   const colors = useColors();
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onLongPress={onToggleSelect}
-      onPress={onToggleSelect}
+    <View
       style={[
         styles.row,
         {
-          backgroundColor: selected ? colors.primary + "18" : colors.card,
-          borderColor: selected ? colors.primary : colors.border,
+          backgroundColor: colors.card,
+          borderColor: colors.border,
         },
       ]}
     >
-      <View
-        style={[
-          styles.checkCircle,
-          {
-            backgroundColor: selected ? colors.primary : "transparent",
-            borderColor: selected ? colors.primary : colors.border,
-          },
-        ]}
-      >
-        {selected && <Feather name="check" size={12} color="#fff" />}
-      </View>
       <View style={styles.rowContent}>
-        <Text style={[styles.rowNumber, { color: colors.primary }]}>
-          #{budget.budgetNumber}
-        </Text>
         <Text style={[styles.rowName, { color: colors.foreground }]}>
-          {budget.budgetNumberName}
+          {costCenter.name}
         </Text>
       </View>
       <TouchableOpacity
@@ -72,30 +51,26 @@ function BudgetRow({
       >
         <Feather name="trash-2" size={15} color={colors.destructive} />
       </TouchableOpacity>
-    </TouchableOpacity>
+    </View>
   );
 }
 
-function AddBudgetModal({
+function AddCostCenterModal({
   visible,
   onClose,
   onAdd,
 }: {
   visible: boolean;
   onClose: () => void;
-  onAdd: (budgetNumber: string, budgetNumberName: string) => Promise<void>;
+  onAdd: (name: string) => Promise<void>;
 }) {
   const colors = useColors();
-  const [num, setNum] = useState("");
   const [name, setName] = useState("");
-  const [numErr, setNumErr] = useState("");
   const [nameErr, setNameErr] = useState("");
   const [saving, setSaving] = useState(false);
 
   function reset() {
-    setNum("");
     setName("");
-    setNumErr("");
     setNameErr("");
     setSaving(false);
   }
@@ -106,31 +81,18 @@ function AddBudgetModal({
   }
 
   async function handleAdd() {
-    let valid = true;
-    if (!num.trim()) {
-      setNumErr("Budget number is required");
-      valid = false;
-    } else if (isNaN(Number(num.trim()))) {
-      setNumErr("Must be a number");
-      valid = false;
-    } else {
-      setNumErr("");
-    }
     if (!name.trim()) {
-      setNameErr("Budget name is required");
-      valid = false;
-    } else {
-      setNameErr("");
+      setNameErr("Cost center name is required");
+      return;
     }
-    if (!valid) return;
-
+    setNameErr("");
     setSaving(true);
     try {
-      await onAdd(num.trim(), name.trim());
+      await onAdd(name.trim());
       reset();
       onClose();
     } catch {
-      Alert.alert("Error", "Failed to save budget.");
+      Alert.alert("Error", "Failed to save cost center.");
     } finally {
       setSaving(false);
     }
@@ -160,7 +122,7 @@ function AddBudgetModal({
               </Text>
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-              Add Budget
+              Add Cost Center
             </Text>
             <TouchableOpacity onPress={handleAdd} disabled={saving}>
               <Text
@@ -180,36 +142,7 @@ function AddBudgetModal({
           >
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                Budget Number <Text style={{ color: colors.destructive }}>*</Text>
-              </Text>
-              <TextInput
-                value={num}
-                onChangeText={(v) => {
-                  setNum(v);
-                  if (numErr) setNumErr("");
-                }}
-                placeholder="e.g. 1001"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="numeric"
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: numErr ? colors.destructive : colors.border,
-                    color: colors.foreground,
-                  },
-                ]}
-              />
-              {numErr ? (
-                <Text style={[styles.errorText, { color: colors.destructive }]}>
-                  {numErr}
-                </Text>
-              ) : null}
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                Budget Name <Text style={{ color: colors.destructive }}>*</Text>
+                Name <Text style={{ color: colors.destructive }}>*</Text>
               </Text>
               <TextInput
                 value={name}
@@ -242,82 +175,46 @@ function AddBudgetModal({
   );
 }
 
-export default function BudgetsScreen() {
+export default function CostCentersScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { budgets, refreshBudgets } = useAppContext();
+  const { costCenters, refreshCostCenters } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
-  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [showAdd, setShowAdd] = useState(false);
 
-  function toggleSelect(id: number) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   async function handleDelete(id: number) {
-    Alert.alert("Delete Budget", "Remove this budget?", [
+    Alert.alert("Delete Cost Center", "Remove this cost center?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await BudgetDB.delete(id);
-          setSelected((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
-          await refreshBudgets();
+          await CostCenterDB.delete(id);
+          await refreshCostCenters();
         },
       },
     ]);
   }
 
-  async function handleDeleteSelected() {
-    if (selected.size === 0) return;
-    Alert.alert(
-      "Delete Selected",
-      `Remove ${selected.size} budget${selected.size > 1 ? "s" : ""}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await Promise.all([...selected].map((id) => BudgetDB.delete(id)));
-            setSelected(new Set());
-            await refreshBudgets();
-          },
-        },
-      ]
-    );
-  }
-
   async function handleClearAll() {
-    if (budgets.length === 0) return;
-    Alert.alert("Clear All Budgets", "This will permanently remove all budgets.", [
+    if (costCenters.length === 0) return;
+    Alert.alert("Clear All Cost Centers", "This will permanently remove all cost centers.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Clear All",
         style: "destructive",
         onPress: async () => {
-          await Promise.all(budgets.map((b) => BudgetDB.delete(b.id)));
-          setSelected(new Set());
-          await refreshBudgets();
+          await Promise.all(costCenters.map((c) => CostCenterDB.delete(c.id)));
+          await refreshCostCenters();
         },
       },
     ]);
   }
 
-  async function handleAdd(budgetNumber: string, budgetNumberName: string) {
-    await BudgetDB.insert({ budgetNumber: Number(budgetNumber), budgetNumberName });
-    await refreshBudgets();
+  async function handleAdd(name: string) {
+    await CostCenterDB.insert({ name });
+    await refreshCostCenters();
   }
 
   return (
@@ -332,7 +229,7 @@ export default function BudgetsScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          Budgets
+          Cost Centers
         </Text>
         <TouchableOpacity
           onPress={() => setShowAdd(true)}
@@ -342,37 +239,11 @@ export default function BudgetsScreen() {
         </TouchableOpacity>
       </View>
 
-      {selected.size > 0 && (
-        <View
-          style={[
-            styles.selectionBar,
-            { backgroundColor: colors.card, borderBottomColor: colors.border },
-          ]}
-        >
-          <Text style={[styles.selectionCount, { color: colors.foreground }]}>
-            {selected.size} selected
-          </Text>
-          <TouchableOpacity
-            onPress={handleDeleteSelected}
-            style={[styles.selDeleteBtn, { backgroundColor: colors.destructive }]}
-          >
-            <Feather name="trash-2" size={14} color="#fff" />
-            <Text style={styles.selDeleteText}>Delete Selected</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setSelected(new Set())}
-            hitSlop={8}
-          >
-            <Feather name="x" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {budgets.length === 0 ? (
+      {costCenters.length === 0 ? (
         <EmptyState
-          icon="pie-chart"
-          title="No budgets yet"
-          subtitle="Add budget codes to use them when recording expenses"
+          icon="layers"
+          title="No cost centers yet"
+          subtitle="Add cost centers to assign them when recording expenses"
         />
       ) : (
         <ScrollView
@@ -382,17 +253,15 @@ export default function BudgetsScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {budgets.map((b) => (
-            <BudgetRow
-              key={b.id}
-              budget={b}
-              selected={selected.has(b.id)}
-              onToggleSelect={() => toggleSelect(b.id)}
-              onDelete={() => handleDelete(b.id)}
+          {costCenters.map((c) => (
+            <CostCenterRow
+              key={c.id}
+              costCenter={c}
+              onDelete={() => handleDelete(c.id)}
             />
           ))}
 
-          {budgets.length > 0 && (
+          {costCenters.length > 0 && (
             <TouchableOpacity
               onPress={handleClearAll}
               style={[
@@ -402,14 +271,14 @@ export default function BudgetsScreen() {
             >
               <Feather name="trash" size={14} color={colors.destructive} />
               <Text style={[styles.clearAllText, { color: colors.destructive }]}>
-                Clear All Budgets
+                Clear All Cost Centers
               </Text>
             </TouchableOpacity>
           )}
         </ScrollView>
       )}
 
-      <AddBudgetModal
+      <AddCostCenterModal
         visible={showAdd}
         onClose={() => setShowAdd(false)}
         onAdd={handleAdd}
@@ -439,32 +308,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  selectionBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  selectionCount: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-  },
-  selDeleteBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  selDeleteText: {
-    color: "#fff",
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
   list: {
     padding: 16,
     gap: 8,
@@ -477,21 +320,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },
-  checkCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   rowContent: {
     flex: 1,
-    gap: 2,
-  },
-  rowNumber: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
   },
   rowName: {
     fontSize: 15,
@@ -509,9 +339,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderWidth: 1,
+    paddingVertical: 14,
     borderRadius: 12,
-    paddingVertical: 12,
+    borderWidth: 1,
     marginTop: 8,
   },
   clearAllText: {
@@ -542,6 +372,7 @@ const styles = StyleSheet.create({
   modalCancel: {
     fontSize: 15,
     fontFamily: "Inter_400Regular",
+    width: 60,
   },
   modalTitle: {
     fontSize: 17,
@@ -550,6 +381,8 @@ const styles = StyleSheet.create({
   modalSave: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
+    textAlign: "right",
+    width: 60,
   },
   modalContent: {
     padding: 16,

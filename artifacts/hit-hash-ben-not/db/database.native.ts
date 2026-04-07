@@ -1,7 +1,7 @@
 import * as SQLite from "expo-sqlite";
 import type {
   ATMWithdrawal,
-  Budget,
+  CostCenter,
   CashWalletEntry,
   CashWalletEntryType,
   ClientTransfer,
@@ -43,10 +43,9 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   `);
 
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS Budgets (
+    CREATE TABLE IF NOT EXISTS CostCenters (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      budgetNumber INTEGER NOT NULL DEFAULT 0,
-      budgetNumberName TEXT NOT NULL DEFAULT ''
+      name TEXT NOT NULL DEFAULT ''
     );
   `);
 
@@ -199,6 +198,12 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
 async function runSchemaMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
   await takeBackup("pre_schema_migration").catch(() => {});
   await runMigrationWithRollback(db, async () => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS CostCenters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL DEFAULT ''
+      )
+    `).catch(() => {});
     await db.execAsync(`ALTER TABLE Receipts ADD COLUMN budget TEXT NOT NULL DEFAULT ''`).catch(() => {});
     await db.execAsync(`ALTER TABLE Receipts ADD COLUMN photo_checksum TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE Receipts ADD COLUMN deleted_at TEXT`).catch(() => {});
@@ -233,7 +238,6 @@ function toGeneral(r: Record<string, unknown>): General {
     workerNumber: r["workerNumber"] as string,
     month: r["month"] as number,
     year: r["year"] as number,
-    costCenter: r["costCenter"] as string,
   };
 }
 
@@ -325,11 +329,10 @@ function toTravel(r: Record<string, unknown>): Travel {
   };
 }
 
-function toBudget(r: Record<string, unknown>): Budget {
+function toCostCenter(r: Record<string, unknown>): CostCenter {
   return {
     id: r["id"] as number,
-    budgetNumber: r["budgetNumber"] as number,
-    budgetNumberName: r["budgetNumberName"] as string,
+    name: r["name"] as string,
   };
 }
 
@@ -347,13 +350,13 @@ export const GeneralDB = {
       const existing = await GeneralDB.get();
       if (existing) {
         await db.runAsync(
-          "UPDATE General SET workerNumber=?, month=?, year=?, costCenter=? WHERE id=?",
-          [data.workerNumber, data.month, data.year, data.costCenter, existing.id]
+          "UPDATE General SET workerNumber=?, division=?, month=?, year=? WHERE id=?",
+          [data.workerNumber, data.division, data.month, data.year, existing.id]
         );
       } else {
         await db.runAsync(
-          "INSERT INTO General (workerNumber, month, year, costCenter) VALUES (?, ?, ?, ?)",
-          [data.workerNumber, data.month, data.year, data.costCenter]
+          "INSERT INTO General (workerNumber, division, month, year) VALUES (?, ?, ?, ?)",
+          [data.workerNumber, data.division, data.month, data.year]
         );
       }
     });
@@ -654,37 +657,28 @@ export const TravelDB = {
   },
 };
 
-export const BudgetDB = {
-  async getAll(): Promise<Budget[]> {
+export const CostCenterDB = {
+  async getAll(): Promise<CostCenter[]> {
     const db = await getDatabase();
-    const rows = await db.getAllAsync<Record<string, unknown>>("SELECT * FROM Budgets");
-    return rows.map(toBudget);
+    const rows = await db.getAllAsync<Record<string, unknown>>("SELECT * FROM CostCenters ORDER BY id ASC");
+    return rows.map(toCostCenter);
   },
-  async insert(b: Omit<Budget, "id">): Promise<number> {
+  async insert(c: Omit<CostCenter, "id">): Promise<number> {
     const db = await getDatabase();
     let lastId = 0;
     await db.withTransactionAsync(async () => {
       const res = await db.runAsync(
-        "INSERT INTO Budgets (budgetNumber, budgetNumberName) VALUES (?, ?)",
-        [b.budgetNumber, b.budgetNumberName]
+        "INSERT INTO CostCenters (name) VALUES (?)",
+        [c.name]
       );
       lastId = res.lastInsertRowId;
     });
     return lastId;
   },
-  async update(b: Budget): Promise<void> {
-    const db = await getDatabase();
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(
-        "UPDATE Budgets SET budgetNumber=?, budgetNumberName=? WHERE id=?",
-        [b.budgetNumber, b.budgetNumberName, b.id]
-      );
-    });
-  },
   async delete(id: number): Promise<void> {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
-      await db.runAsync("DELETE FROM Budgets WHERE id=?", [id]);
+      await db.runAsync("DELETE FROM CostCenters WHERE id=?", [id]);
     });
   },
 };

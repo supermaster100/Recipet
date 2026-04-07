@@ -1,4 +1,4 @@
-import type { ATMWithdrawal, Budget, ClientTransfer, Exchange, General, Leg, MoneyTransfer, Receipt, Travel, TrashItem } from "./types";
+import type { ATMWithdrawal, CostCenter, ClientTransfer, Exchange, General, Leg, MoneyTransfer, Receipt, Travel, TrashItem } from "./types";
 
 const KEYS = {
   general: "hhbn_general",
@@ -7,7 +7,7 @@ const KEYS = {
   legs: "hhbn_legs",
   travels: "hhbn_travels",
   atm: "hhbn_atm",
-  budgets: "hhbn_budgets",
+  costCenters: "hhbn_cost_centers",
   moneyTransfers: "hhbn_money_transfers",
   clientTransfers: "hhbn_client_transfers",
   seq: (table: string) => `hhbn_seq_${table}`,
@@ -281,26 +281,29 @@ export const TravelDB = {
   },
 };
 
-export const BudgetDB = {
-  async getAll(): Promise<Budget[]> {
-    return load<Budget>(KEYS.budgets);
+export const CostCenterDB = {
+  async getAll(): Promise<CostCenter[]> {
+    return load<CostCenter>(KEYS.costCenters);
   },
-  async insert(b: Omit<Budget, "id">): Promise<number> {
-    const rows = load<Budget>(KEYS.budgets);
-    const id = nextId("budgets");
-    rows.push({ id, ...b });
-    save(KEYS.budgets, rows);
+  async insert(c: Omit<CostCenter, "id">): Promise<number> {
+    const rows = load<CostCenter>(KEYS.costCenters);
+    const id = nextId("costCenters");
+    rows.push({ id, ...c });
+    save(KEYS.costCenters, rows);
     return id;
   },
-  async update(b: Budget): Promise<void> {
-    const rows = load<Budget>(KEYS.budgets);
-    const idx = rows.findIndex((x) => x.id === b.id);
-    if (idx !== -1) rows[idx] = b;
-    save(KEYS.budgets, rows);
+  async update(c: CostCenter): Promise<void> {
+    const rows = load<CostCenter>(KEYS.costCenters);
+    const idx = rows.findIndex((x) => x.id === c.id);
+    if (idx !== -1) rows[idx] = c;
+    save(KEYS.costCenters, rows);
   },
   async delete(id: number): Promise<void> {
-    const rows = load<Budget>(KEYS.budgets).filter((x) => x.id !== id);
-    save(KEYS.budgets, rows);
+    const rows = load<CostCenter>(KEYS.costCenters).filter((x) => x.id !== id);
+    save(KEYS.costCenters, rows);
+  },
+  async deleteAll(): Promise<void> {
+    save<CostCenter>(KEYS.costCenters, []);
   },
 };
 

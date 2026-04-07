@@ -186,7 +186,7 @@ export default function ExportScreen() {
 
           <CheckRow
             label="Clear all trip data after export"
-            subtitle="Receipts, hotels, exchanges, ATM & transfers are soft-deleted. General data and budgets are kept."
+            subtitle="Receipts, hotels, exchanges, ATM & transfers are soft-deleted. General data and cost centers are kept."
             checked={clearAfter}
             onToggle={() => setClearAfter((v) => !v)}
             disabled={!exportAll}
