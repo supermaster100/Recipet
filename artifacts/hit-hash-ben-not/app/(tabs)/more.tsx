@@ -189,6 +189,28 @@ export default function MoreScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          TRANSFERS
+        </Text>
+        <View style={[styles.group, { shadowColor: colors.shadowColor }]}>
+          <SettingsRow
+            icon="send"
+            label="Money Transfers"
+            subtitle="Employee-to-employee cash handoffs"
+            color={colors.primary}
+            onPress={() => router.push("/(tabs)/money-transfers")}
+            isFirst
+          />
+          <SettingsRow
+            icon="users"
+            label="Client Transfers"
+            subtitle="Employee-to-client cash handoffs"
+            color={colors.warning}
+            onPress={() => router.push("/(tabs)/client-transfers")}
+            isLast
+          />
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
           DATA
         </Text>
         <View style={[styles.group, { shadowColor: colors.shadowColor }]}>

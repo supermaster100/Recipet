@@ -10,8 +10,10 @@ import { Platform } from "react-native";
 
 import {
   BudgetDB,
+  ClientTransferDB,
   ExchangeDB,
   LegDB,
+  MoneyTransferDB,
   ReceiptDB,
   TravelDB,
   GeneralDB,
@@ -19,9 +21,11 @@ import {
 } from "@/db/database";
 import type {
   Budget,
+  ClientTransfer,
   Exchange,
   General,
   Leg,
+  MoneyTransfer,
   Receipt,
   Travel,
 } from "@/db/types";
@@ -37,12 +41,16 @@ interface AppContextValue {
   legs: Leg[];
   exchanges: Exchange[];
   budgets: Budget[];
+  moneyTransfers: MoneyTransfer[];
+  clientTransfers: ClientTransfer[];
   refreshGeneral: () => Promise<void>;
   refreshReceipts: () => Promise<void>;
   refreshTravels: () => Promise<void>;
   refreshLegs: () => Promise<void>;
   refreshExchanges: () => Promise<void>;
   refreshBudgets: () => Promise<void>;
+  refreshMoneyTransfers: () => Promise<void>;
+  refreshClientTransfers: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
 
@@ -57,6 +65,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [legs, setLegs] = useState<Leg[]>([]);
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [moneyTransfers, setMoneyTransfers] = useState<MoneyTransfer[]>([]);
+  const [clientTransfers, setClientTransfers] = useState<ClientTransfer[]>([]);
 
   const refreshGeneral = useCallback(async () => {
     const data = await GeneralDB.get();
@@ -88,6 +98,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setBudgets(data);
   }, []);
 
+  const refreshMoneyTransfers = useCallback(async () => {
+    const data = await MoneyTransferDB.getAll();
+    setMoneyTransfers(data);
+  }, []);
+
+  const refreshClientTransfers = useCallback(async () => {
+    const data = await ClientTransferDB.getAll();
+    setClientTransfers(data);
+  }, []);
+
   const refreshAll = useCallback(async () => {
     await Promise.all([
       refreshGeneral(),
@@ -96,8 +116,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       refreshLegs(),
       refreshExchanges(),
       refreshBudgets(),
+      refreshMoneyTransfers(),
+      refreshClientTransfers(),
     ]);
-  }, [refreshGeneral, refreshReceipts, refreshTravels, refreshLegs, refreshExchanges, refreshBudgets]);
+  }, [refreshGeneral, refreshReceipts, refreshTravels, refreshLegs, refreshExchanges, refreshBudgets, refreshMoneyTransfers, refreshClientTransfers]);
 
   useEffect(() => {
     getDatabase()
@@ -125,12 +147,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         legs,
         exchanges,
         budgets,
+        moneyTransfers,
+        clientTransfers,
         refreshGeneral,
         refreshReceipts,
         refreshTravels,
         refreshLegs,
         refreshExchanges,
         refreshBudgets,
+        refreshMoneyTransfers,
+        refreshClientTransfers,
         refreshAll,
       }}
     >

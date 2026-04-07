@@ -1,9 +1,11 @@
 import * as SQLite from "expo-sqlite";
 import type {
   Budget,
+  ClientTransfer,
   Exchange,
   General,
   Leg,
+  MoneyTransfer,
   Receipt,
   ReceiptType,
   Travel,
@@ -109,6 +111,33 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   }
 
 
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS MoneyTransfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      receiptName TEXT NOT NULL DEFAULT '',
+      giverName TEXT NOT NULL DEFAULT '',
+      workerNumber TEXT NOT NULL DEFAULT '',
+      date TEXT NOT NULL DEFAULT '',
+      amount REAL NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'ILS',
+      photo TEXT,
+      createdAt TEXT NOT NULL DEFAULT ''
+    );
+  `);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS ClientTransfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clientName TEXT NOT NULL DEFAULT '',
+      giverName TEXT NOT NULL DEFAULT '',
+      date TEXT NOT NULL DEFAULT '',
+      amount REAL NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'ILS',
+      photo TEXT,
+      createdAt TEXT NOT NULL DEFAULT ''
+    );
+  `);
 
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS Travels (
@@ -463,5 +492,78 @@ export const BudgetDB = {
   async delete(id: number): Promise<void> {
     const db = await getDatabase();
     await db.runAsync("DELETE FROM Budgets WHERE id = ?", [id]);
+  },
+};
+
+function toMoneyTransfer(r: Record<string, unknown>): MoneyTransfer {
+  return {
+    id: r["id"] as number,
+    receiptName: r["receiptName"] as string,
+    giverName: r["giverName"] as string,
+    workerNumber: r["workerNumber"] as string,
+    date: r["date"] as string,
+    amount: r["amount"] as number,
+    currency: r["currency"] as MoneyTransfer["currency"],
+    photo: r["photo"] as string | null,
+    createdAt: r["createdAt"] as string,
+  };
+}
+
+function toClientTransfer(r: Record<string, unknown>): ClientTransfer {
+  return {
+    id: r["id"] as number,
+    clientName: r["clientName"] as string,
+    giverName: r["giverName"] as string,
+    date: r["date"] as string,
+    amount: r["amount"] as number,
+    currency: r["currency"] as ClientTransfer["currency"],
+    photo: r["photo"] as string | null,
+    createdAt: r["createdAt"] as string,
+  };
+}
+
+export const MoneyTransferDB = {
+  async getAll(): Promise<MoneyTransfer[]> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      "SELECT * FROM MoneyTransfers ORDER BY date DESC, id DESC"
+    );
+    return rows.map(toMoneyTransfer);
+  },
+  async insert(m: Omit<MoneyTransfer, "id">): Promise<number> {
+    const db = await getDatabase();
+    const res = await db.runAsync(
+      `INSERT INTO MoneyTransfers (receiptName, giverName, workerNumber, date, amount, currency, photo, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [m.receiptName, m.giverName, m.workerNumber, m.date, m.amount, m.currency, m.photo ?? null, m.createdAt]
+    );
+    return res.lastInsertRowId;
+  },
+  async delete(id: number): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM MoneyTransfers WHERE id = ?", [id]);
+  },
+};
+
+export const ClientTransferDB = {
+  async getAll(): Promise<ClientTransfer[]> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      "SELECT * FROM ClientTransfers ORDER BY date DESC, id DESC"
+    );
+    return rows.map(toClientTransfer);
+  },
+  async insert(c: Omit<ClientTransfer, "id">): Promise<number> {
+    const db = await getDatabase();
+    const res = await db.runAsync(
+      `INSERT INTO ClientTransfers (clientName, giverName, date, amount, currency, photo, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [c.clientName, c.giverName, c.date, c.amount, c.currency, c.photo ?? null, c.createdAt]
+    );
+    return res.lastInsertRowId;
+  },
+  async delete(id: number): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM ClientTransfers WHERE id = ?", [id]);
   },
 };

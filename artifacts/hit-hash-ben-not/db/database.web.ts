@@ -1,4 +1,4 @@
-import type { Budget, Exchange, General, Leg, Receipt, Travel } from "./types";
+import type { Budget, ClientTransfer, Exchange, General, Leg, MoneyTransfer, Receipt, Travel } from "./types";
 
 export async function getDatabase(): Promise<null> {
   return null;
@@ -47,5 +47,17 @@ export const BudgetDB = {
   getAll: (): Promise<Budget[]> => Promise.resolve([]),
   insert: (_b: Omit<Budget, "id">): Promise<number> => Promise.resolve(0),
   update: (_b: Budget): Promise<void> => Promise.resolve(),
+  delete: (_id: number): Promise<void> => Promise.resolve(),
+};
+
+export const MoneyTransferDB = {
+  getAll: (): Promise<MoneyTransfer[]> => Promise.resolve([]),
+  insert: (_m: Omit<MoneyTransfer, "id">): Promise<number> => Promise.resolve(0),
+  delete: (_id: number): Promise<void> => Promise.resolve(),
+};
+
+export const ClientTransferDB = {
+  getAll: (): Promise<ClientTransfer[]> => Promise.resolve([]),
+  insert: (_c: Omit<ClientTransfer, "id">): Promise<number> => Promise.resolve(0),
   delete: (_id: number): Promise<void> => Promise.resolve(),
 };

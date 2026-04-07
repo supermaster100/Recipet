@@ -33,6 +33,14 @@ function NativeTabLayout() {
         <Icon sf={{ default: "ellipsis.circle", selected: "ellipsis.circle.fill" }} />
         <Label>More</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="money-transfers">
+        <Icon sf={{ default: "banknote", selected: "banknote.fill" }} />
+        <Label>Transfers</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="client-transfers">
+        <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
+        <Label>Client</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -147,6 +155,20 @@ function ClassicTabLayout() {
             ) : (
               <Feather name="more-horizontal" size={22} color={color} />
             ),
+        }}
+      />
+      <Tabs.Screen
+        name="money-transfers"
+        options={{
+          title: "Money Transfers",
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="client-transfers"
+        options={{
+          title: "Client Transfers",
+          href: null,
         }}
       />
     </Tabs>

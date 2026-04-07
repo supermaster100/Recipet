@@ -30,6 +30,8 @@ function RootLayoutNav() {
       <Stack.Screen name="edit-hotel-night/[id]" options={{ presentation: "modal" }} />
       <Stack.Screen name="add-exchange" options={{ presentation: "modal" }} />
       <Stack.Screen name="edit-exchange/[id]" options={{ presentation: "modal" }} />
+      <Stack.Screen name="add-money-transfer" options={{ presentation: "modal" }} />
+      <Stack.Screen name="add-client-transfer" options={{ presentation: "modal" }} />
       <Stack.Screen name="export" />
       <Stack.Screen name="budgets" />
       <Stack.Screen name="general-data" />

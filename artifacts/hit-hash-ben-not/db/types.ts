@@ -111,3 +111,26 @@ export interface Travel {
   photo: string | null;
   export: boolean;
 }
+
+export interface MoneyTransfer {
+  id: number;
+  receiptName: string;
+  giverName: string;
+  workerNumber: string;
+  date: string;
+  amount: number;
+  currency: Currency;
+  photo: string | null;
+  createdAt: string;
+}
+
+export interface ClientTransfer {
+  id: number;
+  clientName: string;
+  giverName: string;
+  date: string;
+  amount: number;
+  currency: Currency;
+  photo: string | null;
+  createdAt: string;
+}
