@@ -383,6 +383,7 @@ export default function TripScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       console.error(e);
+      Alert.alert("Error", "Failed to save trip data. Please try again.");
     } finally {
       setSaving(false);
     }

@@ -93,6 +93,7 @@ export default function EditHotelNightScreen() {
       router.back();
     } catch (e) {
       console.error(e);
+      Alert.alert("Error", "Failed to save hotel night. Please try again.");
     } finally {
       setSaving(false);
     }
