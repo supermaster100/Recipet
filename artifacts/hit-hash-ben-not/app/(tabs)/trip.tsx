@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -26,6 +27,34 @@ const COUNTRIES = getCountries();
 
 function today() {
   return new Date().toISOString().split("T")[0] ?? "";
+}
+
+function parseDate(s: string): Date {
+  const parts = s.split("-").map(Number);
+  if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+    return new Date(parts[0]!, parts[1]! - 1, parts[2]!);
+  }
+  return new Date();
+}
+
+function parseTime(s: string): Date {
+  const d = new Date();
+  const parts = s.split(":").map(Number);
+  if (parts.length >= 2 && parts.every((n) => !isNaN(n))) {
+    d.setHours(parts[0]!, parts[1]!, 0, 0);
+  }
+  return d;
+}
+
+function fmtDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function fmtTime(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 function emptyLeg(): Omit<Leg, "id"> {
@@ -289,6 +318,11 @@ export default function TripScreen() {
   const [showArrCountry, setShowArrCountry] = useState(false);
   const [showArrCity, setShowArrCity] = useState(false);
 
+  const [showDepDate, setShowDepDate] = useState(false);
+  const [showDepTime, setShowDepTime] = useState(false);
+  const [showArrDate, setShowArrDate] = useState(false);
+  const [showArrTime, setShowArrTime] = useState(false);
+
   async function load() {
     const leg = await LegDB.getFirst();
     if (leg) {
@@ -459,26 +493,51 @@ export default function TripScreen() {
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Departure</Text>
 
-          <FieldRow label="Date">
-            <TextInput
-              style={[styles.fieldInput, { color: colors.foreground, borderColor: colors.border }]}
-              value={legData.departureDate}
-              onChangeText={(v) => update("departureDate", v)}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="numbers-and-punctuation"
-            />
+          <FieldRow label="Date *">
+            <TouchableOpacity
+              onPress={() => setShowDepDate(true)}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text style={[styles.selectTriggerText, { color: legData.departureDate ? colors.foreground : colors.mutedForeground }]}>
+                {legData.departureDate || "Select date..."}
+              </Text>
+              <Feather name="calendar" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+            {showDepDate && (
+              <DateTimePicker
+                value={parseDate(legData.departureDate)}
+                mode="date"
+                display="default"
+                onChange={(_: DateTimePickerEvent, d?: Date) => {
+                  setShowDepDate(false);
+                  if (d) update("departureDate", fmtDate(d));
+                }}
+              />
+            )}
           </FieldRow>
 
-          <FieldRow label="Hour">
-            <TextInput
-              style={[styles.fieldInput, { color: colors.foreground, borderColor: colors.border }]}
-              value={legData.departureHour}
-              onChangeText={(v) => update("departureHour", v)}
-              placeholder="HH:MM"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="numbers-and-punctuation"
-            />
+          <FieldRow label="Hour *">
+            <TouchableOpacity
+              onPress={() => setShowDepTime(true)}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text style={[styles.selectTriggerText, { color: legData.departureHour ? colors.foreground : colors.mutedForeground }]}>
+                {legData.departureHour || "Select time..."}
+              </Text>
+              <Feather name="clock" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+            {showDepTime && (
+              <DateTimePicker
+                value={parseTime(legData.departureHour)}
+                mode="time"
+                is24Hour
+                display="default"
+                onChange={(_: DateTimePickerEvent, d?: Date) => {
+                  setShowDepTime(false);
+                  if (d) update("departureHour", fmtTime(d));
+                }}
+              />
+            )}
           </FieldRow>
 
           <FieldRow label="Country *">
@@ -529,26 +588,51 @@ export default function TripScreen() {
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Arrival</Text>
 
-          <FieldRow label="Date">
-            <TextInput
-              style={[styles.fieldInput, { color: colors.foreground, borderColor: colors.border }]}
-              value={legData.arrivalDate}
-              onChangeText={(v) => update("arrivalDate", v)}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="numbers-and-punctuation"
-            />
+          <FieldRow label="Date *">
+            <TouchableOpacity
+              onPress={() => setShowArrDate(true)}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text style={[styles.selectTriggerText, { color: legData.arrivalDate ? colors.foreground : colors.mutedForeground }]}>
+                {legData.arrivalDate || "Select date..."}
+              </Text>
+              <Feather name="calendar" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+            {showArrDate && (
+              <DateTimePicker
+                value={parseDate(legData.arrivalDate)}
+                mode="date"
+                display="default"
+                onChange={(_: DateTimePickerEvent, d?: Date) => {
+                  setShowArrDate(false);
+                  if (d) update("arrivalDate", fmtDate(d));
+                }}
+              />
+            )}
           </FieldRow>
 
-          <FieldRow label="Hour">
-            <TextInput
-              style={[styles.fieldInput, { color: colors.foreground, borderColor: colors.border }]}
-              value={legData.arrivalHour}
-              onChangeText={(v) => update("arrivalHour", v)}
-              placeholder="HH:MM"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="numbers-and-punctuation"
-            />
+          <FieldRow label="Hour *">
+            <TouchableOpacity
+              onPress={() => setShowArrTime(true)}
+              style={[styles.selectTrigger, { borderColor: colors.border }]}
+            >
+              <Text style={[styles.selectTriggerText, { color: legData.arrivalHour ? colors.foreground : colors.mutedForeground }]}>
+                {legData.arrivalHour || "Select time..."}
+              </Text>
+              <Feather name="clock" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+            {showArrTime && (
+              <DateTimePicker
+                value={parseTime(legData.arrivalHour)}
+                mode="time"
+                is24Hour
+                display="default"
+                onChange={(_: DateTimePickerEvent, d?: Date) => {
+                  setShowArrTime(false);
+                  if (d) update("arrivalHour", fmtTime(d));
+                }}
+              />
+            )}
           </FieldRow>
 
           <FieldRow label="Country *">

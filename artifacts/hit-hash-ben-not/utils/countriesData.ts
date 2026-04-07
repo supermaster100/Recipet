@@ -41,9 +41,19 @@ const _citiesCache: Record<string, CityOption[]> = {};
 
 export function getCities(countryCode: string): CityOption[] {
   if (_citiesCache[countryCode]) return _citiesCache[countryCode];
+  const countryEntry = data.find((e) => e.COUNTRY === countryCode && e.REGION === "");
+  const countryName = countryEntry
+    ? countryEntry.Trip.replace(/, All Country$/, "").trim()
+    : countryCode;
   const cities = data
     .filter((e) => e.COUNTRY === countryCode && e.REGION !== "")
-    .map((e) => ({ code: e.REGION, name: e.Trip }));
+    .map((e) => {
+      const prefix = countryName + ", ";
+      const name = e.Trip.startsWith(prefix)
+        ? e.Trip.slice(prefix.length).trim()
+        : e.Trip;
+      return { code: e.REGION, name };
+    });
   _citiesCache[countryCode] = cities;
   return cities;
 }
