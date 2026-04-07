@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppContext } from "@/context/AppContext";
 import { RECEIPT_TYPES, type Receipt, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
+import { getPhotoUri } from "@/utils/photoUtils";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -31,7 +32,7 @@ function PhotoThumb({ uri }: { uri: string | null }) {
   if (uri) {
     return (
       <Image
-        source={{ uri }}
+        source={{ uri: getPhotoUri(uri) }}
         style={styles.thumb}
         contentFit="cover"
       />

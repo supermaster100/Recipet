@@ -22,6 +22,7 @@ import { useAppContext } from "@/context/AppContext";
 import { ReceiptDB } from "@/db/database";
 import { CURRENCIES, RECEIPT_TYPES, type Currency, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
+import { ImageField } from "@/components/ui/ImageField";
 
 interface FormErrors {
   type?: string;
@@ -468,12 +469,10 @@ export default function EditExpenseScreen() {
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Photo URI (optional)" />
-          <StyledInput
+          <FieldLabel text="Photo" />
+          <ImageField
             value={photo}
-            onChangeText={(v) => { setPhoto(v); markDirty(); }}
-            placeholder="file://... or leave blank"
-            autoCapitalize="none"
+            onChange={(p) => { setPhoto(p); markDirty(); }}
           />
         </View>
 

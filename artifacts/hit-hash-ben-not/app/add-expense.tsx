@@ -22,6 +22,7 @@ import { useAppContext } from "@/context/AppContext";
 import { ReceiptDB } from "@/db/database";
 import { CURRENCIES, RECEIPT_TYPES, type Currency, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
+import { ImageField } from "@/components/ui/ImageField";
 
 function today(): string {
   return new Date().toISOString().split("T")[0] ?? "";
@@ -258,6 +259,35 @@ export default function AddExpenseScreen() {
 
   async function handleSave() {
     if (!validate()) return;
+    if (!photo.trim()) {
+      await new Promise<void>((resolve) => {
+        Alert.alert(
+          "No Photo",
+          "Would you like to add a receipt photo?",
+          [
+            {
+              text: "Add Photo",
+              onPress: () => resolve(),
+            },
+            {
+              text: "Save Without Photo",
+              style: "destructive",
+              onPress: () => { doSave(); resolve(); },
+            },
+            {
+              text: "Cancel",
+              style: "cancel",
+              onPress: () => resolve(),
+            },
+          ]
+        );
+      });
+      return;
+    }
+    doSave();
+  }
+
+  async function doSave() {
     setSaving(true);
     try {
       await ReceiptDB.insert({
@@ -494,12 +524,10 @@ export default function AddExpenseScreen() {
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Photo URI (optional)" />
-          <StyledInput
+          <FieldLabel text="Photo" />
+          <ImageField
             value={photo}
-            onChangeText={(v) => { setPhoto(v); markDirty(); }}
-            placeholder="file://... or leave blank"
-            autoCapitalize="none"
+            onChange={(p) => { setPhoto(p); markDirty(); }}
           />
         </View>
 
