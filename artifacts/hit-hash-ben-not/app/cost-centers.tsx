@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { CostCenterDB } from "@/db/database";
 import { useAppContext } from "@/context/AppContext";
 import type { CostCenter } from "@/db/types";
+import { formatCostCenter } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 
 function CostCenterRow({
@@ -41,7 +42,7 @@ function CostCenterRow({
     >
       <View style={styles.rowContent}>
         <Text style={[styles.rowName, { color: colors.foreground }]}>
-          {costCenter.name}
+          {formatCostCenter(costCenter)}
         </Text>
       </View>
       <TouchableOpacity
@@ -62,15 +63,19 @@ function AddCostCenterModal({
 }: {
   visible: boolean;
   onClose: () => void;
-  onAdd: (name: string) => Promise<void>;
+  onAdd: (number: string, name: string) => Promise<void>;
 }) {
   const colors = useColors();
+  const [number, setNumber] = useState("");
   const [name, setName] = useState("");
+  const [numberErr, setNumberErr] = useState("");
   const [nameErr, setNameErr] = useState("");
   const [saving, setSaving] = useState(false);
 
   function reset() {
+    setNumber("");
     setName("");
+    setNumberErr("");
     setNameErr("");
     setSaving(false);
   }
@@ -81,14 +86,27 @@ function AddCostCenterModal({
   }
 
   async function handleAdd() {
+    let valid = true;
+    const trimmedNumber = number.trim();
+    if (!trimmedNumber) {
+      setNumberErr("Cost center number is required");
+      valid = false;
+    } else if (!/^\d+$/.test(trimmedNumber)) {
+      setNumberErr("Cost center number must be numeric");
+      valid = false;
+    } else {
+      setNumberErr("");
+    }
     if (!name.trim()) {
       setNameErr("Cost center name is required");
-      return;
+      valid = false;
+    } else {
+      setNameErr("");
     }
-    setNameErr("");
+    if (!valid) return;
     setSaving(true);
     try {
-      await onAdd(name.trim());
+      await onAdd(number.trim(), name.trim());
       reset();
       onClose();
     } catch {
@@ -140,6 +158,35 @@ function AddCostCenterModal({
             contentContainerStyle={styles.modalContent}
             keyboardShouldPersistTaps="handled"
           >
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                Number <Text style={{ color: colors.destructive }}>*</Text>
+              </Text>
+              <TextInput
+                value={number}
+                onChangeText={(v) => {
+                  setNumber(v);
+                  if (numberErr) setNumberErr("");
+                }}
+                placeholder="e.g. 1042"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="numeric"
+                autoCapitalize="none"
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: numberErr ? colors.destructive : colors.border,
+                    color: colors.foreground,
+                  },
+                ]}
+              />
+              {numberErr ? (
+                <Text style={[styles.errorText, { color: colors.destructive }]}>
+                  {numberErr}
+                </Text>
+              ) : null}
+            </View>
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
                 Name <Text style={{ color: colors.destructive }}>*</Text>
@@ -212,8 +259,8 @@ export default function CostCentersScreen() {
     ]);
   }
 
-  async function handleAdd(name: string) {
-    await CostCenterDB.insert({ name });
+  async function handleAdd(number: string, name: string) {
+    await CostCenterDB.insert({ number, name });
     await refreshCostCenters();
   }
 

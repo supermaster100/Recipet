@@ -7,6 +7,7 @@ import type {
   ATMWithdrawal,
   CashWalletEntry,
   ClientTransfer,
+  CostCenter,
   Exchange,
   General,
   Leg,
@@ -42,6 +43,7 @@ export interface ExportData {
   moneyTransfers: MoneyTransfer[];
   clientTransfers: ClientTransfer[];
   cashWalletEntries: CashWalletEntry[];
+  costCenters: CostCenter[];
 }
 
 export interface ValidationError {
@@ -195,7 +197,7 @@ export async function runExport(
     const csvContent = buildCSV(
       data.general, data.legs, data.travels, data.receipts,
       data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers,
-      uriToName, data.cashWalletEntries
+      uriToName, data.cashWalletEntries, data.costCenters
     );
 
     const csvPath = `${cacheDir}expenses_${dateTag}.csv`;
@@ -204,7 +206,7 @@ export async function runExport(
     const xlsxB64 = buildXLSXBase64(
       data.general, data.legs, data.travels, data.receipts,
       data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers,
-      uriToName, data.cashWalletEntries
+      uriToName, data.cashWalletEntries, data.costCenters
     );
     const xlsxPath = `${cacheDir}expenses_${dateTag}.xlsx`;
     await FileSystem.writeAsStringAsync(xlsxPath, xlsxB64, { encoding: FileSystem.EncodingType.Base64 });

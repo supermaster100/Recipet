@@ -282,14 +282,18 @@ export const TravelDB = {
   },
 };
 
+function normalizeCostCenter(c: CostCenter): CostCenter {
+  return { ...c, number: c.number ?? "" };
+}
+
 export const CostCenterDB = {
   async getAll(): Promise<CostCenter[]> {
-    return load<CostCenter>(KEYS.costCenters);
+    return load<CostCenter>(KEYS.costCenters).map(normalizeCostCenter);
   },
   async insert(c: Omit<CostCenter, "id">): Promise<number> {
     const rows = load<CostCenter>(KEYS.costCenters);
     const id = nextId("costCenters");
-    rows.push({ id, ...c });
+    rows.push({ id, number: c.number ?? "", name: c.name });
     save(KEYS.costCenters, rows);
     return id;
   },

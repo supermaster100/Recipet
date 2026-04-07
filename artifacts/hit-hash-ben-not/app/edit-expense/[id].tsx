@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAppContext } from "@/context/AppContext";
 import { CashWalletDB, ReceiptDB } from "@/db/database";
-import { CURRENCIES, RECEIPT_TYPES, type Currency, type PaymentMethod, type ReceiptType } from "@/db/types";
+import { CURRENCIES, RECEIPT_TYPES, formatCostCenter, type Currency, type PaymentMethod, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 import { ImageField } from "@/components/ui/ImageField";
 import { deletePhotoFromLocal } from "@/utils/photoUtils";
@@ -594,7 +594,7 @@ export default function EditExpenseScreen() {
         <PickerModal
           visible={showCostCenterPicker}
           title="Cost Center"
-          options={["", ...costCenters.map((c) => c.name)]}
+          options={["", ...costCenters.map((c) => formatCostCenter(c))]}
           value={selectedCostCenter}
           renderLabel={(v) => v || "No cost center"}
           onSelect={(v) => { setSelectedCostCenter(v); markDirty(); }}

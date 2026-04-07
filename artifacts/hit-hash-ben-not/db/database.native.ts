@@ -45,6 +45,7 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS CostCenters (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      number TEXT NOT NULL DEFAULT '',
       name TEXT NOT NULL DEFAULT ''
     );
   `);
@@ -201,6 +202,7 @@ async function runSchemaMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS CostCenters (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        number TEXT NOT NULL DEFAULT '',
         name TEXT NOT NULL DEFAULT ''
       )
     `).catch(() => {});
@@ -229,6 +231,7 @@ async function runSchemaMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
     await db.execAsync(`ALTER TABLE ATMWithdrawals ADD COLUMN deleted_at TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE MoneyTransfers ADD COLUMN deleted_at TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE ClientTransfers ADD COLUMN deleted_at TEXT`).catch(() => {});
+    await db.execAsync(`ALTER TABLE CostCenters ADD COLUMN number TEXT NOT NULL DEFAULT ''`).catch(() => {});
   });
 }
 
@@ -332,6 +335,7 @@ function toTravel(r: Record<string, unknown>): Travel {
 function toCostCenter(r: Record<string, unknown>): CostCenter {
   return {
     id: r["id"] as number,
+    number: ((r["number"] as string) ?? "") as string,
     name: r["name"] as string,
   };
 }
@@ -668,8 +672,8 @@ export const CostCenterDB = {
     let lastId = 0;
     await db.withTransactionAsync(async () => {
       const res = await db.runAsync(
-        "INSERT INTO CostCenters (name) VALUES (?)",
-        [c.name]
+        "INSERT INTO CostCenters (number, name) VALUES (?, ?)",
+        [c.number ?? "", c.name]
       );
       lastId = res.lastInsertRowId;
     });

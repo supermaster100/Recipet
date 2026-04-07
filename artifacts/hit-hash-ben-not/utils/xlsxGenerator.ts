@@ -1,5 +1,15 @@
 import * as XLSX from "xlsx";
-import type { CashWalletEntry, Exchange, General, Leg, Receipt, Travel, ATMWithdrawal, MoneyTransfer, ClientTransfer } from "@/db/types";
+import type { CashWalletEntry, CostCenter, Exchange, General, Leg, Receipt, Travel, ATMWithdrawal, MoneyTransfer, ClientTransfer } from "@/db/types";
+import { formatCostCenter } from "@/db/types";
+
+function costCenterLabel(value: string, costCenters: CostCenter[]): string {
+  const found = costCenters.find((c) => {
+    const formatted = formatCostCenter(c);
+    return formatted === value || c.name === value;
+  });
+  if (found) return formatCostCenter(found);
+  return value;
+}
 
 function pn(path: string | null, uriToName: Map<string, string>): string {
   if (!path) return "";
@@ -17,6 +27,7 @@ export function buildXLSXBase64(
   clientTransfers: ClientTransfer[],
   uriToName: Map<string, string> = new Map(),
   cashWalletEntries: CashWalletEntry[] = [],
+  costCenters: CostCenter[] = [],
 ): string {
   const wb = XLSX.utils.book_new();
 
@@ -48,7 +59,7 @@ export function buildXLSXBase64(
     ["Type", "Amount", "Currency", "Date", "NumberOfPeople", "Division", "CostCenter",
       "SelfDeclaration", "Note", "PaymentMethod", "Photo"],
     ...receipts.map((e) => [e.type, e.amount, e.currency, e.date, e.numberOfPeople,
-      e.division, e.costCenter, e.selfDeclaration ? "YES" : "NO", e.note, e.paymentMethod ?? "card", pn(e.photo, uriToName)]),
+      e.division, costCenterLabel(e.costCenter, costCenters), e.selfDeclaration ? "YES" : "NO", e.note, e.paymentMethod ?? "card", pn(e.photo, uriToName)]),
   ]);
   XLSX.utils.book_append_sheet(wb, wsReceipts, "Expenses");
 

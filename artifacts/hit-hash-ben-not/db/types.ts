@@ -63,7 +63,14 @@ export interface General {
 
 export interface CostCenter {
   id: number;
+  number: string;
   name: string;
+}
+
+export function formatCostCenter(c: Pick<CostCenter, "number" | "name"> & { number?: string }): string {
+  const num = c.number ?? "";
+  if (num && c.name) return `${num} — ${c.name}`;
+  return c.name || num || "";
 }
 
 export type PaymentMethod = "cash" | "card";
