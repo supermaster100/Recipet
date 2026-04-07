@@ -332,11 +332,11 @@ export default function TripScreen() {
     if (!legData.departureDate.trim()) missing.push("Departure Date");
     if (!legData.departureHour.trim()) missing.push("Departure Hour");
     if (!legData.departureCountry) missing.push("Departure Country");
-    if (!legData.departureCity) missing.push("Departure City");
+    if (!legData.departureCity && getCities(legData.departureCountry).length > 0) missing.push("Departure City");
     if (!legData.arrivalDate.trim()) missing.push("Arrival Date");
     if (!legData.arrivalHour.trim()) missing.push("Arrival Hour");
     if (!legData.arrivalCountry) missing.push("Arrival Country");
-    if (!legData.arrivalCity) missing.push("Arrival City");
+    if (!legData.arrivalCity && getCities(legData.arrivalCountry).length > 0) missing.push("Arrival City");
     if (missing.length > 0) {
       Alert.alert("Required Fields", "Please fill in: " + missing.join(", ") + ".");
       return;

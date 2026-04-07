@@ -67,6 +67,13 @@ export default function EditHotelNightScreen() {
       Alert.alert("Required", "Please enter a valid number of nights (minimum 1).");
       return;
     }
+    if (!arbitraryLocation) {
+      const rateNum = Number(ratePerNight);
+      if (!ratePerNight.trim() || isNaN(rateNum) || rateNum <= 0) {
+        Alert.alert("Required", "Please enter a rate per night greater than 0, or enable Arbitrary Location.");
+        return;
+      }
+    }
     setSaving(true);
     try {
       await TravelDB.update({
