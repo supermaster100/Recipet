@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppContext } from "@/context/AppContext";
 import { ExchangeDB, ATMDB } from "@/db/database";
 import type { ATMWithdrawal, Exchange } from "@/db/types";
@@ -22,9 +21,10 @@ import { useColors } from "@/hooks/useColors";
 type ListItem =
   | { kind: "section-exchange" }
   | { kind: "exchange"; data: Exchange }
+  | { kind: "exchange-empty" }
   | { kind: "section-atm" }
   | { kind: "atm"; data: ATMWithdrawal }
-  | { kind: "empty" };
+  | { kind: "atm-empty" };
 
 function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -135,7 +135,7 @@ function ATMRow({
 export default function ExchangesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { exchanges, atmWithdrawals, isDbReady, refreshExchanges, refreshATM } = useAppContext();
+  const { exchanges, atmWithdrawals, refreshExchanges, refreshATM } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -182,31 +182,49 @@ export default function ExchangesScreen() {
     ]);
   }
 
-  const isEmpty = exchanges.length === 0 && atmWithdrawals.length === 0;
-
   const listData = useMemo((): ListItem[] => {
-    if (isEmpty) return [{ kind: "empty" }];
     const items: ListItem[] = [];
+    items.push({ kind: "section-exchange" });
     if (exchanges.length > 0) {
-      items.push({ kind: "section-exchange" });
       for (const ex of exchanges) items.push({ kind: "exchange", data: ex });
+    } else {
+      items.push({ kind: "exchange-empty" });
     }
+    items.push({ kind: "section-atm" });
     if (atmWithdrawals.length > 0) {
-      items.push({ kind: "section-atm" });
       for (const a of atmWithdrawals) items.push({ kind: "atm", data: a });
+    } else {
+      items.push({ kind: "atm-empty" });
     }
     return items;
-  }, [exchanges, atmWithdrawals, isEmpty]);
+  }, [exchanges, atmWithdrawals]);
 
   function renderItem({ item }: { item: ListItem }) {
-    if (item.kind === "empty") {
-      return isDbReady ? (
-        <EmptyState
-          icon="refresh-cw"
-          title="No exchanges"
-          subtitle="Record currency exchanges and ATM withdrawals"
-        />
-      ) : null;
+    if (item.kind === "exchange-empty") {
+      return (
+        <TouchableOpacity
+          onPress={() => router.push("/add-exchange")}
+          style={[styles.emptyRow, { borderColor: colors.border, backgroundColor: colors.card }]}
+        >
+          <Feather name="plus-circle" size={16} color={colors.mutedForeground} />
+          <Text style={[styles.emptyRowText, { color: colors.mutedForeground }]}>
+            No exchanges yet — tap to add one
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    if (item.kind === "atm-empty") {
+      return (
+        <TouchableOpacity
+          onPress={() => router.push("/add-atm")}
+          style={[styles.emptyRow, { borderColor: colors.border, backgroundColor: colors.card }]}
+        >
+          <Feather name="credit-card" size={16} color={colors.mutedForeground} />
+          <Text style={[styles.emptyRowText, { color: colors.mutedForeground }]}>
+            No ATM withdrawals yet — tap to add one
+          </Text>
+        </TouchableOpacity>
+      );
     }
     if (item.kind === "section-exchange") {
       return (
@@ -299,7 +317,7 @@ export default function ExchangesScreen() {
         keyExtractor={(item, idx) => {
           if (item.kind === "exchange") return `ex-${item.data.id}`;
           if (item.kind === "atm") return `atm-${item.data.id}`;
-          return `${item.kind}-${idx}`;
+          return `${item.kind}-${idx}`;  
         }}
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100, flexGrow: 1 }]}
         renderItem={renderItem}
@@ -358,6 +376,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  emptyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    marginBottom: 8,
+  },
+  emptyRowText: { fontSize: 13, fontFamily: "Inter_400Regular" },
   card: {
     flexDirection: "row",
     alignItems: "center",

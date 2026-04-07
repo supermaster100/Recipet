@@ -9,6 +9,8 @@ import React, {
 } from "react";
 import { AppState, AppStateStatus, Platform } from "react-native";
 
+import { getExchangeRates, isRatesStale, type ExchangeRates } from "@/utils/exchangeRates";
+
 import {
   ATMDB,
   BudgetDB,
@@ -62,6 +64,8 @@ interface AppContextValue {
   refreshMoneyTransfers: () => Promise<void>;
   refreshClientTransfers: () => Promise<void>;
   refreshTrash: () => Promise<void>;
+  exchangeRates: ExchangeRates;
+  refreshRates: (force?: boolean) => Promise<void>;
   refreshAll: () => Promise<void>;
 }
 
@@ -80,6 +84,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [moneyTransfers, setMoneyTransfers] = useState<MoneyTransfer[]>([]);
   const [clientTransfers, setClientTransfers] = useState<ClientTransfer[]>([]);
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({});
   const dbRef = useRef<SQLite.SQLiteDatabase | null>(null);
 
   const refreshGeneral = useCallback(async () => {
@@ -132,6 +137,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTrashItems(data);
   }, []);
 
+  const refreshRates = useCallback(async (force = false) => {
+    if (Platform.OS === "web") return;
+    try {
+      const rates = await getExchangeRates(force);
+      if (Object.keys(rates).length > 0) setExchangeRates(rates);
+    } catch {}
+  }, []);
+
   const refreshAll = useCallback(async () => {
     await Promise.all([
       refreshGeneral(),
@@ -170,6 +183,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsDbReady(true);
         await refreshAll();
         await runStartupCleanup();
+        refreshRates().catch(() => {});
       })
       .catch((err: unknown) => {
         console.error("Database init error:", err);
@@ -185,11 +199,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (nextState === "active" && dbRef.current) {
           await runForegroundHealthCheck(dbRef.current).catch(() => {});
           await refreshAll().catch(() => {});
+          isRatesStale().then((stale) => { if (stale) refreshRates().catch(() => {}); });
         }
       }
     );
     return () => subscription.remove();
-  }, [refreshAll]);
+  }, [refreshAll, refreshRates]);
 
   return (
     <AppContext.Provider
@@ -216,6 +231,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshMoneyTransfers,
         refreshClientTransfers,
         refreshTrash,
+        exchangeRates,
+        refreshRates,
         refreshAll,
       }}
     >

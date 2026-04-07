@@ -20,6 +20,7 @@ import { useAppContext } from "@/context/AppContext";
 import { ExchangeDB } from "@/db/database";
 import { EXCHANGE_CURRENCIES } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
+import { getRate } from "@/utils/exchangeRates";
 import { saveDraft, loadDraft, clearDraft } from "@/db/draftManager";
 import { checkDiskSpace } from "@/db/dataProtection";
 import { savePhotoToOrganizedStorage, savePhotoToGallery, computeFileChecksum } from "@/db/photoStorage";
@@ -45,7 +46,7 @@ function today(): string {
 export default function AddExchangeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refreshExchanges } = useAppContext();
+  const { refreshExchanges, exchangeRates } = useAppContext();
 
   const [date, setDate] = useState(today());
   const [spentCurrency, setSpentCurrency] = useState<(typeof EXCHANGE_CURRENCIES)[number]>("USD");
@@ -56,6 +57,11 @@ export default function AddExchangeScreen() {
   const [photo, setPhoto] = useState("");
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+
+  const marketRate = useMemo(() => {
+    if (Object.keys(exchangeRates).length === 0) return null;
+    return getRate(exchangeRates, spentCurrency, receivedCurrency);
+  }, [exchangeRates, spentCurrency, receivedCurrency]);
 
   const imageFieldRef = useRef<ImageFieldHandle>(null);
   const topInset = Platform.OS === "web" ? 67 : insets.top;
@@ -237,10 +243,23 @@ export default function AddExchangeScreen() {
           </View>
         </View>
 
+        {marketRate !== null && (
+          <View style={[styles.rateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="globe" size={15} color={colors.mutedForeground} />
+            <View style={styles.rateLines}>
+              <Text style={[styles.rateLineLabel, { color: colors.mutedForeground }]}>Market rate (today)</Text>
+              <Text style={[styles.rateLine, { color: colors.foreground }]}>
+                1 {spentCurrency} = {marketRate.toFixed(4)} {receivedCurrency}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {rate !== null && (
           <View style={[styles.rateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="trending-up" size={15} color={colors.primary} />
             <View style={styles.rateLines}>
+              <Text style={[styles.rateLineLabel, { color: colors.mutedForeground }]}>Your rate</Text>
               <Text style={[styles.rateLine, { color: colors.foreground }]}>
                 1 {spentCurrency} = {rate.toFixed(4)} {receivedCurrency}
               </Text>
@@ -355,6 +374,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   rateLines: { gap: 2 },
+  rateLineLabel: { fontSize: 10, fontFamily: "Inter_500Medium", letterSpacing: 0.3 },
   rateLine: { fontSize: 13, fontFamily: "Inter_500Medium" },
   chipRow: { flexDirection: "row", gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
