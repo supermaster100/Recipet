@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -18,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppHeader } from "@/components/ui/AppHeader";
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/context/ThemeContext";
 
 const EMAIL_KEY = "@export_recipient_email";
 
@@ -159,9 +161,11 @@ function AboutModal({
 export default function MoreScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { theme, toggleTheme } = useTheme();
   const [showAbout, setShowAbout] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("");
   const topInset = Platform.OS === "web" ? 67 : insets.top;
+  const isDark = theme === "dark";
 
   useEffect(() => {
     AsyncStorage.getItem(EMAIL_KEY).then((v) => { if (v) setRecipientEmail(v); });
@@ -242,9 +246,43 @@ export default function MoreScreen() {
           SETTINGS
         </Text>
         <View style={[styles.group, { shadowColor: colors.shadowColor }]}>
+          <View
+            style={[
+              styles.row,
+              {
+                backgroundColor: colors.card,
+                borderBottomColor: colors.border,
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+              },
+            ]}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: colors.purple + "18" }]}>
+              <Feather name={isDark ? "moon" : "sun"} size={18} color={colors.purple} />
+            </View>
+            <View style={styles.rowText}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Dark Mode</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.mutedForeground }]}>
+                {isDark ? "Dark appearance" : "Light appearance"}
+              </Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: colors.border, true: colors.purple + "99" }}
+              thumbColor={isDark ? colors.purple : colors.mutedForeground}
+            />
+          </View>
           <View style={[
             styles.emailField,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderRadius: 0,
+              borderTopWidth: 0,
+              borderBottomLeftRadius: 16,
+              borderBottomRightRadius: 16,
+            },
           ]}>
             <View style={styles.emailHeader}>
               <View style={[styles.rowIcon, { backgroundColor: colors.primary + "18" }]}>
