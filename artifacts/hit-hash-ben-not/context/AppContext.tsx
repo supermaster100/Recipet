@@ -4,9 +4,10 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
-import { Platform } from "react-native";
+import { AppState, AppStateStatus, Platform } from "react-native";
 
 import {
   BudgetDB,
@@ -18,6 +19,7 @@ import {
   TravelDB,
   GeneralDB,
   getDatabase,
+  getTrashItems,
 } from "@/db/database";
 import type {
   Budget,
@@ -28,7 +30,10 @@ import type {
   MoneyTransfer,
   Receipt,
   Travel,
+  TrashItem,
 } from "@/db/types";
+import { runForegroundHealthCheck } from "@/db/dataProtection";
+import { cleanupExpiredPhotos } from "@/db/photoStorage";
 
 type Database = SQLite.SQLiteDatabase | null;
 
@@ -43,6 +48,7 @@ interface AppContextValue {
   budgets: Budget[];
   moneyTransfers: MoneyTransfer[];
   clientTransfers: ClientTransfer[];
+  trashItems: TrashItem[];
   refreshGeneral: () => Promise<void>;
   refreshReceipts: () => Promise<void>;
   refreshTravels: () => Promise<void>;
@@ -51,6 +57,7 @@ interface AppContextValue {
   refreshBudgets: () => Promise<void>;
   refreshMoneyTransfers: () => Promise<void>;
   refreshClientTransfers: () => Promise<void>;
+  refreshTrash: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
 
@@ -67,6 +74,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [moneyTransfers, setMoneyTransfers] = useState<MoneyTransfer[]>([]);
   const [clientTransfers, setClientTransfers] = useState<ClientTransfer[]>([]);
+  const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
+  const dbRef = useRef<SQLite.SQLiteDatabase | null>(null);
 
   const refreshGeneral = useCallback(async () => {
     const data = await GeneralDB.get();
@@ -108,6 +117,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setClientTransfers(data);
   }, []);
 
+  const refreshTrash = useCallback(async () => {
+    const data = await getTrashItems();
+    setTrashItems(data);
+  }, []);
+
   const refreshAll = useCallback(async () => {
     await Promise.all([
       refreshGeneral(),
@@ -118,22 +132,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       refreshBudgets(),
       refreshMoneyTransfers(),
       refreshClientTransfers(),
+      refreshTrash(),
     ]);
-  }, [refreshGeneral, refreshReceipts, refreshTravels, refreshLegs, refreshExchanges, refreshBudgets, refreshMoneyTransfers, refreshClientTransfers]);
+  }, [refreshGeneral, refreshReceipts, refreshTravels, refreshLegs, refreshExchanges, refreshBudgets, refreshMoneyTransfers, refreshClientTransfers, refreshTrash]);
+
+  const runStartupCleanup = useCallback(async () => {
+    if (Platform.OS === "web") return;
+    try {
+      const expiredReceipts = await ReceiptDB.purgeExpired();
+      const expiredExchanges = await ExchangeDB.purgeExpired();
+      const allExpired = [...expiredReceipts, ...expiredExchanges];
+      if (allExpired.length > 0) {
+        await cleanupExpiredPhotos(allExpired);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     getDatabase()
-      .then((database: SQLite.SQLiteDatabase | null) => {
+      .then(async (database: SQLite.SQLiteDatabase | null) => {
         if (Platform.OS !== "web" && database !== null) {
           setDb(database);
+          dbRef.current = database;
+          await runForegroundHealthCheck(database);
         }
         setIsDbReady(true);
-        return refreshAll();
+        await refreshAll();
+        await runStartupCleanup();
       })
       .catch((err: unknown) => {
         console.error("Database init error:", err);
         setIsDbReady(true);
       });
+  }, [refreshAll, runStartupCleanup]);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const subscription = AppState.addEventListener(
+      "change",
+      async (nextState: AppStateStatus) => {
+        if (nextState === "active" && dbRef.current) {
+          await runForegroundHealthCheck(dbRef.current).catch(() => {});
+          await refreshAll().catch(() => {});
+        }
+      }
+    );
+    return () => subscription.remove();
   }, [refreshAll]);
 
   return (
@@ -149,6 +193,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         budgets,
         moneyTransfers,
         clientTransfers,
+        trashItems,
         refreshGeneral,
         refreshReceipts,
         refreshTravels,
@@ -157,6 +202,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshBudgets,
         refreshMoneyTransfers,
         refreshClientTransfers,
+        refreshTrash,
         refreshAll,
       }}
     >

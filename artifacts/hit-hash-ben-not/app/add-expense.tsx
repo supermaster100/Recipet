@@ -23,6 +23,27 @@ import { ReceiptDB } from "@/db/database";
 import { CURRENCIES, RECEIPT_TYPES, type Currency, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
+import { saveDraft, loadDraft, clearDraft } from "@/db/draftManager";
+import { checkDiskSpace } from "@/db/dataProtection";
+import { savePhotoToOrganizedStorage, savePhotoToGallery, computeFileChecksum } from "@/db/photoStorage";
+import * as FileSystem from "expo-file-system/legacy";
+
+const DRAFT_KEY = "add-expense" as const;
+const DRAFT_SAVE_INTERVAL_MS = 30_000;
+
+interface ExpenseDraft {
+  type: ReceiptType;
+  amount: string;
+  currency: Currency;
+  date: string;
+  numberOfPeople: string;
+  division: string;
+  costCenter: string;
+  photo: string;
+  selfDeclaration: boolean;
+  note: string;
+  budgetId: string;
+}
 
 function today(): string {
   return new Date().toISOString().split("T")[0] ?? "";
@@ -180,21 +201,85 @@ export default function AddExpenseScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
 
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [showBudgetPicker, setShowBudgetPicker] = useState(false);
 
   useEffect(() => {
-    if (general) {
+    if (general && !draftLoaded) {
       setDivision(general.division);
       setCostCenter(general.costCenter);
     }
-  }, [general]);
+  }, [general, draftLoaded]);
 
   useEffect(() => {
     setSelfDeclaration(photo.trim().length === 0);
   }, [photo]);
+
+  useEffect(() => {
+    loadDraft<ExpenseDraft>(DRAFT_KEY).then((draft) => {
+      if (!draft) return;
+      Alert.alert(
+        "Resume Entry?",
+        "You have an unsaved expense entry. Would you like to resume it?",
+        [
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => clearDraft(DRAFT_KEY),
+          },
+          {
+            text: "Resume",
+            onPress: () => {
+              setType(draft.type);
+              setAmount(draft.amount);
+              setCurrency(draft.currency);
+              setDate(draft.date);
+              setNumberOfPeople(draft.numberOfPeople);
+              setDivision(draft.division);
+              setCostCenter(draft.costCenter);
+              setPhoto(draft.photo ?? "");
+              setSelfDeclaration(draft.selfDeclaration);
+              setNote(draft.note);
+              setBudgetId(draft.budgetId ?? "");
+              setDirty(true);
+              setDraftLoaded(true);
+            },
+          },
+        ]
+      );
+    });
+  }, []);
+
+  const getDraftData = useCallback((): ExpenseDraft => ({
+    type,
+    amount,
+    currency,
+    date,
+    numberOfPeople,
+    division,
+    costCenter,
+    photo,
+    selfDeclaration,
+    note,
+    budgetId,
+  }), [type, amount, currency, date, numberOfPeople, division, costCenter, photo, selfDeclaration, note, budgetId]);
+
+  useEffect(() => {
+    if (!dirty || saved) return;
+    const interval = setInterval(() => {
+      saveDraft(DRAFT_KEY, getDraftData());
+    }, DRAFT_SAVE_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [dirty, saved, getDraftData]);
+
+  useEffect(() => {
+    if (dirty && !saved) {
+      saveDraft(DRAFT_KEY, getDraftData());
+    }
+  }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, division, costCenter, photo, selfDeclaration, note, budgetId]);
 
   const confirmDiscard = useCallback(() => {
     return new Promise<boolean>((resolve) => {
@@ -203,7 +288,14 @@ export default function AddExpenseScreen() {
         "You have unsaved changes. Are you sure you want to go back?",
         [
           { text: "Keep Editing", style: "cancel", onPress: () => resolve(false) },
-          { text: "Discard", style: "destructive", onPress: () => resolve(true) },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => {
+              clearDraft(DRAFT_KEY);
+              resolve(true);
+            },
+          },
         ]
       );
     });
@@ -287,9 +379,26 @@ export default function AddExpenseScreen() {
   }
 
   async function doSave(forceNoPhoto: boolean) {
+    const hasSpace = await checkDiskSpace();
+    if (!hasSpace) return;
+
     setSaving(true);
     const effectiveSelfDecl = forceNoPhoto ? true : selfDeclaration;
+    let finalPhotoPath: string | null = photo.trim() || null;
+    let photoChecksum: string | null = null;
+    let organizedPhotoPath: string | null = null;
+
     try {
+      if (finalPhotoPath && Platform.OS !== "web") {
+        const organized = await savePhotoToOrganizedStorage(finalPhotoPath, type);
+        if (organized) {
+          organizedPhotoPath = organized;
+          await savePhotoToGallery(organized).catch(() => {});
+          photoChecksum = await computeFileChecksum(organized).catch(() => null);
+          finalPhotoPath = organized;
+        }
+      }
+
       await ReceiptDB.insert({
         type,
         amount: parseFloat(Number(amount).toFixed(2)),
@@ -300,16 +409,22 @@ export default function AddExpenseScreen() {
         costCenter: costCenter.trim(),
         selfDeclaration: effectiveSelfDecl,
         note: note.trim(),
-        photo: photo.trim() || null,
+        photo: finalPhotoPath,
+        photo_checksum: photoChecksum,
         budget: budgetId,
         status: "",
         export: false,
+        deleted_at: null,
       });
+      await clearDraft(DRAFT_KEY);
       await refreshReceipts();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setDirty(false);
       setSaved(true);
     } catch {
+      if (organizedPhotoPath && Platform.OS !== "web") {
+        await FileSystem.deleteAsync(organizedPhotoPath, { idempotent: true }).catch(() => {});
+      }
       Alert.alert("Error", "Failed to save receipt. Please try again.");
     } finally {
       setSaving(false);
@@ -338,6 +453,7 @@ export default function AddExpenseScreen() {
     setErrors({});
     setDirty(false);
     setSaved(false);
+    setDraftLoaded(false);
   }
 
   if (saved) {

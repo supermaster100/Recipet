@@ -51,9 +51,11 @@ export interface Receipt {
   selfDeclaration: boolean;
   note: string;
   photo: string | null;
+  photo_checksum: string | null;
   budget: string;
   status: string;
   export: boolean;
+  deleted_at: string | null;
 }
 
 export interface Exchange {
@@ -65,8 +67,10 @@ export interface Exchange {
   receivedCurrency: Currency;
   note: string;
   photo: string | null;
+  photo_checksum: string | null;
   status: string;
   export: boolean;
+  deleted_at: string | null;
 }
 
 export interface Leg {
@@ -81,6 +85,7 @@ export interface Leg {
   arrivalHour: string;
   arrivalCountry: string;
   arrivalCity: string;
+  deleted_at: string | null;
 }
 
 export interface Travel {
@@ -109,7 +114,20 @@ export interface Travel {
   currencyHEF: Currency;
   description: string;
   photo: string | null;
+  photo_checksum: string | null;
   export: boolean;
+  deleted_at: string | null;
+}
+
+export interface TrashItem {
+  id: number;
+  tableSource: "Receipts" | "Exchanges";
+  type: string;
+  amount: number;
+  currency: string;
+  date: string;
+  deleted_at: string;
+  photo: string | null;
 }
 
 export interface MoneyTransfer {

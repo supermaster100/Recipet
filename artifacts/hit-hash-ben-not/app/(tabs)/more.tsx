@@ -235,6 +235,13 @@ export default function MoreScreen() {
             subtitle="Export all expenses and trips"
             color={colors.success}
             onPress={() => router.push("/export")}
+          />
+          <SettingsRow
+            icon="trash-2"
+            label="Trash"
+            subtitle="Deleted items — 90-day recovery window"
+            color={colors.destructive}
+            onPress={() => router.push("/trash")}
             isLast
           />
         </View>

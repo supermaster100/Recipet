@@ -70,6 +70,7 @@ function emptyLeg(): Omit<Leg, "id"> {
     arrivalHour: "10:00",
     arrivalCountry: "",
     arrivalCity: "",
+    deleted_at: null,
   };
 }
 
@@ -340,6 +341,7 @@ export default function TripScreen() {
         arrivalHour: leg.arrivalHour,
         arrivalCountry: leg.arrivalCountry,
         arrivalCity: leg.arrivalCity,
+        deleted_at: leg.deleted_at,
       });
       const travels = await TravelDB.getByLegId(leg.id);
       setHotels(travels);

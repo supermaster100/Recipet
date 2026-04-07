@@ -89,7 +89,9 @@ export default function AddHotelNightScreen() {
         currencyHEF: currencyPN,
         description: note,
         photo: photo ?? null,
+        photo_checksum: null,
         export: false,
+        deleted_at: null,
       });
       void refreshTravels();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

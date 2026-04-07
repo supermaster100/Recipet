@@ -127,8 +127,7 @@ export default function EditExchangeScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          if (exchange.photo) await deletePhotoFromLocal(exchange.photo);
-          await ExchangeDB.delete(exchange.id);
+          await ExchangeDB.softDelete(exchange.id);
           await refreshExchanges();
           router.back();
         },

@@ -24,6 +24,7 @@ import { CURRENCIES, RECEIPT_TYPES, type Currency, type ReceiptType } from "@/db
 import { useColors } from "@/hooks/useColors";
 import { ImageField } from "@/components/ui/ImageField";
 import { deletePhotoFromLocal } from "@/utils/photoUtils";
+import { validatePhotoFile } from "@/db/photoStorage";
 
 interface FormErrors {
   type?: string;
@@ -177,6 +178,7 @@ export default function EditExpenseScreen() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<"ok" | "missing" | "corrupted" | null>(null);
 
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
@@ -185,6 +187,11 @@ export default function EditExpenseScreen() {
   useEffect(() => {
     setSelfDeclaration((photo ?? "").trim().length === 0);
   }, [photo]);
+
+  useEffect(() => {
+    if (!receipt?.photo || Platform.OS === "web") return;
+    validatePhotoFile(receipt.photo, receipt.photo_checksum ?? null).then(setPhotoStatus);
+  }, [receipt?.photo, receipt?.photo_checksum]);
 
   const confirmDiscard = useCallback(() => {
     return new Promise<boolean>((resolve) => {
@@ -265,9 +272,11 @@ export default function EditExpenseScreen() {
         selfDeclaration,
         note: note.trim(),
         photo: photo.trim() || null,
+        photo_checksum: receipt.photo_checksum ?? null,
         budget: budgetId,
         status: receipt.status,
         export: receipt.export,
+        deleted_at: receipt.deleted_at ?? null,
       });
       await refreshReceipts();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -288,7 +297,6 @@ export default function EditExpenseScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          if (receipt.photo) await deletePhotoFromLocal(receipt.photo);
           await ReceiptDB.softDelete(receipt.id);
           await refreshReceipts();
           router.back();
@@ -474,8 +482,24 @@ export default function EditExpenseScreen() {
           <FieldLabel text="Photo" />
           <ImageField
             value={photo}
-            onChange={(p) => { setPhoto(p); markDirty(); }}
+            onChange={(p) => { setPhoto(p); markDirty(); setPhotoStatus(null); }}
           />
+          {photoStatus === "missing" && (
+            <View style={[styles.photoBanner, { backgroundColor: colors.destructive + "22" }]}>
+              <Feather name="alert-triangle" size={14} color={colors.destructive} />
+              <Text style={[styles.photoBannerText, { color: colors.destructive }]}>
+                Receipt photo file is missing from storage
+              </Text>
+            </View>
+          )}
+          {photoStatus === "corrupted" && (
+            <View style={[styles.photoBanner, { backgroundColor: colors.destructive + "22" }]}>
+              <Feather name="alert-octagon" size={14} color={colors.destructive} />
+              <Text style={[styles.photoBannerText, { color: colors.destructive }]}>
+                Receipt photo may be corrupted (checksum mismatch)
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.field}>
@@ -600,6 +624,16 @@ const styles = StyleSheet.create({
   toggleSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   notFoundText: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  photoBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  photoBannerText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
 });
 
 const formStyles = StyleSheet.create({

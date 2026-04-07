@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Platform,
@@ -20,6 +20,23 @@ import { useAppContext } from "@/context/AppContext";
 import { ExchangeDB } from "@/db/database";
 import { CURRENCIES } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
+import { saveDraft, loadDraft, clearDraft } from "@/db/draftManager";
+import { checkDiskSpace } from "@/db/dataProtection";
+import { savePhotoToOrganizedStorage, savePhotoToGallery, computeFileChecksum } from "@/db/photoStorage";
+import * as FileSystem from "expo-file-system/legacy";
+
+const DRAFT_KEY = "add-exchange" as const;
+const DRAFT_SAVE_INTERVAL_MS = 30_000;
+
+interface ExchangeDraft {
+  date: string;
+  spentCurrency: string;
+  receivedCurrency: string;
+  amountSpent: string;
+  amountReceived: string;
+  note: string;
+  photo: string;
+}
 
 function today(): string {
   return new Date().toISOString().split("T")[0] ?? "";
@@ -38,14 +55,90 @@ export default function AddExchangeScreen() {
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState("");
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   const imageFieldRef = useRef<ImageFieldHandle>(null);
 
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
+  useEffect(() => {
+    loadDraft<ExchangeDraft>(DRAFT_KEY).then((draft) => {
+      if (!draft) return;
+      Alert.alert(
+        "Resume Entry?",
+        "You have an unsaved exchange entry. Would you like to resume it?",
+        [
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => clearDraft(DRAFT_KEY),
+          },
+          {
+            text: "Resume",
+            onPress: () => {
+              setDate(draft.date);
+              setSpentCurrency(draft.spentCurrency as (typeof CURRENCIES)[number]);
+              setReceivedCurrency(draft.receivedCurrency as (typeof CURRENCIES)[number]);
+              setAmountSpent(draft.amountSpent);
+              setAmountReceived(draft.amountReceived);
+              setNote(draft.note);
+              setPhoto(draft.photo ?? "");
+              setDirty(true);
+            },
+          },
+        ]
+      );
+    });
+  }, []);
+
+  const getDraftData = useCallback((): ExchangeDraft => ({
+    date,
+    spentCurrency,
+    receivedCurrency,
+    amountSpent,
+    amountReceived,
+    note,
+    photo,
+  }), [date, spentCurrency, receivedCurrency, amountSpent, amountReceived, note, photo]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const interval = setInterval(() => {
+      saveDraft(DRAFT_KEY, getDraftData());
+    }, DRAFT_SAVE_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [dirty, getDraftData]);
+
+  useEffect(() => {
+    if (dirty) {
+      saveDraft(DRAFT_KEY, getDraftData());
+    }
+  }, [dirty, getDraftData, date, spentCurrency, receivedCurrency, amountSpent, amountReceived, note, photo]);
+
+  function markDirty() {
+    if (!dirty) setDirty(true);
+  }
+
   async function doSave(photoPath: string) {
+    const hasSpace = await checkDiskSpace();
+    if (!hasSpace) return;
+
     setSaving(true);
+    let finalPhotoPath = photoPath || null;
+    let photoChecksum: string | null = null;
+    let organizedPhotoPath: string | null = null;
+
     try {
+      if (finalPhotoPath && Platform.OS !== "web") {
+        const organized = await savePhotoToOrganizedStorage(finalPhotoPath, "EXCHANGE");
+        if (organized) {
+          organizedPhotoPath = organized;
+          await savePhotoToGallery(organized).catch(() => {});
+          photoChecksum = await computeFileChecksum(organized).catch(() => null);
+          finalPhotoPath = organized;
+        }
+      }
+
       await ExchangeDB.insert({
         date,
         amountSpent: Number(amountSpent),
@@ -53,15 +146,21 @@ export default function AddExchangeScreen() {
         amountReceived: Number(amountReceived),
         receivedCurrency,
         note,
-        photo: photoPath || null,
+        photo: finalPhotoPath,
+        photo_checksum: photoChecksum,
         status: "",
         export: false,
+        deleted_at: null,
       });
+      await clearDraft(DRAFT_KEY);
       await refreshExchanges();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {
       console.error(e);
+      if (organizedPhotoPath && Platform.OS !== "web") {
+        await FileSystem.deleteAsync(organizedPhotoPath, { idempotent: true }).catch(() => {});
+      }
       Alert.alert("Error", "Failed to save exchange. Please try again.");
     } finally {
       setSaving(false);
@@ -137,7 +236,7 @@ export default function AddExchangeScreen() {
               { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
             ]}
             value={date}
-            onChangeText={setDate}
+            onChangeText={(v) => { setDate(v); markDirty(); }}
             placeholder="YYYY-MM-DD"
             placeholderTextColor={colors.mutedForeground}
           />
@@ -152,7 +251,7 @@ export default function AddExchangeScreen() {
               {CURRENCIES.map((c) => (
                 <Pressable
                   key={c}
-                  onPress={() => setSpentCurrency(c)}
+                  onPress={() => { setSpentCurrency(c); markDirty(); }}
                   style={[
                     styles.chip,
                     {
@@ -184,7 +283,7 @@ export default function AddExchangeScreen() {
               {CURRENCIES.map((c) => (
                 <Pressable
                   key={c}
-                  onPress={() => setReceivedCurrency(c)}
+                  onPress={() => { setReceivedCurrency(c); markDirty(); }}
                   style={[
                     styles.chip,
                     {
@@ -217,7 +316,7 @@ export default function AddExchangeScreen() {
               { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
             ]}
             value={amountSpent}
-            onChangeText={setAmountSpent}
+            onChangeText={(v) => { setAmountSpent(v); markDirty(); }}
             placeholder="0.00"
             placeholderTextColor={colors.mutedForeground}
             keyboardType="decimal-pad"
@@ -234,7 +333,7 @@ export default function AddExchangeScreen() {
               { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
             ]}
             value={amountReceived}
-            onChangeText={setAmountReceived}
+            onChangeText={(v) => { setAmountReceived(v); markDirty(); }}
             placeholder="0.00"
             placeholderTextColor={colors.mutedForeground}
             keyboardType="decimal-pad"
@@ -251,7 +350,7 @@ export default function AddExchangeScreen() {
               { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
             ]}
             value={note}
-            onChangeText={setNote}
+            onChangeText={(v) => { setNote(v); markDirty(); }}
             placeholder="Optional note"
             placeholderTextColor={colors.mutedForeground}
           />
@@ -261,7 +360,7 @@ export default function AddExchangeScreen() {
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
             PHOTO
           </Text>
-          <ImageField ref={imageFieldRef} value={photo} onChange={setPhoto} />
+          <ImageField ref={imageFieldRef} value={photo} onChange={(p) => { setPhoto(p); markDirty(); }} />
         </View>
       </ScrollView>
     </View>
