@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -21,11 +21,57 @@ import { useAppContext } from "@/context/AppContext";
 import { RECEIPT_TYPES, type Receipt, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
 import { getPhotoUri } from "@/utils/photoUtils";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
+
+const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+type ViewMode = "day" | "week" | "month" | "range";
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function dateToStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function strToDate(s: string): Date {
+  const parts = s.split("-").map(Number);
+  if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+    return new Date(parts[0]!, parts[1]! - 1, parts[2]!);
+  }
+  return new Date();
+}
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function formatDayLabel(dateStr: string): string {
+  const d = strToDate(dateStr);
+  return `${DAYS_OF_WEEK[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatWeekLabel(weekStart: Date): string {
+  const weekEnd = addDays(weekStart, 6);
+  const startStr = `${weekStart.getDate()} ${MONTHS[weekStart.getMonth()]}`;
+  const endStr = `${weekEnd.getDate()} ${MONTHS[weekEnd.getMonth()]} ${weekEnd.getFullYear()}`;
+  return `${startStr} – ${endStr}`;
+}
 
 function PhotoThumb({ uri }: { uri: string | null }) {
   const colors = useColors();
@@ -109,32 +155,48 @@ export default function ExpensesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { receipts, isDbReady } = useAppContext();
+  const params = useLocalSearchParams<{
+    filterCategory?: string;
+    filterDateStart?: string;
+    filterDateEnd?: string;
+  }>();
 
   const now = new Date();
+
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedDay, setSelectedDay] = useState(dateToStr(now));
+  const [selectedWeekStart, setSelectedWeekStart] = useState(dateToStr(getWeekStart(now)));
+  const [rangeStart, setRangeStart] = useState<string | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<ReceiptType>>(new Set());
   const [showFilter, setShowFilter] = useState(false);
 
-  const monthStr = String(selectedYear) + "-" + String(selectedMonth).padStart(2, "0");
-
-  const byMonth = useMemo(
-    () => receipts.filter((e) => e.date.startsWith(monthStr)),
-    [receipts, monthStr]
+  useFocusEffect(
+    useCallback(() => {
+      if (params.filterCategory) {
+        const found = RECEIPT_TYPES.find((rt) => rt.key === params.filterCategory);
+        if (found) {
+          setActiveFilters(new Set<ReceiptType>([found.key]));
+        }
+      }
+      if (params.filterDateStart && params.filterDateEnd) {
+        setRangeStart(params.filterDateStart);
+        setRangeEnd(params.filterDateEnd);
+        setViewMode("range");
+      } else if (params.filterDateStart) {
+        setRangeStart(null);
+        setRangeEnd(null);
+        const parts = params.filterDateStart.split("-");
+        const y = parseInt(parts[0] ?? "0", 10);
+        const m = parseInt(parts[1] ?? "1", 10);
+        if (!isNaN(y) && y > 0) setSelectedYear(y);
+        if (!isNaN(m)) setSelectedMonth(m);
+        setViewMode("month");
+      }
+    }, [params.filterCategory, params.filterDateStart, params.filterDateEnd])
   );
-
-  const filtered = useMemo(() => {
-    if (activeFilters.size === 0) return byMonth;
-    return byMonth.filter((e) => activeFilters.has(e.type));
-  }, [byMonth, activeFilters]);
-
-  const total = useMemo(() => {
-    const byCurrency: Record<string, number> = {};
-    for (const e of filtered) {
-      byCurrency[e.currency] = (byCurrency[e.currency] ?? 0) + e.amount;
-    }
-    return byCurrency;
-  }, [filtered]);
 
   function prevMonth() {
     if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear((y) => y - 1); }
@@ -145,6 +207,68 @@ export default function ExpensesScreen() {
     else { setSelectedMonth((m) => m + 1); }
   }
 
+  function prevDay() {
+    const d = strToDate(selectedDay);
+    setSelectedDay(dateToStr(addDays(d, -1)));
+  }
+  function nextDay() {
+    const d = strToDate(selectedDay);
+    setSelectedDay(dateToStr(addDays(d, 1)));
+  }
+
+  function prevWeek() {
+    const d = strToDate(selectedWeekStart);
+    setSelectedWeekStart(dateToStr(addDays(d, -7)));
+  }
+  function nextWeek() {
+    const d = strToDate(selectedWeekStart);
+    setSelectedWeekStart(dateToStr(addDays(d, 7)));
+  }
+
+  const periodLabel = useMemo(() => {
+    if (viewMode === "day") return formatDayLabel(selectedDay);
+    if (viewMode === "week") return formatWeekLabel(strToDate(selectedWeekStart));
+    if (viewMode === "range" && rangeStart && rangeEnd) {
+      const fmt = (s: string) => {
+        const parts = s.split("-");
+        if (parts.length !== 3) return s;
+        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        return `${parts[2]} ${months[parseInt(parts[1]!, 10) - 1] ?? ""} ${parts[0]}`;
+      };
+      return `${fmt(rangeStart)} – ${fmt(rangeEnd)}`;
+    }
+    return `${MONTHS[selectedMonth - 1]} ${selectedYear}`;
+  }, [viewMode, selectedDay, selectedWeekStart, selectedMonth, selectedYear, rangeStart, rangeEnd]);
+
+  const byPeriod = useMemo(() => {
+    if (viewMode === "day") {
+      return receipts.filter((e) => e.date === selectedDay);
+    }
+    if (viewMode === "week") {
+      const ws = selectedWeekStart;
+      const we = dateToStr(addDays(strToDate(ws), 6));
+      return receipts.filter((e) => e.date >= ws && e.date <= we);
+    }
+    if (viewMode === "range" && rangeStart && rangeEnd) {
+      return receipts.filter((e) => e.date >= rangeStart && e.date <= rangeEnd);
+    }
+    const monthStr = String(selectedYear) + "-" + String(selectedMonth).padStart(2, "0");
+    return receipts.filter((e) => e.date.startsWith(monthStr));
+  }, [receipts, viewMode, selectedDay, selectedWeekStart, selectedMonth, selectedYear, rangeStart, rangeEnd]);
+
+  const filtered = useMemo(() => {
+    if (activeFilters.size === 0) return byPeriod;
+    return byPeriod.filter((e) => activeFilters.has(e.type));
+  }, [byPeriod, activeFilters]);
+
+  const total = useMemo(() => {
+    const byCurrency: Record<string, number> = {};
+    for (const e of filtered) {
+      byCurrency[e.currency] = (byCurrency[e.currency] ?? 0) + e.amount;
+    }
+    return byCurrency;
+  }, [filtered]);
+
   function toggleFilter(t: ReceiptType) {
     setActiveFilters((prev) => {
       const next = new Set(prev);
@@ -154,8 +278,28 @@ export default function ExpensesScreen() {
     });
   }
 
+  function handlePrev() {
+    if (viewMode === "day") prevDay();
+    else if (viewMode === "week") prevWeek();
+    else if (viewMode === "month") prevMonth();
+  }
+
+  function handleNext() {
+    if (viewMode === "day") nextDay();
+    else if (viewMode === "week") nextWeek();
+    else if (viewMode === "month") nextMonth();
+  }
+
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const hasFilters = activeFilters.size > 0;
+
+  const emptySubtitle = useMemo(() => {
+    if (hasFilters) return "Try changing your filters or adding a new receipt";
+    if (viewMode === "day") return `No expenses recorded for ${periodLabel}`;
+    if (viewMode === "week") return `No expenses recorded for this week`;
+    if (viewMode === "range") return `No expenses in this date range`;
+    return `No expenses recorded for ${MONTHS[selectedMonth - 1]} ${selectedYear}`;
+  }, [hasFilters, viewMode, periodLabel, selectedMonth, selectedYear]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -238,6 +382,49 @@ export default function ExpensesScreen() {
 
         <View
           style={[
+            styles.viewToggleBar,
+            { backgroundColor: colors.card, borderBottomColor: colors.border },
+          ]}
+        >
+          {(["day", "week", "month"] as const).map((mode) => (
+            <Pressable
+              key={mode}
+              onPress={() => {
+                setRangeStart(null);
+                setRangeEnd(null);
+                setViewMode(mode);
+              }}
+              style={[
+                styles.viewToggleBtn,
+                viewMode === mode && { backgroundColor: colors.primary },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.viewToggleBtnText,
+                  { color: viewMode === mode ? "#fff" : colors.mutedForeground },
+                ]}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </Text>
+            </Pressable>
+          ))}
+          {viewMode === "range" && (
+            <Pressable
+              style={[styles.viewToggleBtn, { backgroundColor: colors.warning, flex: 1.5 }]}
+              onPress={() => {
+                setRangeStart(null);
+                setRangeEnd(null);
+                setViewMode("month");
+              }}
+            >
+              <Text style={[styles.viewToggleBtnText, { color: "#fff" }]}>Trip</Text>
+            </Pressable>
+          )}
+        </View>
+
+        <View
+          style={[
             styles.monthNav,
             {
               backgroundColor: colors.card,
@@ -246,19 +433,25 @@ export default function ExpensesScreen() {
           ]}
         >
           <TouchableOpacity
-            onPress={prevMonth}
+            onPress={handlePrev}
             hitSlop={12}
-            style={[styles.navBtn, { backgroundColor: colors.secondary }]}
+            disabled={viewMode === "range"}
+            style={[styles.navBtn, { backgroundColor: colors.secondary, opacity: viewMode === "range" ? 0.3 : 1 }]}
           >
             <Feather name="chevron-left" size={18} color={colors.foreground} />
           </TouchableOpacity>
-          <Text style={[styles.monthLabel, { color: colors.foreground }]}>
-            {MONTHS[selectedMonth - 1]} {selectedYear}
+          <Text
+            style={[styles.monthLabel, { color: colors.foreground }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {periodLabel}
           </Text>
           <TouchableOpacity
-            onPress={nextMonth}
+            onPress={handleNext}
             hitSlop={12}
-            style={[styles.navBtn, { backgroundColor: colors.secondary }]}
+            disabled={viewMode === "range"}
+            style={[styles.navBtn, { backgroundColor: colors.secondary, opacity: viewMode === "range" ? 0.3 : 1 }]}
           >
             <Feather name="chevron-right" size={18} color={colors.foreground} />
           </TouchableOpacity>
@@ -287,11 +480,7 @@ export default function ExpensesScreen() {
             <EmptyState
               icon="file-text"
               title={hasFilters ? "No matching expenses" : "No expenses"}
-              subtitle={
-                hasFilters
-                  ? "Try changing your filters or adding a new receipt"
-                  : `No expenses recorded for ${MONTHS[selectedMonth - 1]} ${selectedYear}`
-              }
+              subtitle={emptySubtitle}
               actionLabel={!hasFilters ? "Add Receipt" : undefined}
               onAction={!hasFilters ? () => router.push("/add-expense") : undefined}
             />
@@ -351,6 +540,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_500Medium",
   },
+  viewToggleBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  viewToggleBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  viewToggleBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
   monthNav: {
     flexDirection: "row",
     alignItems: "center",
@@ -370,9 +577,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   monthLabel: {
-    fontSize: 16,
+    flex: 1,
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: -0.2,
+    textAlign: "center",
+    paddingHorizontal: 8,
   },
   summary: {
     flexDirection: "row",

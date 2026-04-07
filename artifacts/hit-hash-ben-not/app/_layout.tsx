@@ -39,6 +39,7 @@ function RootLayoutNav() {
       <Stack.Screen name="general-data" />
       <Stack.Screen name="scan-receipt" options={{ presentation: "modal" }} />
       <Stack.Screen name="trash" />
+      <Stack.Screen name="trip/[id]/summary" />
     </Stack>
   );
 }

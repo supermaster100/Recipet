@@ -496,6 +496,32 @@ export default function TripScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
+        {legId !== null && (
+          <Pressable
+            onPress={() => router.push({ pathname: "/trip/[id]/summary", params: { id: String(legId) } })}
+            style={({ pressed }) => [
+              styles.summaryCard,
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.88 : 1,
+              },
+            ]}
+          >
+            <View style={styles.summaryCardContent}>
+              <View style={[styles.summaryCardIcon, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                <Feather name="bar-chart-2" size={18} color="#fff" />
+              </View>
+              <View style={styles.summaryCardText}>
+                <Text style={styles.summaryCardTitle}>View Trip Summary</Text>
+                <Text style={styles.summaryCardSubtitle}>
+                  Expenses, hotels, exchanges & transfers
+                </Text>
+              </View>
+            </View>
+            <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.8)" />
+          </Pressable>
+        )}
+
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Departure</Text>
 
@@ -945,4 +971,38 @@ const styles = StyleSheet.create({
   pickerEmptyText: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center" },
   smallBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   smallBtnText: { color: "#FFF", fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  summaryCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+  },
+  summaryCardContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  summaryCardIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  summaryCardText: {
+    flex: 1,
+    gap: 2,
+  },
+  summaryCardTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
+  summaryCardSubtitle: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.75)",
+  },
 });
