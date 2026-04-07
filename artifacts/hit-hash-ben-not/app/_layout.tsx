@@ -34,7 +34,7 @@ function RootLayoutNav() {
       <Stack.Screen name="edit-atm/[id]" options={{ presentation: "modal" }} />
       <Stack.Screen name="add-money-transfer" options={{ presentation: "modal" }} />
       <Stack.Screen name="add-client-transfer" options={{ presentation: "modal" }} />
-      <Stack.Screen name="export" />
+      <Stack.Screen name="export" options={{ presentation: "modal" }} />
       <Stack.Screen name="budgets" />
       <Stack.Screen name="general-data" />
       <Stack.Screen name="scan-receipt" options={{ presentation: "modal" }} />

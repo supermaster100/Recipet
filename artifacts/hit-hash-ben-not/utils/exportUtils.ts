@@ -155,7 +155,7 @@ export async function runExport(
       return "error";
     }
 
-    onProgress("Preparing files…");
+    onProgress("Exporting…");
 
     const photoEntries = includePhotos ? buildPhotoEntries(data, cacheDir) : [];
     const uriToName = new Map<string, string>(
@@ -163,7 +163,6 @@ export async function runExport(
     );
 
     if (photoEntries.length > 0) {
-      onProgress("Compressing photos (pass 1)…");
       for (const entry of photoEntries) {
         await compressToFile(entry.originalUri, entry.attachmentUri, TARGET_HIGH_BYTES).catch(() => {});
       }
@@ -172,7 +171,6 @@ export async function runExport(
       const total = sizes.reduce((a, b) => a + b, 0);
 
       if (total > MAX_TOTAL_BYTES) {
-        onProgress("Compressing photos (pass 2)…");
         for (const entry of photoEntries) {
           await compressToFile(entry.attachmentUri, entry.attachmentUri + ".tmp.jpg", TARGET_LOW_BYTES).catch(() => {});
           await FileSystem.moveAsync({ from: entry.attachmentUri + ".tmp.jpg", to: entry.attachmentUri }).catch(() => {});
@@ -193,7 +191,6 @@ export async function runExport(
       }
     }
 
-    onProgress("Generating CSV…");
     const csvContent = buildCSV(
       data.general, data.legs, data.travels, data.receipts,
       data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers,
@@ -203,7 +200,6 @@ export async function runExport(
     const csvPath = `${cacheDir}expenses_${dateTag}.csv`;
     await FileSystem.writeAsStringAsync(csvPath, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
 
-    onProgress("Generating Excel…");
     const xlsxB64 = buildXLSXBase64(
       data.general, data.legs, data.travels, data.receipts,
       data.exchanges, data.atmWithdrawals, data.moneyTransfers, data.clientTransfers,
@@ -212,7 +208,6 @@ export async function runExport(
     const xlsxPath = `${cacheDir}expenses_${dateTag}.xlsx`;
     await FileSystem.writeAsStringAsync(xlsxPath, xlsxB64, { encoding: FileSystem.EncodingType.Base64 });
 
-    onProgress("Opening email…");
     const subject = `Expenses Export – ${tripDatesLabel(data.travels, data.receipts)}`;
     const attachmentPaths = [csvPath, xlsxPath, ...photoEntries.map((e) => e.attachmentUri)];
     const result = await MailComposer.composeAsync({
