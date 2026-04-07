@@ -1,5 +1,7 @@
 export type Currency =
-  | "ILS" | "USD" | "EUR" | "GBP" | "JPY" | "CHF" | "CAD" | "AUD" | "CNY" | "AED";
+  | "ILS" | "USD" | "EUR" | "GBP" | "JPY" | "CHF" | "CAD" | "AUD" | "CNY" | "AED"
+  | "UAH" | "CZK" | "HUF" | "DKK" | "NOK" | "SEK" | "PLN" | "RON" | "BGN" | "HRK"
+  | "RUB" | "TRY" | "INR" | "SGD" | "NZD" | "BRL" | "MXN" | "ZAR" | "ISK" | "RSD" | "THB";
 
 export type ReceiptType =
   | "MEALS"
@@ -22,6 +24,13 @@ export const RECEIPT_TYPES: { key: ReceiptType; label: string }[] = [
 
 export const CURRENCIES: Currency[] = [
   "ILS", "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "CNY", "AED",
+];
+
+export const EXCHANGE_CURRENCIES: Currency[] = [
+  "EUR", "USD", "UAH", "CZK", "HUF", "DKK", "CHF",
+  "AED", "AUD", "BGN", "BRL", "CAD", "CNY", "GBP", "HRK", "ILS", "INR",
+  "ISK", "JPY", "MXN", "NOK", "NZD", "PLN", "RON", "RSD", "RUB", "SEK",
+  "SGD", "THB", "TRY", "ZAR",
 ];
 
 export interface General {
@@ -71,6 +80,16 @@ export interface Exchange {
   status: string;
   export: boolean;
   deleted_at: string | null;
+}
+
+export interface ATMWithdrawal {
+  id: number;
+  date: string;
+  cardLastFour: string;
+  amount: number;
+  currency: Currency;
+  photo: string | null;
+  createdAt: string;
 }
 
 export interface Leg {

@@ -10,6 +10,7 @@ import React, {
 import { AppState, AppStateStatus, Platform } from "react-native";
 
 import {
+  ATMDB,
   BudgetDB,
   ClientTransferDB,
   ExchangeDB,
@@ -22,6 +23,7 @@ import {
   getTrashItems,
 } from "@/db/database";
 import type {
+  ATMWithdrawal,
   Budget,
   ClientTransfer,
   Exchange,
@@ -45,6 +47,7 @@ interface AppContextValue {
   travels: Travel[];
   legs: Leg[];
   exchanges: Exchange[];
+  atmWithdrawals: ATMWithdrawal[];
   budgets: Budget[];
   moneyTransfers: MoneyTransfer[];
   clientTransfers: ClientTransfer[];
@@ -54,6 +57,7 @@ interface AppContextValue {
   refreshTravels: () => Promise<void>;
   refreshLegs: () => Promise<void>;
   refreshExchanges: () => Promise<void>;
+  refreshATM: () => Promise<void>;
   refreshBudgets: () => Promise<void>;
   refreshMoneyTransfers: () => Promise<void>;
   refreshClientTransfers: () => Promise<void>;
@@ -71,6 +75,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [travels, setTravels] = useState<Travel[]>([]);
   const [legs, setLegs] = useState<Leg[]>([]);
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
+  const [atmWithdrawals, setAtmWithdrawals] = useState<ATMWithdrawal[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [moneyTransfers, setMoneyTransfers] = useState<MoneyTransfer[]>([]);
   const [clientTransfers, setClientTransfers] = useState<ClientTransfer[]>([]);
@@ -102,6 +107,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setExchanges(data);
   }, []);
 
+  const refreshATM = useCallback(async () => {
+    const data = await ATMDB.getAll();
+    setAtmWithdrawals(data);
+  }, []);
+
   const refreshBudgets = useCallback(async () => {
     const data = await BudgetDB.getAll();
     setBudgets(data);
@@ -129,12 +139,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       refreshTravels(),
       refreshLegs(),
       refreshExchanges(),
+      refreshATM(),
       refreshBudgets(),
       refreshMoneyTransfers(),
       refreshClientTransfers(),
       refreshTrash(),
     ]);
-  }, [refreshGeneral, refreshReceipts, refreshTravels, refreshLegs, refreshExchanges, refreshBudgets, refreshMoneyTransfers, refreshClientTransfers, refreshTrash]);
+  }, [refreshGeneral, refreshReceipts, refreshTravels, refreshLegs, refreshExchanges, refreshATM, refreshBudgets, refreshMoneyTransfers, refreshClientTransfers, refreshTrash]);
 
   const runStartupCleanup = useCallback(async () => {
     if (Platform.OS === "web") return;
@@ -190,6 +201,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         travels,
         legs,
         exchanges,
+        atmWithdrawals,
         budgets,
         moneyTransfers,
         clientTransfers,
@@ -199,6 +211,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshTravels,
         refreshLegs,
         refreshExchanges,
+        refreshATM,
         refreshBudgets,
         refreshMoneyTransfers,
         refreshClientTransfers,

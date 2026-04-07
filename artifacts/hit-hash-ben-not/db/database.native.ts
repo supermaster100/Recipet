@@ -1,7 +1,9 @@
 import * as SQLite from "expo-sqlite";
 import type {
+  ATMWithdrawal,
   Budget,
   ClientTransfer,
+  Currency,
   Exchange,
   General,
   Leg,
@@ -160,6 +162,18 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
       export INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       FOREIGN KEY (lId) REFERENCES Legs(id) ON DELETE CASCADE
+    );
+  `);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS ATMWithdrawals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL DEFAULT '',
+      cardLastFour TEXT NOT NULL DEFAULT '',
+      amount REAL NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      photo TEXT,
+      createdAt TEXT NOT NULL DEFAULT ''
     );
   `);
 
@@ -726,6 +740,56 @@ export const ClientTransferDB = {
   async delete(id: number): Promise<void> {
     const db = await getDatabase();
     await db.runAsync("DELETE FROM ClientTransfers WHERE id = ?", [id]);
+  },
+};
+
+function toATMWithdrawal(r: Record<string, unknown>): ATMWithdrawal {
+  return {
+    id: r["id"] as number,
+    date: r["date"] as string,
+    cardLastFour: r["cardLastFour"] as string,
+    amount: r["amount"] as number,
+    currency: r["currency"] as Currency,
+    photo: r["photo"] as string | null,
+    createdAt: r["createdAt"] as string,
+  };
+}
+
+export const ATMDB = {
+  async getAll(): Promise<ATMWithdrawal[]> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      "SELECT * FROM ATMWithdrawals ORDER BY date DESC, id DESC"
+    );
+    return rows.map(toATMWithdrawal);
+  },
+  async getById(id: number): Promise<ATMWithdrawal | null> {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<Record<string, unknown>>(
+      "SELECT * FROM ATMWithdrawals WHERE id = ?",
+      [id]
+    );
+    return row ? toATMWithdrawal(row) : null;
+  },
+  async insert(a: Omit<ATMWithdrawal, "id">): Promise<number> {
+    const db = await getDatabase();
+    const res = await db.runAsync(
+      `INSERT INTO ATMWithdrawals (date, cardLastFour, amount, currency, photo, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [a.date, a.cardLastFour, a.amount, a.currency, a.photo ?? null, a.createdAt]
+    );
+    return res.lastInsertRowId;
+  },
+  async update(a: ATMWithdrawal): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync(
+      `UPDATE ATMWithdrawals SET date=?, cardLastFour=?, amount=?, currency=?, photo=?, createdAt=? WHERE id=?`,
+      [a.date, a.cardLastFour, a.amount, a.currency, a.photo ?? null, a.createdAt, a.id]
+    );
+  },
+  async delete(id: number): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync("DELETE FROM ATMWithdrawals WHERE id = ?", [id]);
   },
 };
 
