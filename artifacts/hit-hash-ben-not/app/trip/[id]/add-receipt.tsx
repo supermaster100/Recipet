@@ -41,7 +41,6 @@ export default function AddTripReceiptScreen() {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]>("USD");
   const [type, setType] = useState<ReceiptType>("HOSTING_MYSELF");
-  const [division, setDivision] = useState("");
   const [costCenter, setCostCenter] = useState("");
   const [photo, setPhoto] = useState("");
   const [selfDeclaration, setSelfDeclaration] = useState(true);

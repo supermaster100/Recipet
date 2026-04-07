@@ -32,7 +32,6 @@ interface FormErrors {
   currency?: string;
   date?: string;
   numberOfPeople?: string;
-  division?: string;
 }
 
 function FieldLabel({ text, required }: { text: string; required?: boolean }) {
@@ -167,7 +166,6 @@ export default function EditExpenseScreen() {
   const [currency, setCurrency] = useState<Currency>(receipt?.currency ?? "ILS");
   const [date, setDate] = useState(receipt?.date ?? "");
   const [numberOfPeople, setNumberOfPeople] = useState(String(receipt?.numberOfPeople ?? "1"));
-  const [division, setDivision] = useState(receipt?.division ?? "");
   const [selectedCostCenter, setSelectedCostCenter] = useState(receipt?.costCenter ?? "");
   const [photo, setPhoto] = useState(receipt?.photo ?? "");
   const [selfDeclaration, setSelfDeclaration] = useState(receipt?.selfDeclaration ?? true);
@@ -242,7 +240,6 @@ export default function EditExpenseScreen() {
     const nop = Number(numberOfPeople);
     if (!numberOfPeople.trim() || isNaN(nop) || nop < 1)
       e.numberOfPeople = "Enter at least 1 person";
-    if (!division.trim()) e.division = "Division is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -254,8 +251,7 @@ export default function EditExpenseScreen() {
     Number(amount) > 0 &&
     !!currency &&
     date.trim().length > 0 &&
-    numberOfPeople.trim().length > 0 &&
-    division.trim().length > 0;
+    numberOfPeople.trim().length > 0;
 
   async function handleSave() {
     if (!receipt || !validate()) return;
@@ -273,7 +269,7 @@ export default function EditExpenseScreen() {
         currency,
         date,
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
-        division: division.trim(),
+        division: receipt.division ?? "",
         costCenter: selectedCostCenter,
         selfDeclaration,
         note: note.trim(),
@@ -484,17 +480,6 @@ export default function EditExpenseScreen() {
             error={errors.numberOfPeople}
           />
           <FieldError msg={errors.numberOfPeople} />
-        </View>
-
-        <View style={styles.field}>
-          <FieldLabel text="Division" required />
-          <StyledInput
-            value={division}
-            onChangeText={(v) => { setDivision(v); markDirty(); if (errors.division) setErrors((e) => ({ ...e, division: undefined })); }}
-            placeholder="e.g. Finance"
-            error={errors.division}
-          />
-          <FieldError msg={errors.division} />
         </View>
 
         <View style={styles.field}>

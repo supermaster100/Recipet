@@ -37,7 +37,6 @@ interface ExpenseDraft {
   currency: Currency;
   date: string;
   numberOfPeople: string;
-  division: string;
   selectedCostCenter: string;
   photo: string;
   selfDeclaration: boolean;
@@ -55,7 +54,6 @@ interface FormErrors {
   currency?: string;
   date?: string;
   numberOfPeople?: string;
-  division?: string;
 }
 
 function FieldLabel({ text, required }: { text: string; required?: boolean }) {
@@ -217,7 +215,6 @@ export default function AddExpenseScreen() {
   const [currency, setCurrency] = useState<Currency>((params.currency as Currency) ?? "ILS");
   const [date, setDate] = useState(params.date ?? today());
   const [numberOfPeople, setNumberOfPeople] = useState("1");
-  const [division, setDivision] = useState("");
   const [photo, setPhoto] = useState(params.photo ?? "");
   const [selfDeclaration, setSelfDeclaration] = useState(true);
   const [note, setNote] = useState("");
@@ -248,12 +245,6 @@ export default function AddExpenseScreen() {
   const [showCostCenterPicker, setShowCostCenterPicker] = useState(false);
 
   useEffect(() => {
-    if (general && !draftLoaded) {
-      setDivision(general.division);
-    }
-  }, [general, draftLoaded]);
-
-  useEffect(() => {
     setSelfDeclaration(photo.trim().length === 0);
   }, [photo]);
 
@@ -277,7 +268,6 @@ export default function AddExpenseScreen() {
               setCurrency(draft.currency);
               setDate(draft.date);
               setNumberOfPeople(draft.numberOfPeople);
-              setDivision(draft.division);
               setSelectedCostCenter(draft.selectedCostCenter ?? "");
               setPhoto(draft.photo ?? "");
               setSelfDeclaration(draft.selfDeclaration);
@@ -298,13 +288,12 @@ export default function AddExpenseScreen() {
     currency,
     date,
     numberOfPeople,
-    division,
     selectedCostCenter,
     photo,
     selfDeclaration,
     note,
     paymentMethod,
-  }), [type, amount, currency, date, numberOfPeople, division, selectedCostCenter, photo, selfDeclaration, note, paymentMethod]);
+  }), [type, amount, currency, date, numberOfPeople, selectedCostCenter, photo, selfDeclaration, note, paymentMethod]);
 
   useEffect(() => {
     if (!dirty || saved) return;
@@ -318,7 +307,7 @@ export default function AddExpenseScreen() {
     if (dirty && !saved) {
       saveDraft(DRAFT_KEY, getDraftData());
     }
-  }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, division, selectedCostCenter, photo, selfDeclaration, note, paymentMethod]);
+  }, [dirty, saved, getDraftData, type, amount, currency, date, numberOfPeople, selectedCostCenter, photo, selfDeclaration, note, paymentMethod]);
 
   const confirmDiscard = useCallback(() => {
     if (Platform.OS === "web") {
@@ -378,7 +367,6 @@ export default function AddExpenseScreen() {
     const nop = Number(numberOfPeople);
     if (!numberOfPeople.trim() || isNaN(nop) || nop < 1)
       e.numberOfPeople = "Enter at least 1 person";
-    if (!division.trim()) e.division = "Division is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -390,8 +378,7 @@ export default function AddExpenseScreen() {
     Number(amount) > 0 &&
     !!currency &&
     date.trim().length > 0 &&
-    numberOfPeople.trim().length > 0 &&
-    division.trim().length > 0;
+    numberOfPeople.trim().length > 0;
 
   async function handleSave() {
     if (!validate()) return;
@@ -456,7 +443,7 @@ export default function AddExpenseScreen() {
         currency,
         date,
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
-        division: division.trim(),
+        division: "",
         costCenter: selectedCostCenter,
         selfDeclaration: effectiveSelfDecl,
         note: note.trim(),
@@ -517,7 +504,6 @@ export default function AddExpenseScreen() {
     setCurrency("ILS");
     setDate(today());
     setNumberOfPeople("1");
-    setDivision(general?.division ?? "");
     setSelectedCostCenter("");
     setPhoto("");
     setNote("");
@@ -728,17 +714,6 @@ export default function AddExpenseScreen() {
             error={errors.numberOfPeople}
           />
           <FieldError msg={errors.numberOfPeople} />
-        </View>
-
-        <View style={styles.field}>
-          <FieldLabel text="Division" required />
-          <StyledInput
-            value={division}
-            onChangeText={(v) => { setDivision(v); markDirty(); if (errors.division) setErrors((e) => ({ ...e, division: undefined })); }}
-            placeholder="e.g. Finance"
-            error={errors.division}
-          />
-          <FieldError msg={errors.division} />
         </View>
 
         <View style={styles.field}>
