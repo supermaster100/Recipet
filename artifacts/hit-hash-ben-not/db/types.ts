@@ -76,7 +76,7 @@ export interface Leg {
 
 export interface Travel {
   id: number;
-  lId: number;
+  lId: number | null;
   num: number;
   departure: string;
   departureDate: string;

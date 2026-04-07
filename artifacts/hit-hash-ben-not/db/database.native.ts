@@ -85,7 +85,7 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS Travels (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      lId INTEGER NOT NULL DEFAULT 0,
+      lId INTEGER DEFAULT 0,
       num INTEGER NOT NULL DEFAULT 1,
       departure TEXT NOT NULL DEFAULT '',
       departureDate TEXT NOT NULL DEFAULT '',
@@ -110,7 +110,7 @@ async function initDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
       description TEXT NOT NULL DEFAULT '',
       photo TEXT,
       export INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (lId) REFERENCES Legs(id) ON DELETE SET NULL
+      FOREIGN KEY (lId) REFERENCES Legs(id) ON DELETE CASCADE
     );
   `);
 }
