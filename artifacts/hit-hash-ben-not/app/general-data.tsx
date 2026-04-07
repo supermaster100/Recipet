@@ -203,6 +203,13 @@ export default function GeneralDataScreen() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
 
+  const isFormValid =
+    workerNumber.trim().length > 0 &&
+    division.trim().length > 0 &&
+    month.length > 0 &&
+    year.length > 0 &&
+    costCenter.trim().length > 0;
+
   useEffect(() => {
     if (general) {
       setWorkerNumber(general.workerNumber);
@@ -265,10 +272,13 @@ export default function GeneralDataScreen() {
         </Text>
         <TouchableOpacity
           onPress={handleSave}
-          disabled={saving}
+          disabled={!isFormValid || saving}
           style={[
             styles.saveBtn,
-            { backgroundColor: saving ? colors.primary + "80" : colors.primary },
+            {
+              backgroundColor:
+                !isFormValid || saving ? colors.primary + "50" : colors.primary,
+            },
           ]}
         >
           <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
