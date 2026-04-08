@@ -443,7 +443,6 @@ export default function AddExpenseScreen() {
         currency,
         date,
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
-        division: "",
         costCenter: selectedCostCenter,
         selfDeclaration: effectiveSelfDecl,
         note: note.trim(),

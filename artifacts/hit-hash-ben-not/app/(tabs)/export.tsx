@@ -67,7 +67,7 @@ export default function ExportTabScreen() {
   const insets = useSafeAreaInsets();
   const {
     general, receipts, travels, legs, exchanges,
-    atmWithdrawals, moneyTransfers, clientTransfers, cashWalletEntries, refreshAll,
+    atmWithdrawals, moneyTransfers, clientTransfers, cashWalletEntries, costCenters, refreshAll,
   } = useAppContext();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
@@ -92,13 +92,13 @@ export default function ExportTabScreen() {
 
   function handleYes() {
     if (Platform.OS === "web") {
-      window.alert("Not Supported: Email export requires a real device with an email app.");
+      Alert.alert("Not Supported", "Email export requires a real device with an email app.");
       return;
     }
 
     const data = {
       general, legs, travels, receipts,
-      exchanges, atmWithdrawals, moneyTransfers, clientTransfers, cashWalletEntries,
+      exchanges, atmWithdrawals, moneyTransfers, clientTransfers, cashWalletEntries, costCenters,
     };
 
     const err = validateExportData(data);
@@ -129,7 +129,7 @@ export default function ExportTabScreen() {
     }
   }
 
-  const canExport = !running && exportAll && receipts.length > 0;
+  const canExport = !running && exportAll && (Platform.OS === "web" || receipts.length > 0);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

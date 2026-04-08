@@ -269,7 +269,6 @@ export default function EditExpenseScreen() {
         currency,
         date,
         numberOfPeople: Math.max(1, parseInt(numberOfPeople) || 1),
-        division: receipt.division ?? "",
         costCenter: selectedCostCenter,
         selfDeclaration,
         note: note.trim(),

@@ -354,13 +354,13 @@ export const GeneralDB = {
       const existing = await GeneralDB.get();
       if (existing) {
         await db.runAsync(
-          "UPDATE General SET workerNumber=?, division=?, month=?, year=? WHERE id=?",
-          [data.workerNumber, data.division, data.month, data.year, existing.id]
+          "UPDATE General SET workerNumber=?, month=?, year=? WHERE id=?",
+          [data.workerNumber, data.month, data.year, existing.id]
         );
       } else {
         await db.runAsync(
-          "INSERT INTO General (workerNumber, division, month, year) VALUES (?, ?, ?, ?)",
-          [data.workerNumber, data.division, data.month, data.year]
+          "INSERT INTO General (workerNumber, month, year) VALUES (?, ?, ?)",
+          [data.workerNumber, data.month, data.year]
         );
       }
     });

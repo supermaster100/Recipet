@@ -47,9 +47,9 @@ export function buildCSV(
   lines.push("");
 
   lines.push("# GENERAL");
-  lines.push("Row,WorkerNumber,Month,Year,CostCenter");
+  lines.push("Row,WorkerNumber,Month,Year");
   if (general) {
-    lines.push(row("G", general.workerNumber, general.month, general.year, general.costCenter));
+    lines.push(row("G", general.workerNumber, general.month, general.year));
   }
   lines.push("");
 
@@ -72,10 +72,10 @@ export function buildCSV(
   lines.push("");
 
   lines.push("# EXPENSES");
-  lines.push("Row,Type,Amount,Currency,Date,NumberOfPeople,Division,CostCenter,SelfDeclaration,Note,PaymentMethod,Photo");
+  lines.push("Row,Type,Amount,Currency,Date,NumberOfPeople,CostCenter,SelfDeclaration,Note,PaymentMethod,Photo");
   for (const e of receipts) {
     lines.push(row("E", e.type, e.amount, e.currency, e.date, e.numberOfPeople,
-      e.division, costCenterLabel(e.costCenter, costCenters), e.selfDeclaration ? "YES" : "NO", e.note, e.paymentMethod ?? "card", photoName(e.photo, uriToName)));
+      costCenterLabel(e.costCenter, costCenters), e.selfDeclaration ? "YES" : "NO", e.note, e.paymentMethod ?? "card", photoName(e.photo, uriToName)));
   }
   lines.push("");
 

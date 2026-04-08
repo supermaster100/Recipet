@@ -1,4 +1,4 @@
-import type { ATMWithdrawal, Budget, CashWalletEntry, CostCenter, ClientTransfer, Exchange, General, Leg, MoneyTransfer, Receipt, Travel, TrashItem } from "./types";
+import type { ATMWithdrawal, CashWalletEntry, CostCenter, ClientTransfer, Exchange, General, Leg, MoneyTransfer, Receipt, Travel, TrashItem } from "./types";
 
 const KEYS = {
   general: "hhbn_general",

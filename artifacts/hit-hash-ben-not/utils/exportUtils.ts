@@ -27,7 +27,7 @@ import {
 } from "@/db/database";
 import { buildCSV } from "./csvGenerator";
 import { buildXLSXBase64 } from "./xlsxGenerator";
-import { saveCostCenter } from "@/db/costCenterStore";
+
 
 const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 const TARGET_HIGH_BYTES = 350 * 1024;
@@ -64,9 +64,6 @@ export function validateExportData(data: ExportData): ValidationError | null {
   }
   if (!g.year) {
     return { message: "Year is required in General Data.", screen: "General Data" };
-  }
-  if (!g.costCenter.trim()) {
-    return { message: "Cost Center is required in General Data.", screen: "General Data" };
   }
   if (data.receipts.length === 0) {
     return { message: "No expenses found. Please add at least one expense receipt before exporting.", screen: "Expenses" };
@@ -229,9 +226,6 @@ export async function runExport(
     const wasSent = result.status === MailComposer.MailComposerStatus.SENT;
 
     if (wasSent) {
-      if (data.general?.costCenter?.trim()) {
-        await saveCostCenter(data.general.costCenter.trim()).catch(() => {});
-      }
       if (clearAfter) {
         onProgress("Clearing trip data…");
         await clearAllData(data);
