@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
   actionBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#FFF" },
   emptyHotels: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderStyle: "dashed",
+    borderStyle: "solid",
     borderRadius: 12,
     alignItems: "center",
     paddingVertical: 36,

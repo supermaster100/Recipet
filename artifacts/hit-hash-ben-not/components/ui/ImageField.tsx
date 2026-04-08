@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   placeholder: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 12,
-    borderStyle: "dashed",
+    borderStyle: "solid",
     paddingVertical: 28,
     alignItems: "center",
     gap: 8,
