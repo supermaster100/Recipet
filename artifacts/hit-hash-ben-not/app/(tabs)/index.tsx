@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import {
@@ -79,6 +80,23 @@ export default function AddScreen() {
         },
       ]}
     >
+      <TouchableOpacity
+        onPress={() => router.push("/scan-receipt")}
+        style={[styles.scanReceiptBtn, { backgroundColor: colors.primary }]}
+        activeOpacity={0.8}
+      >
+        <View style={styles.scanReceiptLeft}>
+          <View style={styles.scanReceiptIcon}>
+            <Feather name="camera" size={20} color="#fff" />
+          </View>
+          <View>
+            <Text style={styles.scanReceiptTitle}>Scan Receipt</Text>
+            <Text style={styles.scanReceiptSub}>Auto-detect amount, date & currency</Text>
+          </View>
+        </View>
+        <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.8)" />
+      </TouchableOpacity>
+
       {rows.map((row, rowIndex) => (
         <View key={rowIndex} style={styles.row}>
           {row.map((action) => {
@@ -111,6 +129,39 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     gap: 12,
+  },
+  scanReceiptBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 2,
+  },
+  scanReceiptLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  scanReceiptIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scanReceiptTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  scanReceiptSub: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
   },
   row: {
     flex: 1,

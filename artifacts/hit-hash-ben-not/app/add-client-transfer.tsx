@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -42,6 +43,7 @@ export default function AddClientTransferScreen() {
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]>("ILS");
   const [photo, setPhoto] = useState(params.photo ?? "");
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const imageFieldRef = useRef<ImageFieldHandle>(null);
 
@@ -78,11 +80,7 @@ export default function AddClientTransferScreen() {
       await refreshClientTransfers();
       await refreshCashWallet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace("/(tabs)/client-transfers");
-      }
+      setSaved(true);
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to save client transfer. Please try again.");
@@ -125,6 +123,29 @@ export default function AddClientTransferScreen() {
     doSave(photo);
   }
 
+  if (saved) {
+    const goBack = () => { if (router.canGoBack()) { router.back(); } else { router.replace("/(tabs)/client-transfers"); } };
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: topInset + 8, borderBottomColor: colors.border }]}>
+          <View style={{ width: 22 }} />
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Saved</Text>
+          <View style={{ width: 22 }} />
+        </View>
+        <View style={styles.successBody}>
+          <View style={[styles.successIcon, { backgroundColor: colors.success + "22" }]}>
+            <Feather name="check-circle" size={48} color={colors.success} />
+          </View>
+          <Text style={[styles.successTitle, { color: colors.foreground }]}>Transfer Saved</Text>
+          <Text style={[styles.successSub, { color: colors.mutedForeground }]}>Your client transfer has been saved.</Text>
+          <TouchableOpacity onPress={goBack} style={[styles.successBtn, { backgroundColor: colors.primary }]}>
+            <Text style={styles.successBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View
@@ -143,15 +164,20 @@ export default function AddClientTransferScreen() {
           onPress={handleSave}
           disabled={saving || !isValid}
           hitSlop={8}
+          style={styles.saveBtnWrap}
         >
-          <Text
-            style={[
-              styles.saveBtn,
-              { color: isValid && !saving ? colors.primary : colors.mutedForeground },
-            ]}
-          >
-            {saving ? "Saving…" : "Save"}
-          </Text>
+          {saving ? (
+            <ActivityIndicator color={isValid ? colors.primary : colors.mutedForeground} size="small" />
+          ) : (
+            <Text
+              style={[
+                styles.saveBtn,
+                { color: isValid && !saving ? colors.primary : colors.mutedForeground },
+              ]}
+            >
+              Save
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -289,6 +315,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
   },
+  saveBtnWrap: { minWidth: 40, alignItems: "center", justifyContent: "center" },
+  successBody: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
+  successIcon: { width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  successTitle: { fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center" },
+  successSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  successBtn: { marginTop: 16, paddingHorizontal: 40, paddingVertical: 14, borderRadius: 12 },
+  successBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   form: {
     padding: 16,
     gap: 16,

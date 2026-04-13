@@ -1,14 +1,16 @@
 import { Feather } from "@expo/vector-icons";
 import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
+  Image as RNImage,
+  PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
@@ -22,21 +24,29 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { CURRENCIES, type Currency } from "@/db/types";
 import { analyzeReceiptImage, type OcrResult } from "@/utils/receiptOcr";
-import { savePhotoToLocal } from "@/utils/photoUtils";
+import { savePhotoToLocal, normalizeUri } from "@/utils/photoUtils";
+import { detectReceiptBounds, type ReceiptBounds } from "@/utils/detectReceiptBounds";
 
 type FlowStep =
   | "idle"
   | "camera"
+  | "crop-preview"
   | "analyzing"
   | "confirm-detection"
   | "manual-picker"
   | "ready";
+
+interface CropPreviewData {
+  originalUri: string;
+  croppedUri: string | null;
+}
 
 interface AutoFilledData {
   photo: string;
   currency: Currency | null;
   amount: string | null;
   date: string | null;
+  merchant: string | null;
   ocrResult: OcrResult;
 }
 
@@ -46,9 +56,10 @@ export default function ScanReceiptScreen() {
   const topInset = Platform.OS === "web" ? 67 : insets.top;
 
   const [step, setStep] = useState<FlowStep>("idle");
+  const [cropPreviewData, setCropPreviewData] = useState<CropPreviewData | null>(null);
+  const [detectedBounds, setDetectedBounds] = useState<ReceiptBounds | null>(null);
   const [autoFilled, setAutoFilled] = useState<AutoFilledData | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>("ILS");
-  const [showCurrencySearch, setShowCurrencySearch] = useState(false);
 
   async function handleLaunchCamera() {
     if (Platform.OS === "web") {
@@ -87,8 +98,20 @@ export default function ScanReceiptScreen() {
       quality: 0.9,
     });
     if (!result.canceled && result.assets[0]?.uri) {
-      await processImage(result.assets[0].uri);
+      await showCropPreview(result.assets[0].uri);
     }
+  }
+
+  async function showCropPreview(rawUri: string) {
+    setCropPreviewData({ originalUri: rawUri, croppedUri: null });
+    setStep("crop-preview");
+    // Run edge detection in background; CropPreviewScreen will update its
+    // crop box once bounds are available
+    detectReceiptBounds(rawUri).then((bounds) => {
+      setDetectedBounds(bounds);
+    }).catch(() => {
+      setDetectedBounds(null);
+    });
   }
 
   async function processImage(uri: string) {
@@ -102,6 +125,7 @@ export default function ScanReceiptScreen() {
         currency: ocrResult.detectedCurrency,
         amount: ocrResult.detectedAmount ? String(ocrResult.detectedAmount) : null,
         date: ocrResult.detectedDate,
+        merchant: ocrResult.detectedMerchant,
         ocrResult,
       };
 
@@ -140,7 +164,6 @@ export default function ScanReceiptScreen() {
 
   function handleManualSelect(currency: Currency) {
     setSelectedCurrency(currency);
-    setShowCurrencySearch(false);
     setAutoFilled((prev) =>
       prev ? { ...prev, currency } : prev
     );
@@ -157,6 +180,7 @@ export default function ScanReceiptScreen() {
     };
     if (autoFilled.amount) params["amount"] = autoFilled.amount;
     if (autoFilled.date) params["date"] = autoFilled.date;
+    if (autoFilled.merchant) params["merchant"] = autoFilled.merchant;
     router.push({ pathname: "/add-expense", params });
   }
 
@@ -165,9 +189,37 @@ export default function ScanReceiptScreen() {
       <CameraCapture
         onCapture={async (uri) => {
           setStep("idle");
-          await processImage(uri);
+          await showCropPreview(uri);
         }}
         onCancel={() => setStep("idle")}
+      />
+    );
+  }
+
+  if (step === "crop-preview" && cropPreviewData) {
+    return (
+      <CropPreviewScreen
+        topInset={topInset}
+        insets={insets}
+        colors={colors}
+        data={cropPreviewData}
+        detectedBounds={detectedBounds}
+        onUseCropped={async (uri: string) => {
+          setCropPreviewData(null);
+          setDetectedBounds(null);
+          await processImage(uri);
+        }}
+        onUseOriginal={async () => {
+          const uri = cropPreviewData.originalUri;
+          setCropPreviewData(null);
+          setDetectedBounds(null);
+          await processImage(uri);
+        }}
+        onCancel={() => {
+          setCropPreviewData(null);
+          setDetectedBounds(null);
+          setStep("idle");
+        }}
       />
     );
   }
@@ -193,7 +245,7 @@ export default function ScanReceiptScreen() {
             Reading receipt text…
           </Text>
           <Text style={[styles.analyzingSubText, { color: colors.mutedForeground }]}>
-            Detecting currency, amount, and date
+            Detecting merchant, currency, amount, and date
           </Text>
         </View>
       </View>
@@ -266,8 +318,8 @@ export default function ScanReceiptScreen() {
         ]}
       >
         <Text style={[styles.introText, { color: colors.mutedForeground }]}>
-          Scan or upload a receipt photo to automatically detect the currency,
-          amount, and date.
+          Scan or upload a receipt photo. The app will automatically detect the
+          merchant, currency, amount, and date.
         </Text>
 
         <TouchableOpacity
@@ -382,6 +434,248 @@ export default function ScanReceiptScreen() {
   );
 }
 
+function CropPreviewScreen({
+  topInset,
+  insets,
+  colors,
+  data,
+  detectedBounds,
+  onUseCropped,
+  onUseOriginal,
+  onCancel,
+}: {
+  topInset: number;
+  insets: ReturnType<typeof useSafeAreaInsets>;
+  colors: ReturnType<typeof useColors>;
+  data: CropPreviewData;
+  detectedBounds: ReceiptBounds | null;
+  onUseCropped: (uri: string) => void;
+  onUseOriginal: () => void;
+  onCancel: () => void;
+}) {
+  const HANDLE = 28;
+  const MIN_RATIO = 0.08;
+  const CONTAINER_H = 340;
+
+  const [processing, setProcessing] = useState(false);
+  const [imgDims, setImgDims] = useState<{ w: number; h: number } | null>(null);
+  const [containerW, setContainerW] = useState(0);
+  // Crop box as ratios [0..1] of original image (starts at conservative default)
+  const [cropBox, setCropBox] = useState({ x: 0.06, y: 0.04, w: 0.88, h: 0.92 });
+  const [boundsApplied, setBoundsApplied] = useState(false);
+
+  const cropBoxRef = useRef(cropBox);
+  cropBoxRef.current = cropBox;
+
+  const imageRectRef = useRef<{ renderW: number; renderH: number; offsetX: number; offsetY: number } | null>(null);
+
+  useEffect(() => {
+    const uri = normalizeUri(data.originalUri);
+    RNImage.getSize(uri, (w, h) => setImgDims({ w, h }), () => {});
+  }, [data.originalUri]);
+
+  // When edge detection results arrive, update crop box (once only)
+  useEffect(() => {
+    if (detectedBounds && !boundsApplied) {
+      setBoundsApplied(true);
+      setCropBox({
+        x: detectedBounds.x,
+        y: detectedBounds.y,
+        w: detectedBounds.width,
+        h: detectedBounds.height,
+      });
+    }
+  }, [detectedBounds, boundsApplied]);
+
+  const imageRect = useMemo(() => {
+    if (!imgDims || !containerW) return null;
+    const imgAR = imgDims.w / imgDims.h;
+    const cAR = containerW / CONTAINER_H;
+    let renderW: number, renderH: number, offsetX: number, offsetY: number;
+    if (imgAR > cAR) {
+      renderW = containerW; renderH = containerW / imgAR;
+      offsetX = 0; offsetY = (CONTAINER_H - renderH) / 2;
+    } else {
+      renderH = CONTAINER_H; renderW = CONTAINER_H * imgAR;
+      offsetX = (containerW - renderW) / 2; offsetY = 0;
+    }
+    return { renderW, renderH, offsetX, offsetY };
+  }, [imgDims, containerW]);
+  imageRectRef.current = imageRect;
+
+  function makeCornerPan(corner: "tl" | "tr" | "bl" | "br") {
+    const startRef = { current: { x: 0, y: 0, w: 1, h: 1 } };
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => { startRef.current = { ...cropBoxRef.current }; },
+      onPanResponderMove: (_, gs) => {
+        const ir = imageRectRef.current;
+        if (!ir) return;
+        const drx = gs.dx / ir.renderW;
+        const dry = gs.dy / ir.renderH;
+        const s = startRef.current;
+        let { x, y, w, h } = s;
+        switch (corner) {
+          case "tl":
+            x = Math.max(0, Math.min(s.x + drx, s.x + s.w - MIN_RATIO));
+            y = Math.max(0, Math.min(s.y + dry, s.y + s.h - MIN_RATIO));
+            w = (s.x + s.w) - x; h = (s.y + s.h) - y;
+            break;
+          case "tr":
+            y = Math.max(0, Math.min(s.y + dry, s.y + s.h - MIN_RATIO));
+            w = Math.max(MIN_RATIO, Math.min(s.w + drx, 1 - s.x));
+            h = (s.y + s.h) - y;
+            break;
+          case "bl":
+            x = Math.max(0, Math.min(s.x + drx, s.x + s.w - MIN_RATIO));
+            w = (s.x + s.w) - x;
+            h = Math.max(MIN_RATIO, Math.min(s.h + dry, 1 - s.y));
+            break;
+          case "br":
+            w = Math.max(MIN_RATIO, Math.min(s.w + drx, 1 - s.x));
+            h = Math.max(MIN_RATIO, Math.min(s.h + dry, 1 - s.y));
+            break;
+        }
+        setCropBox({ x, y, w, h });
+      },
+    });
+  }
+
+  const tlPan = useRef(makeCornerPan("tl")).current;
+  const trPan = useRef(makeCornerPan("tr")).current;
+  const blPan = useRef(makeCornerPan("bl")).current;
+  const brPan = useRef(makeCornerPan("br")).current;
+
+  const cropRect = imageRect ? {
+    left: imageRect.offsetX + cropBox.x * imageRect.renderW,
+    top: imageRect.offsetY + cropBox.y * imageRect.renderH,
+    width: cropBox.w * imageRect.renderW,
+    height: cropBox.h * imageRect.renderH,
+  } : null;
+
+  async function handleCropAndScan() {
+    setProcessing(true);
+    try {
+      const dims = imgDims;
+      if (!dims) { await onUseCropped(data.originalUri); return; }
+      const originX = Math.max(0, Math.round(cropBox.x * dims.w));
+      const originY = Math.max(0, Math.round(cropBox.y * dims.h));
+      const cropW = Math.min(Math.round(cropBox.w * dims.w), dims.w - originX);
+      const cropH = Math.min(Math.round(cropBox.h * dims.h), dims.h - originY);
+      if (cropW < 10 || cropH < 10) { await onUseCropped(data.originalUri); return; }
+      const result = await ImageManipulator.manipulateAsync(
+        normalizeUri(data.originalUri),
+        [{ crop: { originX, originY, width: cropW, height: cropH } }],
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.9 }
+      );
+      await onUseCropped(result.uri);
+    } finally { setProcessing(false); }
+  }
+
+  async function handleUseFullImage() {
+    setProcessing(true);
+    try { await onUseOriginal(); } finally { setProcessing(false); }
+  }
+
+  const imgUri = normalizeUri(data.originalUri);
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { paddingTop: topInset + 8, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={onCancel} hitSlop={8}>
+          <Feather name="arrow-left" size={22} color={colors.foreground} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Crop Receipt</Text>
+        <View style={{ width: 22 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24, gap: 16 }}>
+        <View style={[styles.cropInfoBox, { backgroundColor: colors.primary + "14", borderColor: colors.primary + "40" }]}>
+          <Feather name="crop" size={14} color={colors.primary} />
+          <Text style={[styles.cropInfoText, { color: colors.primary }]}>
+            {detectedBounds && detectedBounds.confidence > 0.4
+              ? 'Receipt boundary auto-detected. Adjust the corner handles if needed, then tap \u201cCrop & Scan\u201d.'
+              : 'Drag the corner handles to set the crop area around your receipt, then tap \u201cCrop & Scan\u201d.'}
+          </Text>
+        </View>
+
+        {/* Image container with crop overlay */}
+        <View
+          style={[styles.cropCanvas, { height: CONTAINER_H, borderColor: colors.border }]}
+          onLayout={(e) => setContainerW(e.nativeEvent.layout.width)}
+        >
+          <Image
+            source={{ uri: imgUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
+          />
+
+          {cropRect && (
+            <>
+              {/* Dark masks */}
+              <View style={{ position: "absolute", left: 0, right: 0, top: 0, height: cropRect.top, backgroundColor: "rgba(0,0,0,0.52)" }} />
+              <View style={{ position: "absolute", left: 0, right: 0, top: cropRect.top + cropRect.height, bottom: 0, backgroundColor: "rgba(0,0,0,0.52)" }} />
+              <View style={{ position: "absolute", left: 0, top: cropRect.top, width: cropRect.left, height: cropRect.height, backgroundColor: "rgba(0,0,0,0.52)" }} />
+              <View style={{ position: "absolute", left: cropRect.left + cropRect.width, top: cropRect.top, right: 0, height: cropRect.height, backgroundColor: "rgba(0,0,0,0.52)" }} />
+              {/* Crop border */}
+              <View style={{ position: "absolute", left: cropRect.left, top: cropRect.top, width: cropRect.width, height: cropRect.height, borderWidth: 2, borderColor: colors.primary }} />
+              {/* Corner handles */}
+              {[
+                { pan: tlPan, left: cropRect.left - HANDLE / 2, top: cropRect.top - HANDLE / 2 },
+                { pan: trPan, left: cropRect.left + cropRect.width - HANDLE / 2, top: cropRect.top - HANDLE / 2 },
+                { pan: blPan, left: cropRect.left - HANDLE / 2, top: cropRect.top + cropRect.height - HANDLE / 2 },
+                { pan: brPan, left: cropRect.left + cropRect.width - HANDLE / 2, top: cropRect.top + cropRect.height - HANDLE / 2 },
+              ].map((h, i) => (
+                <View key={i} {...h.pan.panHandlers} style={{ position: "absolute", left: h.left, top: h.top, width: HANDLE, height: HANDLE, alignItems: "center", justifyContent: "center", zIndex: 10 }}>
+                  <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: colors.primary, shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 3, elevation: 4 }} />
+                </View>
+              ))}
+            </>
+          )}
+
+          {!imageRect && (
+            <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          )}
+        </View>
+
+        {processing ? (
+          <View style={styles.processingWrap}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={[styles.processingText, { color: colors.mutedForeground }]}>
+              Preparing image…
+            </Text>
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity
+              onPress={handleCropAndScan}
+              style={[styles.primaryCropBtn, { backgroundColor: colors.primary }]}
+              activeOpacity={0.85}
+            >
+              <Feather name="crop" size={18} color="#fff" />
+              <Text style={styles.primaryCropBtnText}>Crop & Scan</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleUseFullImage}
+              style={[styles.secondaryCropBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+              activeOpacity={0.8}
+            >
+              <Feather name="image" size={16} color={colors.foreground} />
+              <Text style={[styles.secondaryCropBtnText, { color: colors.foreground }]}>
+                Use Full Image Instead
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
 function DetectionConfirmScreen({
   topInset,
   colors,
@@ -469,6 +763,14 @@ function DetectionConfirmScreen({
             </View>
           </View>
 
+          {autoFilled.merchant && (
+            <DetectionRow
+              label="Merchant"
+              value={autoFilled.merchant}
+              icon="shopping-bag"
+              colors={colors}
+            />
+          )}
           <DetectionRow
             label="Currency"
             value={selectedCurrency}
@@ -734,6 +1036,14 @@ function ReadySummaryScreen({
             Will auto-fill these fields
           </Text>
 
+          {autoFilled.merchant && (
+            <DetectionRow
+              label="Merchant"
+              value={autoFilled.merchant}
+              icon="shopping-bag"
+              colors={colors}
+            />
+          )}
           <DetectionRow
             label="Currency"
             value={currency}
@@ -755,6 +1065,30 @@ function ReadySummaryScreen({
               icon="calendar"
               colors={colors}
             />
+          )}
+          {autoFilled.ocrResult.lineItems.length > 0 && (
+            <View style={[styles.lineItemsWrap, { borderTopColor: colors.border }]}>
+              <Text style={[styles.lineItemsTitle, { color: colors.mutedForeground }]}>
+                Line Items ({autoFilled.ocrResult.lineItems.length})
+              </Text>
+              {autoFilled.ocrResult.lineItems.slice(0, 4).map((item, i) => (
+                <View key={i} style={styles.lineItemRow}>
+                  <Text style={[styles.lineItemDesc, { color: colors.foreground }]} numberOfLines={1}>
+                    {item.description}
+                  </Text>
+                  {item.amount !== null && (
+                    <Text style={[styles.lineItemAmount, { color: colors.mutedForeground }]}>
+                      {currency} {item.amount.toFixed(2)}
+                    </Text>
+                  )}
+                </View>
+              ))}
+              {autoFilled.ocrResult.lineItems.length > 4 && (
+                <Text style={[styles.moreItemsText, { color: colors.mutedForeground }]}>
+                  + {autoFilled.ocrResult.lineItems.length - 4} more items
+                </Text>
+              )}
+            </View>
           )}
         </View>
 
@@ -997,6 +1331,56 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   infoText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 },
+  cropInfoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  cropInfoText: { fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
+  cropCanvas: {
+    width: "100%",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+    backgroundColor: "#000",
+  },
+  cropPreviewImage: {
+    width: "100%",
+    height: 300,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  cropHintText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
+    textAlign: "center",
+  },
+  processingWrap: { alignItems: "center", gap: 10, paddingVertical: 16 },
+  processingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  primaryCropBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  primaryCropBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  secondaryCropBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  secondaryCropBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
   receiptPreview: {
     width: "100%",
     height: 200,
@@ -1037,7 +1421,22 @@ const styles = StyleSheet.create({
   },
   detectionRowLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   detectionRowLabel: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  detectionRowValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  detectionRowValue: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1, textAlign: "right", marginLeft: 8 },
+  lineItemsWrap: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 10,
+    gap: 6,
+  },
+  lineItemsTitle: { fontSize: 12, fontFamily: "Inter_500Medium", marginBottom: 2 },
+  lineItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  lineItemDesc: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
+  lineItemAmount: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  moreItemsText: { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic" },
   confirmPrompt: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19, textAlign: "center" },
   approveBtn: {
     flexDirection: "row",

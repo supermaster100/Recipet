@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router, useNavigation, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   BackHandler,
   KeyboardAvoidingView,
@@ -205,6 +206,7 @@ export default function AddExpenseScreen() {
     currency?: string;
     amount?: string;
     date?: string;
+    merchant?: string;
     autoFilled?: string;
   }>();
 
@@ -217,7 +219,7 @@ export default function AddExpenseScreen() {
   const [numberOfPeople, setNumberOfPeople] = useState("1");
   const [photo, setPhoto] = useState(params.photo ?? "");
   const [selfDeclaration, setSelfDeclaration] = useState(true);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(isFromScan && params.merchant ? params.merchant : "");
   const [selectedCostCenter, setSelectedCostCenter] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 
@@ -228,6 +230,7 @@ export default function AddExpenseScreen() {
       if (params.amount) fields.add("amount");
       if (params.date) fields.add("date");
       if (params.photo) fields.add("photo");
+      if (params.merchant) fields.add("note");
     }
     return fields;
   });
@@ -571,9 +574,11 @@ export default function AddExpenseScreen() {
             { backgroundColor: isValid && !saving ? colors.primary : colors.primary + "50" },
           ]}
         >
-          <Text style={[styles.saveBtnText, { color: "#fff" }]}>
-            {saving ? "Saving…" : "Save"}
-          </Text>
+          {saving ? (
+            <ActivityIndicator color="#fff" size="small" style={{ marginHorizontal: 8 }} />
+          ) : (
+            <Text style={[styles.saveBtnText, { color: "#fff" }]}>Save</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -781,10 +786,15 @@ export default function AddExpenseScreen() {
         </View>
 
         <View style={styles.field}>
-          <FieldLabel text="Note (optional)" />
+          <View style={styles.labelRow}>
+            <FieldLabel text="Note (optional)" />
+            {autoFilledFields.has("note") && (
+              <AutoFilledBadge colors={colors} />
+            )}
+          </View>
           <StyledInput
             value={note}
-            onChangeText={(v) => { setNote(v); markDirty(); }}
+            onChangeText={(v) => { setNote(v); markDirty(); autoFilledFields.delete("note"); }}
             placeholder="What was this receipt for?"
             multiline
           />

@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -47,6 +48,7 @@ export default function AddHotelNightScreen() {
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   async function handleSave() {
     if (!legId) return;
@@ -95,17 +97,43 @@ export default function AddHotelNightScreen() {
       });
       void refreshTravels();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace("/(tabs)/trip");
-      }
+      setSaved(true);
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to save hotel night. Please try again.");
     } finally {
       setSaving(false);
     }
+  }
+
+  if (saved) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: topInset + 8, borderBottomColor: colors.border }]}>
+          <View style={{ width: 22 }} />
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Hotel Night Saved</Text>
+          <View style={{ width: 22 }} />
+        </View>
+        <View style={styles.successBody}>
+          <View style={[styles.successIcon, { backgroundColor: colors.primary + "1A" }]}>
+            <Feather name="check-circle" size={48} color={colors.primary} />
+          </View>
+          <Text style={[styles.successTitle, { color: colors.foreground }]}>Hotel Night Added</Text>
+          <Text style={[styles.successSub, { color: colors.mutedForeground }]}>
+            Your hotel night has been saved to the trip.
+          </Text>
+          <TouchableOpacity
+            style={[styles.doneBtn, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace("/(tabs)/trip");
+            }}
+          >
+            <Text style={[styles.doneBtnText, { color: colors.primaryForeground }]}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -121,9 +149,11 @@ export default function AddHotelNightScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Add Hotel Night</Text>
         <TouchableOpacity onPress={handleSave} disabled={saving} hitSlop={8}>
-          <Text style={[styles.saveBtn, { color: saving ? colors.mutedForeground : colors.primary }]}>
-            {saving ? "Saving..." : "Save"}
-          </Text>
+          {saving ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Text style={[styles.saveBtn, { color: colors.primary }]}>Save</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -320,4 +350,29 @@ const styles = StyleSheet.create({
   pickerWrap: { borderRadius: 10, borderWidth: 1, overflow: "hidden" },
   switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   switchLabel: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  successBody: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+    gap: 16,
+  },
+  successIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  successTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
+  successSub: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center" },
+  doneBtn: {
+    marginTop: 8,
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  doneBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
 });

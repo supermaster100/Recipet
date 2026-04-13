@@ -1,12 +1,19 @@
 import { Platform } from "react-native";
 import type { Currency } from "@/db/types";
 
+export interface LineItem {
+  description: string;
+  amount: number | null;
+}
+
 export interface OcrResult {
   rawText: string;
   detectedCurrency: Currency | null;
   detectedAmount: number | null;
   detectedDate: string | null;
   detectedLanguage: string | null;
+  detectedMerchant: string | null;
+  lineItems: LineItem[];
   confidence: "high" | "medium" | "low";
 }
 
@@ -67,26 +74,28 @@ export function detectCurrencyFromText(text: string): Currency | null {
   return null;
 }
 
+const TOTAL_LINE_PATTERNS = [
+  /(?:grand\s+total|total\s+due|amount\s+due|total\s+amount|לתשלום|סה"כ|סה״כ|to\s+pay|sum\s+total|net\s+total)\s*[:\-]?\s*([0-9]+[.,][0-9]{1,2})/gi,
+  /(?:total|סך\s+הכל)\s*[:\-]?\s*([0-9]+[.,][0-9]{1,2})/gi,
+  /([0-9]{1,6}[.,][0-9]{2})\s*(?:₪|\$|€|£|₽|₺|฿|₴|₹|CHF|USD|EUR|GBP|ILS|TRY|RUB|UAH|INR)/g,
+  /(?:₪|\$|€|£|₽|₺|฿|₴|₹)\s*([0-9]{1,6}[.,][0-9]{2})/g,
+];
+
 export function detectAmountFromText(text: string): number | null {
-  const patterns = [
-    /(?:total|סה"כ|סה״כ|amount|amount due|to pay|לתשלום|grand total|subtotal)[\s:]*([0-9]+[.,][0-9]{1,2})/gi,
-    /([0-9]{1,6}[.,][0-9]{2})\s*(?:₪|\$|€|£|₽|₺|฿|₴|₹|CHF|USD|EUR|GBP|ILS|TRY|RUB|UAH|INR)/g,
-    /(?:₪|\$|€|£|₽|₺|฿|₴|₹)\s*([0-9]{1,6}[.,][0-9]{2})/g,
-  ];
+  const candidates: { val: number; priority: number }[] = [];
 
-  const candidates: number[] = [];
-
-  for (const pattern of patterns) {
+  TOTAL_LINE_PATTERNS.forEach((pattern, idx) => {
+    const priority = TOTAL_LINE_PATTERNS.length - idx;
     let match: RegExpExecArray | null;
     const re = new RegExp(pattern.source, pattern.flags);
     while ((match = re.exec(text)) !== null) {
       const raw = (match[1] ?? "").replace(",", ".");
       const val = parseFloat(raw);
       if (!isNaN(val) && val > 0 && val < 1_000_000) {
-        candidates.push(val);
+        candidates.push({ val, priority });
       }
     }
-  }
+  });
 
   if (candidates.length === 0) {
     const allNumbers = [...text.matchAll(/\b([0-9]{1,6}[.,][0-9]{2})\b/g)]
@@ -98,7 +107,8 @@ export function detectAmountFromText(text: string): number | null {
     return null;
   }
 
-  return Math.max(...candidates);
+  candidates.sort((a, b) => b.priority - a.priority || b.val - a.val);
+  return candidates[0]?.val ?? null;
 }
 
 export function detectDateFromText(text: string): string | null {
@@ -135,6 +145,54 @@ export function detectDateFromText(text: string): string | null {
   }
 
   return null;
+}
+
+export function detectMerchantFromText(text: string): string | null {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 1);
+
+  const SKIP_PATTERNS = [
+    /^\d+$/,
+    /^(receipt|חשבונית|קבלה|invoice|bill|order|tax|vat|מע"מ)/i,
+    /^(date|תאריך|time|שעה|no\.|מספר|ref|phone|tel|fax)/i,
+    /^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}$/,
+    /^[+\-\*\/=]+$/,
+  ];
+
+  for (const line of lines.slice(0, 6)) {
+    const skip = SKIP_PATTERNS.some((p) => p.test(line));
+    if (!skip && line.length >= 2 && line.length <= 60) {
+      const cleaned = line.replace(/[^a-zA-Z\u0590-\u05FF\u0600-\u06FF\s&''.,\-]/g, "").trim();
+      if (cleaned.length >= 2) return cleaned;
+    }
+  }
+  return null;
+}
+
+export function extractLineItems(text: string): LineItem[] {
+  const items: LineItem[] = [];
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+  const TOTAL_INDICATOR = /(?:total|subtotal|tax|vat|discount|tip|מע"מ|סה"כ|הנחה|שרות)/i;
+
+  for (const line of lines) {
+    if (TOTAL_INDICATOR.test(line)) continue;
+    const amountMatch = line.match(/([0-9]+[.,][0-9]{1,2})\s*$/) ?? line.match(/^\s*([0-9]+[.,][0-9]{1,2})/);
+    if (amountMatch) {
+      const amount = parseFloat((amountMatch[1] ?? "").replace(",", "."));
+      const description = line
+        .replace(amountMatch[0], "")
+        .replace(/[x×]\s*\d+(\.\d+)?/i, "")
+        .trim();
+      if (description.length > 0 && !isNaN(amount) && amount > 0) {
+        items.push({ description, amount });
+      }
+    }
+  }
+
+  return items.slice(0, 10);
 }
 
 function detectScriptLanguage(text: string): string | null {
@@ -177,6 +235,8 @@ export async function analyzeReceiptImage(imageUri: string): Promise<OcrResult> 
       detectedAmount: null,
       detectedDate: null,
       detectedLanguage: null,
+      detectedMerchant: null,
+      lineItems: [],
       confidence: "low",
     };
   }
@@ -185,6 +245,8 @@ export async function analyzeReceiptImage(imageUri: string): Promise<OcrResult> 
   const amount = detectAmountFromText(rawText);
   const date = detectDateFromText(rawText);
   const langCode = detectScriptLanguage(rawText);
+  const merchant = detectMerchantFromText(rawText);
+  const lineItems = extractLineItems(rawText);
 
   const currencyFromLang = getCurrencyFromLanguage(langCode);
   const detectedCurrency = currencyFromText ?? currencyFromLang ?? null;
@@ -201,6 +263,8 @@ export async function analyzeReceiptImage(imageUri: string): Promise<OcrResult> 
     detectedAmount: amount,
     detectedDate: date,
     detectedLanguage: langCode,
+    detectedMerchant: merchant,
+    lineItems,
     confidence,
   };
 }

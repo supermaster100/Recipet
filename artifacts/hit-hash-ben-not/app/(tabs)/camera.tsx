@@ -136,6 +136,14 @@ export default function CameraTabScreen() {
         <Text style={[styles.webSub, { color: colors.mutedForeground }]}>
           Use a real device to capture expense photos.
         </Text>
+        <TouchableOpacity
+          onPress={() => router.push("/scan-receipt")}
+          style={[styles.scanBtn, { backgroundColor: colors.primary }]}
+          activeOpacity={0.85}
+        >
+          <Feather name="file-text" size={16} color="#fff" />
+          <Text style={[styles.scanBtnText, { color: "#fff" }]}>Scan Receipt</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -187,6 +195,14 @@ export default function CameraTabScreen() {
       {!showTypePicker && (
         <>
           <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+            <TouchableOpacity
+              onPress={() => router.push("/scan-receipt")}
+              style={styles.scanReceiptTopBtn}
+              activeOpacity={0.8}
+            >
+              <Feather name="file-text" size={16} color="#fff" />
+              <Text style={styles.scanReceiptTopBtnText}>Scan Receipt</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setFacing((f) => (f === "back" ? "front" : "back"))}
               style={styles.flipBtn}
@@ -271,6 +287,16 @@ const styles = StyleSheet.create({
   },
   webTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
   webSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  scanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  scanBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   permIcon: {
     width: 80,
     height: 80,
@@ -299,9 +325,24 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
     zIndex: 10,
+  },
+  scanReceiptTopBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  scanReceiptTopBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
   flipBtn: {
     width: 44,

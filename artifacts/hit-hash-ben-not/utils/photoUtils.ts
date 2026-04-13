@@ -9,22 +9,32 @@ async function ensureDir(): Promise<void> {
   }
 }
 
+export function normalizeUri(uri: string): string {
+  if (!uri) return uri;
+  if (uri.startsWith("file://") || uri.startsWith("http")) return uri;
+  if (uri.startsWith("content://") || uri.startsWith("ph://")) return uri;
+  return `file://${uri}`;
+}
+
 export async function savePhotoToLocal(sourceUri: string): Promise<string> {
   if (!sourceUri) return "";
   await ensureDir();
-  const ext = sourceUri.split(".").pop()?.split("?")[0] ?? "jpg";
-  const fileName = `receipt_${Date.now()}.${ext}`;
+  const ext = sourceUri.split(".").pop()?.split("?")[0]?.toLowerCase() ?? "jpg";
+  const safeExt = ["jpg", "jpeg", "png", "heic", "heif", "webp"].includes(ext) ? ext : "jpg";
+  const fileName = `receipt_${Date.now()}.${safeExt}`;
   const dest = `${PHOTO_DIR}${fileName}`;
-  await FileSystem.copyAsync({ from: sourceUri, to: dest });
+  const normalizedSource = normalizeUri(sourceUri);
+  await FileSystem.copyAsync({ from: normalizedSource, to: dest });
   return dest;
 }
 
 export async function deletePhotoFromLocal(path: string): Promise<void> {
   if (!path) return;
   try {
-    const info = await FileSystem.getInfoAsync(path);
+    const normalized = normalizeUri(path);
+    const info = await FileSystem.getInfoAsync(normalized);
     if (info.exists) {
-      await FileSystem.deleteAsync(path, { idempotent: true });
+      await FileSystem.deleteAsync(normalized, { idempotent: true });
     }
   } catch {
   }

@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -57,6 +58,7 @@ export default function AddExchangeScreen() {
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState(params.photo ?? "");
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   const marketRate = useMemo(() => {
@@ -155,11 +157,7 @@ export default function AddExchangeScreen() {
       await clearDraft(DRAFT_KEY);
       await refreshExchanges();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace("/(tabs)/exchanges");
-      }
+      setSaved(true);
     } catch (e) {
       console.error(e);
       if (organizedPhotoPath && Platform.OS !== "web") {
@@ -202,6 +200,28 @@ export default function AddExchangeScreen() {
 
   const canSave = !!amountSpent && !!amountReceived && !!date && !saving;
 
+  if (saved) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: topInset + 8, borderBottomColor: colors.border }]}>
+          <View style={{ width: 22 }} />
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Saved</Text>
+          <View style={{ width: 22 }} />
+        </View>
+        <View style={styles.successBody}>
+          <View style={[styles.successIcon, { backgroundColor: colors.success + "22" }]}>
+            <Feather name="check-circle" size={48} color={colors.success} />
+          </View>
+          <Text style={[styles.successTitle, { color: colors.foreground }]}>Exchange Saved</Text>
+          <Text style={[styles.successSub, { color: colors.mutedForeground }]}>Your exchange record has been saved.</Text>
+          <TouchableOpacity onPress={goBack} style={[styles.successBtn, { backgroundColor: colors.primary }]}>
+            <Text style={styles.successBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topInset + 8, borderBottomColor: colors.border }]}>
@@ -209,10 +229,14 @@ export default function AddExchangeScreen() {
           <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>New Exchange</Text>
-        <TouchableOpacity onPress={handleSave} disabled={!canSave} hitSlop={8}>
-          <Text style={[styles.saveBtn, { color: canSave ? colors.primary : colors.mutedForeground }]}>
-            {saving ? "Saving…" : "Save"}
-          </Text>
+        <TouchableOpacity onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.saveBtnWrap}>
+          {saving ? (
+            <ActivityIndicator color={canSave ? colors.primary : colors.mutedForeground} size="small" />
+          ) : (
+            <Text style={[styles.saveBtn, { color: canSave ? colors.primary : colors.mutedForeground }]}>
+              Save
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -365,6 +389,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   saveBtn: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  saveBtnWrap: { minWidth: 40, alignItems: "center", justifyContent: "center" },
+  successBody: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
+  successIcon: { width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  successTitle: { fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center" },
+  successSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  successBtn: { marginTop: 16, paddingHorizontal: 40, paddingVertical: 14, borderRadius: 12 },
+  successBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
   form: { padding: 16, gap: 16 },
   field: { gap: 6 },
   fieldLabel: { fontSize: 12, fontFamily: "Inter_500Medium", letterSpacing: 0.3 },

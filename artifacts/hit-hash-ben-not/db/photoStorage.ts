@@ -1,5 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
+import { normalizeUri } from "@/utils/photoUtils";
 
 const PHOTO_ROOT = (FileSystem.documentDirectory ?? "") + "HitHashBenNot/Photos/";
 const PHOTO_EXPIRY_DAYS = 90;
@@ -33,10 +34,11 @@ export async function savePhotoToOrganizedStorage(
     if (!dirInfo.exists) {
       await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
     }
-    const ext = sourceUri.split(".").pop()?.split("?")[0] ?? "jpg";
+    const ext = sourceUri.split(".").pop()?.split("?")[0]?.toLowerCase() ?? "jpg";
+    const safeExt = ["jpg", "jpeg", "png", "heic", "heif", "webp"].includes(ext) ? ext : "jpg";
     const uuid = generateUUID();
-    const destPath = `${dir}${uuid}.${ext}`;
-    await FileSystem.copyAsync({ from: sourceUri, to: destPath });
+    const destPath = `${dir}${uuid}.${safeExt}`;
+    await FileSystem.copyAsync({ from: normalizeUri(sourceUri), to: destPath });
     return destPath;
   } catch {
     return null;
