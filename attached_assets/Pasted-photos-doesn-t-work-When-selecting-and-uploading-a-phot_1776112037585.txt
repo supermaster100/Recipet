@@ -1,0 +1,37 @@
+photos doesn’t work: When selecting and uploading a photo from the gallery (instead of taking a new picture with the camera), the photo is not saved. Taking a picture directly with the camera works correctly.
+•  No feedback during photo upload: There is no loading indicator, progress message, or success confirmation when uploading a photo. Please add clear visual feedback.
+•  Receipt scanning feature is missing: The receipt photo feature and automatic data extraction (OCR) are not visible or available. This should include the ability to scan receipts, automatically extract data (amount, date, merchant, etc.), and support automatic cropping/measurement detection.
+2. Currency Management
+•  Favorite currencies: Add the ability to mark currencies as favorites via the “More” menu. Users should be able to select and manage favorites, and those favorites should appear prominently in the currencies list throughout the app. Allow easy adding and removing of favorites.
+3. Teammate Transfer
+•  Remove old action: Delete the old “Teammate transfer and clients” action from the More menu.
+•  Improved Teammate Transfer flow: When performing a teammate transfer, add fields for the worker number for both parties. The screen should clearly have two sections:
+	•  Giver (person who gives the money): Name + Worker Number
+	•  Receiver (person who receives the money): Name + Worker Number
+4. Date Selection
+•  Date fields: Replace free-text date input with a proper calendar/date picker.
+•  Phone calendar integration: The picker should connect to the device’s calendar so dates can be auto-filled from calendar events when possible, with the option for the user to override manually.
+5. Permissions
+•  Music & audio permission: The app requests permission to access music and audio. Please explain why this permission is required (it may be necessary for a specific feature, but it feels unexpected).
+6. Exchange & Trip Summary
+•  Exchange transactions not visible: When I add a currency exchange, it does not appear in the trip summary.
+7. UI / Visibility Issues
+•  Hotel rate text too small: In the Travel menu, the hotel rate is displayed with very small text and is barely readable. Please increase the font size or improve visibility.
+8. Overview Menu & Trip Summary
+•  Overview should fully match “View Trip Overview”: The main Overview screen must display exactly the same information and totals as the “View Trip Overview” screen. This is critical because users are required to export a trip before starting a new one.
+•  Cash information should be in Overview: Remove the separate Cash button from the Travel menu and integrate cash holdings into the Overview screen so the user can always see the grand total clearly.
+•  Grand Total calculation fixes: The grand total currently does not include client transfers, money transfers, hotel nights (if paid by cash), or currency exchange. Additionally: If the user receives money from a teammate, from an ATM, from currency exchange, brings cash from home, or any other cash inflow, the grand total and cash holdings must update accordingly (cash in – cash out).
+•  Currency Exchange handling: When a currency exchange is performed, the app should automatically:
+	•  Add the received currency and amount to cash holdings.
+	•  Deduct the spent currency/amount.
+•  Expenses navigation: Pressing “Expenses” in the Overview/Trip Summary does not navigate to a detailed list of all expenses for that trip.
+•  Improved Trip Summary structure:
+	•  Remove the current separation between “Expenses” and “Other Records”.
+	•  Each money movement category should have its own clear headline with an icon (similar to the current “Other Records” style), plus a subtotal for that category.
+	•  Tapping a category should open a detailed list of all items in it.
+	•  Add “ATM Withdrawal” as a separate category in the Trip Summary.
+	•  Remove “ATM Withdrawal” from the Currency Exchange section.
+Note on money movement categories in the app: There are currently 6 options for recording money movement:
+Teammate transfer, Client transfer, Currency exchange, Trip, General expense, ATM withdrawal.
+9. Export Behavior
+•  Data deletion after export: Once the export is completed and the saving mechanism has finished, all trip data should be automatically deleted from the app, except for the persistent settings chosen in the “More” menu: Cost Center, General Data, and Currency Favorites.
