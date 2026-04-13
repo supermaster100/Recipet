@@ -18,6 +18,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppContext } from "@/context/AppContext";
 import { CashWalletDB } from "@/db/database";
 import { EXCHANGE_CURRENCIES, type Currency } from "@/db/types";
+import { CURRENCY_NAMES } from "@/db/currencyNames";
+import { useFavouriteCurrencies, sortWithFavourites } from "@/hooks/useFavouriteCurrencies";
 import { useColors } from "@/hooks/useColors";
 
 type EntryTypeLabel = {
@@ -57,6 +59,8 @@ function AddInitialCashModal({ visible, onClose, onSave }: AddInitialCashModalPr
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState("");
+  const { favourites, isFavourite } = useFavouriteCurrencies();
 
   const isValid = amount.trim().length > 0 && Number(amount) > 0;
 
@@ -139,20 +143,73 @@ function AddInitialCashModal({ visible, onClose, onSave }: AddInitialCashModalPr
               <Text style={[addStyles.title, { color: colors.foreground }]}>Currency</Text>
               <View style={{ width: 60 }} />
             </View>
-            <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
-              {EXCHANGE_CURRENCIES.map((c) => (
-                <TouchableOpacity
-                  key={c}
-                  onPress={() => { setCurrency(c); setShowCurrencyPicker(false); }}
-                  style={[
-                    addStyles.currencyOption,
-                    { borderBottomColor: colors.border, backgroundColor: c === currency ? colors.primary + "18" : "transparent" },
-                  ]}
-                >
-                  <Text style={[addStyles.currencyOptionText, { color: c === currency ? colors.primary : colors.foreground }]}>{c}</Text>
-                  {c === currency && <Feather name="check" size={18} color={colors.primary} />}
+            <View style={[addStyles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <Feather name="search" size={15} color={colors.mutedForeground} />
+              <TextInput
+                style={[addStyles.searchInput, { color: colors.foreground }]}
+                value={currencySearch}
+                onChangeText={setCurrencySearch}
+                placeholder="Search currencies…"
+                placeholderTextColor={colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {currencySearch.length > 0 && (
+                <TouchableOpacity onPress={() => setCurrencySearch("")} hitSlop={8}>
+                  <Feather name="x" size={15} color={colors.mutedForeground} />
                 </TouchableOpacity>
-              ))}
+              )}
+            </View>
+            <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
+              {(() => {
+                const q = currencySearch.trim().toLowerCase();
+                const filtered = sortWithFavourites([...EXCHANGE_CURRENCIES], favourites).filter((c) => {
+                  if (!q) return true;
+                  if (c.toLowerCase().includes(q)) return true;
+                  return (CURRENCY_NAMES[c] ?? "").toLowerCase().includes(q);
+                });
+                const favItems = filtered.filter((c) => isFavourite(c));
+                const restItems = filtered.filter((c) => !isFavourite(c));
+                return (
+                  <>
+                    {favItems.length > 0 && (
+                      <Text style={[addStyles.sectionLabel, { color: colors.mutedForeground }]}>FAVOURITES</Text>
+                    )}
+                    {favItems.map((c) => (
+                      <TouchableOpacity
+                        key={`fav-${c}`}
+                        onPress={() => { setCurrency(c as Currency); setCurrencySearch(""); setShowCurrencyPicker(false); }}
+                        style={[addStyles.currencyOption, { borderBottomColor: colors.border, backgroundColor: c === currency ? colors.primary + "18" : "transparent" }]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[addStyles.currencyOptionText, { color: c === currency ? colors.primary : colors.foreground }]}>{c}</Text>
+                          <Text style={[addStyles.currencyOptionSub, { color: colors.mutedForeground }]}>{CURRENCY_NAMES[c] ?? ""}</Text>
+                        </View>
+                        {c === currency && <Feather name="check" size={18} color={colors.primary} />}
+                      </TouchableOpacity>
+                    ))}
+                    {favItems.length > 0 && restItems.length > 0 && (
+                      <Text style={[addStyles.sectionLabel, { color: colors.mutedForeground }]}>ALL CURRENCIES</Text>
+                    )}
+                    {restItems.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        onPress={() => { setCurrency(c as Currency); setCurrencySearch(""); setShowCurrencyPicker(false); }}
+                        style={[addStyles.currencyOption, { borderBottomColor: colors.border, backgroundColor: c === currency ? colors.primary + "18" : "transparent" }]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[addStyles.currencyOptionText, { color: c === currency ? colors.primary : colors.foreground }]}>{c}</Text>
+                          <Text style={[addStyles.currencyOptionSub, { color: colors.mutedForeground }]}>{CURRENCY_NAMES[c] ?? ""}</Text>
+                        </View>
+                        {c === currency && <Feather name="check" size={18} color={colors.primary} />}
+                      </TouchableOpacity>
+                    ))}
+                    {filtered.length === 0 && (
+                      <Text style={[addStyles.emptyText, { color: colors.mutedForeground }]}>No currencies match your search.</Text>
+                    )}
+                  </>
+                );
+              })()}
             </ScrollView>
           </View>
         </Modal>
@@ -176,6 +233,8 @@ function AddAdjustmentModal({ visible, onClose, onSave }: AddAdjustmentModalProp
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState("");
+  const { favourites, isFavourite } = useFavouriteCurrencies();
 
   const isValid = amount.trim().length > 0 && Number(amount) > 0;
 
@@ -279,20 +338,73 @@ function AddAdjustmentModal({ visible, onClose, onSave }: AddAdjustmentModalProp
               <Text style={[addStyles.title, { color: colors.foreground }]}>Currency</Text>
               <View style={{ width: 60 }} />
             </View>
-            <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
-              {EXCHANGE_CURRENCIES.map((c) => (
-                <TouchableOpacity
-                  key={c}
-                  onPress={() => { setCurrency(c); setShowCurrencyPicker(false); }}
-                  style={[
-                    addStyles.currencyOption,
-                    { borderBottomColor: colors.border, backgroundColor: c === currency ? colors.primary + "18" : "transparent" },
-                  ]}
-                >
-                  <Text style={[addStyles.currencyOptionText, { color: c === currency ? colors.primary : colors.foreground }]}>{c}</Text>
-                  {c === currency && <Feather name="check" size={18} color={colors.primary} />}
+            <View style={[addStyles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <Feather name="search" size={15} color={colors.mutedForeground} />
+              <TextInput
+                style={[addStyles.searchInput, { color: colors.foreground }]}
+                value={currencySearch}
+                onChangeText={setCurrencySearch}
+                placeholder="Search currencies…"
+                placeholderTextColor={colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {currencySearch.length > 0 && (
+                <TouchableOpacity onPress={() => setCurrencySearch("")} hitSlop={8}>
+                  <Feather name="x" size={15} color={colors.mutedForeground} />
                 </TouchableOpacity>
-              ))}
+              )}
+            </View>
+            <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
+              {(() => {
+                const q = currencySearch.trim().toLowerCase();
+                const filtered = sortWithFavourites([...EXCHANGE_CURRENCIES], favourites).filter((c) => {
+                  if (!q) return true;
+                  if (c.toLowerCase().includes(q)) return true;
+                  return (CURRENCY_NAMES[c] ?? "").toLowerCase().includes(q);
+                });
+                const favItems = filtered.filter((c) => isFavourite(c));
+                const restItems = filtered.filter((c) => !isFavourite(c));
+                return (
+                  <>
+                    {favItems.length > 0 && (
+                      <Text style={[addStyles.sectionLabel, { color: colors.mutedForeground }]}>FAVOURITES</Text>
+                    )}
+                    {favItems.map((c) => (
+                      <TouchableOpacity
+                        key={`fav-${c}`}
+                        onPress={() => { setCurrency(c as Currency); setCurrencySearch(""); setShowCurrencyPicker(false); }}
+                        style={[addStyles.currencyOption, { borderBottomColor: colors.border, backgroundColor: c === currency ? colors.primary + "18" : "transparent" }]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[addStyles.currencyOptionText, { color: c === currency ? colors.primary : colors.foreground }]}>{c}</Text>
+                          <Text style={[addStyles.currencyOptionSub, { color: colors.mutedForeground }]}>{CURRENCY_NAMES[c] ?? ""}</Text>
+                        </View>
+                        {c === currency && <Feather name="check" size={18} color={colors.primary} />}
+                      </TouchableOpacity>
+                    ))}
+                    {favItems.length > 0 && restItems.length > 0 && (
+                      <Text style={[addStyles.sectionLabel, { color: colors.mutedForeground }]}>ALL CURRENCIES</Text>
+                    )}
+                    {restItems.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        onPress={() => { setCurrency(c as Currency); setCurrencySearch(""); setShowCurrencyPicker(false); }}
+                        style={[addStyles.currencyOption, { borderBottomColor: colors.border, backgroundColor: c === currency ? colors.primary + "18" : "transparent" }]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[addStyles.currencyOptionText, { color: c === currency ? colors.primary : colors.foreground }]}>{c}</Text>
+                          <Text style={[addStyles.currencyOptionSub, { color: colors.mutedForeground }]}>{CURRENCY_NAMES[c] ?? ""}</Text>
+                        </View>
+                        {c === currency && <Feather name="check" size={18} color={colors.primary} />}
+                      </TouchableOpacity>
+                    ))}
+                    {filtered.length === 0 && (
+                      <Text style={[addStyles.emptyText, { color: colors.mutedForeground }]}>No currencies match your search.</Text>
+                    )}
+                  </>
+                );
+              })()}
             </ScrollView>
           </View>
         </Modal>
@@ -633,10 +745,42 @@ const addStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   currencyOptionText: { fontSize: 16, fontFamily: "Inter_400Regular" },
+  currencyOptionSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  sectionLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.8,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    padding: 0,
+  },
+  emptyText: {
+    textAlign: "center",
+    marginTop: 40,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
   typeRow: { flexDirection: "row", gap: 8 },
   typeOption: {
     flex: 1,

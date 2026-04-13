@@ -207,6 +207,21 @@ export default function MoreScreen() {
         </View>
 
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          PREFERENCES
+        </Text>
+        <View style={[styles.group, { shadowColor: colors.shadowColor }]}>
+          <SettingsRow
+            icon="star"
+            label="Currency Favourites"
+            subtitle="Mark currencies you use most often"
+            color={colors.warning}
+            onPress={() => router.push("/currency-favourites")}
+            isFirst
+            isLast
+          />
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
           DATA
         </Text>
         <View style={[styles.group, { shadowColor: colors.shadowColor }]}>

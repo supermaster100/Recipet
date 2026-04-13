@@ -20,6 +20,8 @@ import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
 import { ExchangeDB } from "@/db/database";
 import { EXCHANGE_CURRENCIES } from "@/db/types";
+import { CURRENCY_NAMES } from "@/db/currencyNames";
+import { useFavouriteCurrencies, sortWithFavourites } from "@/hooks/useFavouriteCurrencies";
 import { useColors } from "@/hooks/useColors";
 import { getRate } from "@/utils/exchangeRates";
 import { saveDraft, loadDraft, clearDraft } from "@/db/draftManager";
@@ -49,10 +51,13 @@ export default function AddExchangeScreen() {
   const insets = useSafeAreaInsets();
   const { refreshExchanges, exchangeRates } = useAppContext();
   const params = useLocalSearchParams<{ photo?: string }>();
+  const { favourites, isFavourite } = useFavouriteCurrencies();
 
   const [date, setDate] = useState(today());
   const [spentCurrency, setSpentCurrency] = useState<(typeof EXCHANGE_CURRENCIES)[number]>("USD");
   const [receivedCurrency, setReceivedCurrency] = useState<(typeof EXCHANGE_CURRENCIES)[number]>("EUR");
+  const [spentSearch, setSpentSearch] = useState("");
+  const [receivedSearch, setReceivedSearch] = useState("");
   const [amountSpent, setAmountSpent] = useState("");
   const [amountReceived, setAmountReceived] = useState("");
   const [note, setNote] = useState("");
@@ -309,50 +314,104 @@ export default function AddExchangeScreen() {
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>SPENT CURRENCY *</Text>
+          <View style={[styles.searchBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="search" size={14} color={colors.mutedForeground} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.foreground }]}
+              value={spentSearch}
+              onChangeText={setSpentSearch}
+              placeholder="Search…"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {spentSearch.length > 0 && (
+              <Pressable onPress={() => setSpentSearch("")} hitSlop={8}>
+                <Feather name="x" size={14} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipRow}>
-              {EXCHANGE_CURRENCIES.map((c) => (
-                <Pressable
-                  key={c}
-                  onPress={() => { setSpentCurrency(c); markDirty(); }}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: spentCurrency === c ? colors.primary : colors.card,
-                      borderColor: spentCurrency === c ? colors.primary : colors.border,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.chipText, { color: spentCurrency === c ? colors.primaryForeground : colors.foreground }]}>
-                    {c}
-                  </Text>
-                </Pressable>
-              ))}
+              {sortWithFavourites([...EXCHANGE_CURRENCIES], favourites)
+                .filter((c) => {
+                  const q = spentSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  if (c.toLowerCase().includes(q)) return true;
+                  return (CURRENCY_NAMES[c] ?? "").toLowerCase().includes(q);
+                })
+                .map((c) => (
+                  <Pressable
+                    key={c}
+                    onPress={() => { setSpentCurrency(c); markDirty(); }}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: spentCurrency === c ? colors.primary : colors.card,
+                        borderColor: spentCurrency === c ? colors.primary : isFavourite(c) ? colors.warning : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.chipText, { color: spentCurrency === c ? colors.primaryForeground : colors.foreground }]}>
+                      {c}
+                    </Text>
+                    {isFavourite(c) && spentCurrency !== c && (
+                      <Feather name="star" size={10} color={colors.warning} />
+                    )}
+                  </Pressable>
+                ))}
             </View>
           </ScrollView>
         </View>
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>RECEIVED CURRENCY *</Text>
+          <View style={[styles.searchBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="search" size={14} color={colors.mutedForeground} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.foreground }]}
+              value={receivedSearch}
+              onChangeText={setReceivedSearch}
+              placeholder="Search…"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {receivedSearch.length > 0 && (
+              <Pressable onPress={() => setReceivedSearch("")} hitSlop={8}>
+                <Feather name="x" size={14} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipRow}>
-              {EXCHANGE_CURRENCIES.map((c) => (
-                <Pressable
-                  key={c}
-                  onPress={() => { setReceivedCurrency(c); markDirty(); }}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: receivedCurrency === c ? colors.primary : colors.card,
-                      borderColor: receivedCurrency === c ? colors.primary : colors.border,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.chipText, { color: receivedCurrency === c ? colors.primaryForeground : colors.foreground }]}>
-                    {c}
-                  </Text>
-                </Pressable>
-              ))}
+              {sortWithFavourites([...EXCHANGE_CURRENCIES], favourites)
+                .filter((c) => {
+                  const q = receivedSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  if (c.toLowerCase().includes(q)) return true;
+                  return (CURRENCY_NAMES[c] ?? "").toLowerCase().includes(q);
+                })
+                .map((c) => (
+                  <Pressable
+                    key={c}
+                    onPress={() => { setReceivedCurrency(c); markDirty(); }}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: receivedCurrency === c ? colors.primary : colors.card,
+                        borderColor: receivedCurrency === c ? colors.primary : isFavourite(c) ? colors.warning : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.chipText, { color: receivedCurrency === c ? colors.primaryForeground : colors.foreground }]}>
+                      {c}
+                    </Text>
+                    {isFavourite(c) && receivedCurrency !== c && (
+                      <Feather name="star" size={10} color={colors.warning} />
+                    )}
+                  </Pressable>
+                ))}
             </View>
           </ScrollView>
         </View>
@@ -421,6 +480,22 @@ const styles = StyleSheet.create({
   rateLineLabel: { fontSize: 10, fontFamily: "Inter_500Medium", letterSpacing: 0.3 },
   rateLine: { fontSize: 13, fontFamily: "Inter_500Medium" },
   chipRow: { flexDirection: "row", gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    padding: 0,
+  },
 });

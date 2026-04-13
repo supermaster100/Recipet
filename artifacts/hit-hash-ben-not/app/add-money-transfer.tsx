@@ -20,6 +20,8 @@ import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
 import { CashWalletDB, MoneyTransferDB } from "@/db/database";
 import { CURRENCIES } from "@/db/types";
+import { CURRENCY_NAMES } from "@/db/currencyNames";
+import { useFavouriteCurrencies, sortWithFavourites } from "@/hooks/useFavouriteCurrencies";
 import { useColors } from "@/hooks/useColors";
 
 function today(): string {
@@ -35,6 +37,7 @@ export default function AddMoneyTransferScreen() {
   const insets = useSafeAreaInsets();
   const { refreshMoneyTransfers, general, refreshCashWallet } = useAppContext();
   const params = useLocalSearchParams<{ photo?: string }>();
+  const { favourites, isFavourite } = useFavouriteCurrencies();
 
   const [receiptName, setReceiptName] = useState("");
   const [giverName, setGiverName] = useState("");
@@ -45,6 +48,7 @@ export default function AddMoneyTransferScreen() {
   const [photo, setPhoto] = useState(params.photo ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState("");
 
   const imageFieldRef = useRef<ImageFieldHandle>(null);
 
@@ -285,30 +289,57 @@ export default function AddMoneyTransferScreen() {
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
             CURRENCY
           </Text>
+          <View style={[styles.searchBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="search" size={14} color={colors.mutedForeground} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.foreground }]}
+              value={currencySearch}
+              onChangeText={setCurrencySearch}
+              placeholder="Search…"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {currencySearch.length > 0 && (
+              <Pressable onPress={() => setCurrencySearch("")} hitSlop={8}>
+                <Feather name="x" size={14} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.chipRow}>
-              {CURRENCIES.map((c) => (
-                <Pressable
-                  key={c}
-                  onPress={() => setCurrency(c)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: currency === c ? colors.primary : colors.card,
-                      borderColor: currency === c ? colors.primary : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
+              {sortWithFavourites([...CURRENCIES], favourites)
+                .filter((c) => {
+                  const q = currencySearch.trim().toLowerCase();
+                  if (!q) return true;
+                  if (c.toLowerCase().includes(q)) return true;
+                  return (CURRENCY_NAMES[c] ?? "").toLowerCase().includes(q);
+                })
+                .map((c) => (
+                  <Pressable
+                    key={c}
+                    onPress={() => setCurrency(c)}
                     style={[
-                      styles.chipText,
-                      { color: currency === c ? colors.primaryForeground : colors.foreground },
+                      styles.chip,
+                      {
+                        backgroundColor: currency === c ? colors.primary : colors.card,
+                        borderColor: currency === c ? colors.primary : isFavourite(c) ? colors.warning : colors.border,
+                      },
                     ]}
                   >
-                    {c}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: currency === c ? colors.primaryForeground : colors.foreground },
+                      ]}
+                    >
+                      {c}
+                    </Text>
+                    {isFavourite(c) && currency !== c && (
+                      <Feather name="star" size={10} color={colors.warning} />
+                    )}
+                  </Pressable>
+                ))}
             </View>
           </ScrollView>
         </View>
@@ -367,6 +398,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -375,5 +409,21 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+  },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    padding: 0,
   },
 });

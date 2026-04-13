@@ -22,6 +22,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppContext } from "@/context/AppContext";
 import { CashWalletDB, ReceiptDB } from "@/db/database";
 import { CURRENCIES, RECEIPT_TYPES, migrateReceiptType, formatCostCenter, type Currency, type PaymentMethod, type ReceiptType } from "@/db/types";
+import { CURRENCY_NAMES } from "@/db/currencyNames";
+import { useFavouriteCurrencies, sortWithFavourites } from "@/hooks/useFavouriteCurrencies";
 import { useColors } from "@/hooks/useColors";
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { saveDraft, loadDraft, clearDraft } from "@/db/draftManager";
@@ -121,6 +123,7 @@ function PickerModal({
   onSelect,
   onClose,
   renderLabel,
+  favourites,
 }: {
   visible: boolean;
   title: string;
@@ -129,9 +132,63 @@ function PickerModal({
   onSelect: (v: string) => void;
   onClose: () => void;
   renderLabel?: (v: string) => string;
+  favourites?: string[];
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const [search, setSearch] = React.useState("");
+
+  React.useEffect(() => {
+    if (!visible) setSearch("");
+  }, [visible]);
+
+  const isCurrencyPicker = !!favourites;
+  const q = search.trim().toLowerCase();
+
+  const filtered = options.filter((opt) => {
+    if (!q) return true;
+    if (opt.toLowerCase().includes(q)) return true;
+    if (renderLabel) {
+      const label = renderLabel(opt);
+      if (label.toLowerCase().includes(q)) return true;
+    }
+    const name = CURRENCY_NAMES[opt] ?? "";
+    return name.toLowerCase().includes(q);
+  });
+
+  const favSet = new Set(favourites ?? []);
+  const favItems = isCurrencyPicker ? filtered.filter((o) => favSet.has(o)) : [];
+  const restItems = isCurrencyPicker ? filtered.filter((o) => !favSet.has(o)) : filtered;
+
+  const renderOption = (opt: string, showName?: boolean) => {
+    const label = renderLabel ? renderLabel(opt) : opt;
+    const name = showName ? (CURRENCY_NAMES[opt] ?? "") : "";
+    const active = opt === value;
+    return (
+      <TouchableOpacity
+        key={opt}
+        onPress={() => { onSelect(opt); onClose(); }}
+        style={[
+          pickerStyles.option,
+          {
+            backgroundColor: active ? colors.primary + "18" : "transparent",
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={[pickerStyles.optionText, { color: active ? colors.primary : colors.foreground }]}>
+            {label}
+          </Text>
+          {!!name && (
+            <Text style={[pickerStyles.optionSub, { color: colors.mutedForeground }]}>{name}</Text>
+          )}
+        </View>
+        {active && <Feather name="check" size={18} color={colors.primary} />}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="formSheet" onRequestClose={onClose}>
       <View style={[pickerStyles.container, { backgroundColor: colors.background }]}>
@@ -145,29 +202,44 @@ function PickerModal({
           <Text style={[pickerStyles.title, { color: colors.foreground }]}>{title}</Text>
           <View style={{ width: 60 }} />
         </View>
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
-          {options.map((opt) => {
-            const label = renderLabel ? renderLabel(opt) : opt;
-            const active = opt === value;
-            return (
-              <TouchableOpacity
-                key={opt}
-                onPress={() => { onSelect(opt); onClose(); }}
-                style={[
-                  pickerStyles.option,
-                  {
-                    backgroundColor: active ? colors.primary + "18" : "transparent",
-                    borderBottomColor: colors.border,
-                  },
-                ]}
-              >
-                <Text style={[pickerStyles.optionText, { color: active ? colors.primary : colors.foreground }]}>
-                  {label}
-                </Text>
-                {active && <Feather name="check" size={18} color={colors.primary} />}
+        {isCurrencyPicker && (
+          <View style={[pickerStyles.searchBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="search" size={15} color={colors.mutedForeground} />
+            <TextInput
+              style={[pickerStyles.searchInput, { color: colors.foreground }]}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search currencies…"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}>
+                <Feather name="x" size={15} color={colors.mutedForeground} />
               </TouchableOpacity>
-            );
-          })}
+            )}
+          </View>
+        )}
+        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
+          {isCurrencyPicker ? (
+            <>
+              {favItems.length > 0 && (
+                <>
+                  <Text style={[pickerStyles.sectionLabel, { color: colors.mutedForeground }]}>FAVOURITES</Text>
+                  {favItems.map((opt) => renderOption(opt, true))}
+                  <Text style={[pickerStyles.sectionLabel, { color: colors.mutedForeground }]}>ALL CURRENCIES</Text>
+                </>
+              )}
+              {restItems.map((opt) => renderOption(opt, true))}
+              {filtered.length === 0 && (
+                <Text style={[pickerStyles.emptyText, { color: colors.mutedForeground }]}>No currencies match your search.</Text>
+              )}
+            </>
+          ) : (
+            filtered.map((opt) => renderOption(opt, false))
+          )}
         </ScrollView>
       </View>
     </Modal>
@@ -200,6 +272,7 @@ export default function AddExpenseScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { refreshReceipts, general, costCenters, refreshCashWallet } = useAppContext();
+  const { favourites } = useFavouriteCurrencies();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const params = useLocalSearchParams<{
     photo?: string;
@@ -813,10 +886,11 @@ export default function AddExpenseScreen() {
       <PickerModal
         visible={showCurrencyPicker}
         title="Currency"
-        options={[...CURRENCIES]}
+        options={sortWithFavourites([...CURRENCIES], favourites)}
         value={currency}
         onSelect={(v) => { setCurrency(v as Currency); markDirty(); }}
         onClose={() => setShowCurrencyPicker(false)}
+        favourites={favourites}
       />
       {costCenters.length > 0 && (
         <PickerModal
@@ -984,13 +1058,45 @@ const pickerStyles = StyleSheet.create({
   },
   cancel: { fontSize: 15, fontFamily: "Inter_400Regular", width: 60 },
   title: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    padding: 0,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.8,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
   option: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   optionText: { fontSize: 16, fontFamily: "Inter_400Regular" },
+  optionSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  emptyText: {
+    textAlign: "center",
+    marginTop: 40,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
 });
