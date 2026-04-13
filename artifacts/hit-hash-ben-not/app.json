@@ -47,7 +47,8 @@
       [
         "expo-camera",
         {
-          "recordAudioAndroid": false
+          "recordAudioAndroid": false,
+          "microphonePermission": false
         }
       ],
       [
