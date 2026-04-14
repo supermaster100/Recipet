@@ -230,6 +230,8 @@ async function runSchemaMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
     await db.execAsync(`ALTER TABLE Travels ADD COLUMN deleted_at TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE ATMWithdrawals ADD COLUMN deleted_at TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE MoneyTransfers ADD COLUMN deleted_at TEXT`).catch(() => {});
+    await db.execAsync(`ALTER TABLE MoneyTransfers ADD COLUMN receiverName TEXT NOT NULL DEFAULT ''`).catch(() => {});
+    await db.execAsync(`ALTER TABLE MoneyTransfers ADD COLUMN receiverWorkerNumber TEXT NOT NULL DEFAULT ''`).catch(() => {});
     await db.execAsync(`ALTER TABLE ClientTransfers ADD COLUMN deleted_at TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE CostCenters ADD COLUMN number TEXT NOT NULL DEFAULT ''`).catch(() => {});
   });
@@ -693,6 +695,8 @@ function toMoneyTransfer(r: Record<string, unknown>): MoneyTransfer {
     receiptName: r["receiptName"] as string,
     giverName: r["giverName"] as string,
     workerNumber: r["workerNumber"] as string,
+    receiverName: (r["receiverName"] as string) ?? "",
+    receiverWorkerNumber: (r["receiverWorkerNumber"] as string) ?? "",
     date: r["date"] as string,
     amount: r["amount"] as number,
     currency: r["currency"] as MoneyTransfer["currency"],
@@ -727,9 +731,9 @@ export const MoneyTransferDB = {
   async insert(m: Omit<MoneyTransfer, "id" | "deleted_at">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
-      `INSERT INTO MoneyTransfers (receiptName, giverName, workerNumber, date, amount, currency, photo, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [m.receiptName, m.giverName, m.workerNumber, m.date, m.amount, m.currency, m.photo ?? null, m.createdAt]
+      `INSERT INTO MoneyTransfers (receiptName, giverName, workerNumber, receiverName, receiverWorkerNumber, date, amount, currency, photo, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [m.receiptName, m.giverName, m.workerNumber, m.receiverName, m.receiverWorkerNumber, m.date, m.amount, m.currency, m.photo ?? null, m.createdAt]
     );
     return res.lastInsertRowId;
   },

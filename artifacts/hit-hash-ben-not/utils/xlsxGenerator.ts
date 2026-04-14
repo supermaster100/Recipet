@@ -76,8 +76,8 @@ export function buildXLSXBase64(
   XLSX.utils.book_append_sheet(wb, wsATM, "ATM Withdrawals");
 
   const wsMoneyTransfers = XLSX.utils.aoa_to_sheet([
-    ["ReceiptName", "GiverName", "WorkerNumber", "Date", "Amount", "Currency", "Photo"],
-    ...moneyTransfers.map((m) => [m.receiptName, m.giverName, m.workerNumber, m.date, m.amount, m.currency, pn(m.photo, uriToName)]),
+    ["ReceiptName", "GiverName", "GiverWorkerNumber", "ReceiverName", "ReceiverWorkerNumber", "Date", "Amount", "Currency", "Photo"],
+    ...moneyTransfers.map((m) => [m.receiptName, m.giverName, m.workerNumber, m.receiverName, m.receiverWorkerNumber, m.date, m.amount, m.currency, pn(m.photo, uriToName)]),
   ]);
   XLSX.utils.book_append_sheet(wb, wsMoneyTransfers, "Money Transfers");
 

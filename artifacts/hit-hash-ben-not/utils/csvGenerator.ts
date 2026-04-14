@@ -94,9 +94,9 @@ export function buildCSV(
   lines.push("");
 
   lines.push("# MONEY TRANSFERS");
-  lines.push("Row,ReceiptName,GiverName,WorkerNumber,Date,Amount,Currency,Photo");
+  lines.push("Row,ReceiptName,GiverName,GiverWorkerNumber,ReceiverName,ReceiverWorkerNumber,Date,Amount,Currency,Photo");
   for (const m of moneyTransfers) {
-    lines.push(row("MT", m.receiptName, m.giverName, m.workerNumber, m.date, m.amount, m.currency, photoName(m.photo, uriToName)));
+    lines.push(row("MT", m.receiptName, m.giverName, m.workerNumber, m.receiverName, m.receiverWorkerNumber, m.date, m.amount, m.currency, photoName(m.photo, uriToName)));
   }
   lines.push("");
 

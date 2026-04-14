@@ -45,8 +45,13 @@ function MoneyTransferCard({
             {item.receiptName}
           </Text>
           <Text style={[styles.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-            From: {item.giverName}
+            Giver: {item.giverName}{item.workerNumber ? ` #${item.workerNumber}` : ""}
           </Text>
+          {item.receiverName ? (
+            <Text style={[styles.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+              Receiver: {item.receiverName}{item.receiverWorkerNumber ? ` #${item.receiverWorkerNumber}` : ""}
+            </Text>
+          ) : null}
         </View>
         <View style={styles.cardRight}>
           <Text style={[styles.cardAmount, { color: colors.foreground }]}>
@@ -58,11 +63,6 @@ function MoneyTransferCard({
         </View>
       </View>
       <View style={styles.cardMeta}>
-        {item.workerNumber ? (
-          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-            Worker: {item.workerNumber}
-          </Text>
-        ) : null}
         <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
           {item.date}
         </Text>

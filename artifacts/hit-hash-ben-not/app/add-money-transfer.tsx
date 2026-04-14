@@ -41,7 +41,9 @@ export default function AddMoneyTransferScreen() {
 
   const [receiptName, setReceiptName] = useState("");
   const [giverName, setGiverName] = useState("");
-  const [workerNumber, setWorkerNumber] = useState(general?.workerNumber ?? "");
+  const [giverWorkerNumber, setGiverWorkerNumber] = useState(general?.workerNumber ?? "");
+  const [receiverName, setReceiverName] = useState("");
+  const [receiverWorkerNumber, setReceiverWorkerNumber] = useState("");
   const [date, setDate] = useState(today());
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<(typeof CURRENCIES)[number]>("ILS");
@@ -49,6 +51,7 @@ export default function AddMoneyTransferScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [currencySearch, setCurrencySearch] = useState("");
+  const [showErrors, setShowErrors] = useState(false);
 
   const imageFieldRef = useRef<ImageFieldHandle>(null);
 
@@ -57,7 +60,8 @@ export default function AddMoneyTransferScreen() {
   const isValid =
     receiptName.trim().length > 0 &&
     giverName.trim().length > 0 &&
-    workerNumber.trim().length > 0 &&
+    giverWorkerNumber.trim().length > 0 &&
+    receiverName.trim().length > 0 &&
     date.trim().length > 0 &&
     amount.trim().length > 0 &&
     Number(amount) > 0;
@@ -68,7 +72,9 @@ export default function AddMoneyTransferScreen() {
       const newId = await MoneyTransferDB.insert({
         receiptName: receiptName.trim(),
         giverName: giverName.trim(),
-        workerNumber: workerNumber.trim(),
+        workerNumber: giverWorkerNumber.trim(),
+        receiverName: receiverName.trim(),
+        receiverWorkerNumber: receiverWorkerNumber.trim(),
         date,
         amount: parseFloat(Number(amount).toFixed(2)),
         currency,
@@ -105,7 +111,10 @@ export default function AddMoneyTransferScreen() {
   }
 
   function handleSave() {
-    if (!isValid) return;
+    if (!isValid) {
+      setShowErrors(true);
+      return;
+    }
     if (!photo.trim()) {
       if (Platform.OS === "web") {
         const confirmed = window.confirm(
@@ -169,7 +178,7 @@ export default function AddMoneyTransferScreen() {
         </Text>
         <TouchableOpacity
           onPress={handleSave}
-          disabled={saving || !isValid}
+          disabled={saving}
           hitSlop={8}
           style={styles.saveBtnWrap}
         >
@@ -209,46 +218,99 @@ export default function AddMoneyTransferScreen() {
           <TextInput
             style={[
               styles.input,
-              { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
+              { color: colors.foreground, backgroundColor: colors.card, borderColor: showErrors && !receiptName.trim() ? colors.destructive : colors.border },
             ]}
             value={receiptName}
             onChangeText={setReceiptName}
             placeholder="Name on receipt"
             placeholderTextColor={colors.mutedForeground}
           />
+          {showErrors && !receiptName.trim() ? (
+            <Text style={[styles.errorText, { color: colors.destructive }]}>Receipt name is required</Text>
+          ) : null}
         </View>
 
-        <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            NAME OF PERSON WHO GAVE MONEY <Text style={{ color: colors.destructive }}>*</Text>
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-            value={giverName}
-            onChangeText={setGiverName}
-            placeholder="Giver's name"
-            placeholderTextColor={colors.mutedForeground}
-          />
+        <View style={[styles.section, { borderColor: colors.border, backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Giver</Text>
+
+          <View style={styles.field}>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+              NAME <Text style={{ color: colors.destructive }}>*</Text>
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                { color: colors.foreground, backgroundColor: colors.background, borderColor: showErrors && !giverName.trim() ? colors.destructive : colors.border },
+              ]}
+              value={giverName}
+              onChangeText={setGiverName}
+              placeholder="Giver's name"
+              placeholderTextColor={colors.mutedForeground}
+            />
+            {showErrors && !giverName.trim() ? (
+              <Text style={[styles.errorText, { color: colors.destructive }]}>Giver name is required</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.field}>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+              WORKER NUMBER <Text style={{ color: colors.destructive }}>*</Text>
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                { color: colors.foreground, backgroundColor: colors.background, borderColor: showErrors && !giverWorkerNumber.trim() ? colors.destructive : colors.border },
+              ]}
+              value={giverWorkerNumber}
+              onChangeText={setGiverWorkerNumber}
+              placeholder="Giver's worker number"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="number-pad"
+            />
+            {showErrors && !giverWorkerNumber.trim() ? (
+              <Text style={[styles.errorText, { color: colors.destructive }]}>Giver worker number is required</Text>
+            ) : null}
+          </View>
         </View>
 
-        <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            WORKER NUMBER <Text style={{ color: colors.destructive }}>*</Text>
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-            value={workerNumber}
-            onChangeText={setWorkerNumber}
-            placeholder="Worker number"
-            placeholderTextColor={colors.mutedForeground}
-            keyboardType="number-pad"
-          />
+        <View style={[styles.section, { borderColor: showErrors && !receiverName.trim() ? colors.destructive : colors.border, backgroundColor: colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: colors.success }]}>Receiver</Text>
+
+          <View style={styles.field}>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+              NAME <Text style={{ color: colors.destructive }}>*</Text>
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                { color: colors.foreground, backgroundColor: colors.background, borderColor: showErrors && !receiverName.trim() ? colors.destructive : colors.border },
+              ]}
+              value={receiverName}
+              onChangeText={setReceiverName}
+              placeholder="Receiver's name"
+              placeholderTextColor={colors.mutedForeground}
+            />
+            {showErrors && !receiverName.trim() ? (
+              <Text style={[styles.errorText, { color: colors.destructive }]}>Receiver name is required</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.field}>
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+              WORKER NUMBER
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border },
+              ]}
+              value={receiverWorkerNumber}
+              onChangeText={setReceiverWorkerNumber}
+              placeholder="Receiver's worker number (optional)"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="number-pad"
+            />
+          </View>
         </View>
 
         <View style={styles.field}>
@@ -275,7 +337,7 @@ export default function AddMoneyTransferScreen() {
           <TextInput
             style={[
               styles.input,
-              { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
+              { color: colors.foreground, backgroundColor: colors.card, borderColor: showErrors && !(amount.trim().length > 0 && Number(amount) > 0) ? colors.destructive : colors.border },
             ]}
             value={amount}
             onChangeText={setAmount}
@@ -283,6 +345,9 @@ export default function AddMoneyTransferScreen() {
             placeholderTextColor={colors.mutedForeground}
             keyboardType="decimal-pad"
           />
+          {showErrors && !(amount.trim().length > 0 && Number(amount) > 0) ? (
+            <Text style={[styles.errorText, { color: colors.destructive }]}>A valid amount greater than 0 is required</Text>
+          ) : null}
         </View>
 
         <View style={styles.field}>
@@ -392,6 +457,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     fontFamily: "Inter_400Regular",
+  },
+  section: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
   },
   chipRow: {
     flexDirection: "row",

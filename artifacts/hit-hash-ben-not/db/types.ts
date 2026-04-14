@@ -201,6 +201,8 @@ export interface MoneyTransfer {
   receiptName: string;
   giverName: string;
   workerNumber: string;
+  receiverName: string;
+  receiverWorkerNumber: string;
   date: string;
   amount: number;
   currency: Currency;
