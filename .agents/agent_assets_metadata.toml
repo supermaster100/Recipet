@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "LgYkQYtVm1jTWgsMRs8JP"
 uri = "file://artifacts/hit-hash-ben-not/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "nBfVZVc7fPVZFJ0z1Vd_z"
+uri = "file://hit-hash-ben-not-project.tar.gz"
+type = "unspecified"
+title = "Hit-hash-ben-not Project (Full Source)"
