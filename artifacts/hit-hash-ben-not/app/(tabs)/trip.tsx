@@ -496,31 +496,6 @@ export default function TripScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
-        {legId !== null && (
-          <Pressable
-            onPress={() => router.push({ pathname: "/trip/[id]/summary", params: { id: String(legId) } })}
-            style={({ pressed }) => [
-              styles.summaryCard,
-              {
-                backgroundColor: colors.primary,
-                opacity: pressed ? 0.88 : 1,
-              },
-            ]}
-          >
-            <View style={styles.summaryCardContent}>
-              <View style={[styles.summaryCardIcon, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-                <Feather name="bar-chart-2" size={18} color="#fff" />
-              </View>
-              <View style={styles.summaryCardText}>
-                <Text style={styles.summaryCardTitle}>View Trip Summary</Text>
-                <Text style={styles.summaryCardSubtitle}>
-                  Expenses, hotels, exchanges & transfers
-                </Text>
-              </View>
-            </View>
-            <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.8)" />
-          </Pressable>
-        )}
 
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Departure</Text>
@@ -771,28 +746,6 @@ export default function TripScreen() {
           )}
         </View>
 
-        <View style={styles.cashWalletSection}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Cash Wallet</Text>
-          <TouchableOpacity
-            onPress={() => router.push("/cash-wallet")}
-            style={[styles.cashWalletBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-          >
-            <View style={styles.cashWalletBtnContent}>
-              <View style={[styles.cashWalletIcon, { backgroundColor: colors.primary + "22" }]}>
-                <Feather name="dollar-sign" size={20} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.cashWalletBtnTitle, { color: colors.foreground }]}>
-                  Manage Cash Wallet
-                </Text>
-                <Text style={[styles.cashWalletBtnDesc, { color: colors.mutedForeground }]}>
-                  Track cash balances, log initial amounts, reconcile
-                </Text>
-              </View>
-            </View>
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       {anyPickerOpen && (
@@ -937,9 +890,9 @@ const styles = StyleSheet.create({
   },
   hotelRowContent: { flex: 1, gap: 2 },
   hotelRowMain: { flexDirection: "row", alignItems: "center", gap: 4 },
-  hotelRate: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  hotelNights: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  hotelNote: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  hotelRate: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  hotelNights: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  hotelNote: { fontSize: 14, fontFamily: "Inter_400Regular" },
   pickerHeader: {
     flexDirection: "row",
     alignItems: "center",

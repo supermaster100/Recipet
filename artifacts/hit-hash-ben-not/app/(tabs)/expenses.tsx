@@ -1,9 +1,7 @@
 import { Feather } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
-  FlatList,
   Platform,
   Pressable,
   ScrollView,
@@ -14,948 +12,721 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AmountBadge } from "@/components/ui/AmountBadge";
 import { AppHeader } from "@/components/ui/AppHeader";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppContext } from "@/context/AppContext";
-import { RECEIPT_TYPES, type Receipt, type ReceiptType } from "@/db/types";
 import { useColors } from "@/hooks/useColors";
-import { getPhotoUri } from "@/utils/photoUtils";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { getCities, getCountries } from "@/utils/countriesData";
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+type FeatherName = React.ComponentProps<typeof Feather>["name"];
 
-const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const COUNTRIES = getCountries();
 
-type ViewMode = "day" | "week" | "month" | "range";
-
-function getWeekStart(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d;
+function resolveCountryName(code: string) {
+  return COUNTRIES.find((c) => c.code === code)?.name ?? code;
 }
 
-function dateToStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+function resolveCityName(countryCode: string, cityCode: string) {
+  const cities = getCities(countryCode);
+  return cities.find((c) => c.code === cityCode)?.name ?? cityCode;
 }
 
-function strToDate(s: string): Date {
-  const parts = s.split("-").map(Number);
-  if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
-    return new Date(parts[0]!, parts[1]! - 1, parts[2]!);
+function formatDate(dateStr: string) {
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const month = months[parseInt(parts[1]!, 10) - 1] ?? "";
+  return `${parts[2]} ${month} ${parts[0]}`;
+}
+
+function nightsBetween(start: string, end: string): number {
+  const s = new Date(start);
+  const e = new Date(end);
+  const diff = e.getTime() - s.getTime();
+  return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
+}
+
+function sumByCurrency(items: { amount: number; currency: string }[]): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const item of items) {
+    result[item.currency] = (result[item.currency] ?? 0) + item.amount;
   }
-  return new Date();
+  return result;
 }
 
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
-
-function formatDayLabel(dateStr: string): string {
-  const d = strToDate(dateStr);
-  return `${DAYS_OF_WEEK[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function formatWeekLabel(weekStart: Date): string {
-  const weekEnd = addDays(weekStart, 6);
-  const startStr = `${weekStart.getDate()} ${MONTHS[weekStart.getMonth()]}`;
-  const endStr = `${weekEnd.getDate()} ${MONTHS[weekEnd.getMonth()]} ${weekEnd.getFullYear()}`;
-  return `${startStr} – ${endStr}`;
-}
-
-function PhotoThumb({ uri }: { uri: string | null }) {
+function CurrencyList({ totals }: { totals: Record<string, number> }) {
   const colors = useColors();
-  if (uri) {
+  const entries = Object.entries(totals);
+  if (entries.length === 0) return null;
+  return (
+    <View style={styles.currencyList}>
+      {entries.map(([cur, amt]) => (
+        <View key={cur} style={[styles.currencyBadge, { backgroundColor: colors.accent }]}>
+          <Text style={[styles.currencyCode, { color: colors.primary }]}>{cur}</Text>
+          <Text style={[styles.currencyAmt, { color: colors.primary }]}>
+            {amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function SectionCard({
+  title,
+  icon,
+  iconColor,
+  iconBg,
+  count,
+  countLabel,
+  totals,
+  onPress,
+  children,
+}: {
+  title: string;
+  icon: FeatherName;
+  iconColor: string;
+  iconBg: string;
+  count?: number;
+  countLabel?: string;
+  totals?: Record<string, number>;
+  onPress?: () => void;
+  children?: React.ReactNode;
+}) {
+  const colors = useColors();
+  const inner = (
+    <View style={[styles.sectionCard, { backgroundColor: colors.card, shadowColor: colors.shadowColor }]}>
+      <View style={styles.sectionCardHeader}>
+        <View style={[styles.sectionIcon, { backgroundColor: iconBg }]}>
+          <Feather name={icon} size={16} color={iconColor} />
+        </View>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{title}</Text>
+        {count !== undefined && (
+          <View style={[styles.countBadge, { backgroundColor: colors.secondary }]}>
+            <Text style={[styles.countText, { color: colors.foreground }]}>
+              {count} {countLabel ?? ""}
+            </Text>
+          </View>
+        )}
+        {onPress && <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
+      </View>
+      {totals && Object.keys(totals).length > 0 && <CurrencyList totals={totals} />}
+      {children}
+    </View>
+  );
+
+  if (onPress) {
     return (
-      <Image
-        source={{ uri: getPhotoUri(uri) }}
-        style={styles.thumb}
-        contentFit="cover"
-      />
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+      >
+        {inner}
+      </Pressable>
     );
   }
-  return (
-    <View style={[styles.thumb, styles.thumbPlaceholder, { backgroundColor: colors.secondary }]}>
-      <Feather name="file-text" size={20} color={colors.mutedForeground} />
-    </View>
-  );
-}
-
-function ExpenseCard({
-  expense,
-  onPress,
-}: {
-  expense: Receipt;
-  onPress: () => void;
-}) {
-  const colors = useColors();
-  const typeInfo = RECEIPT_TYPES.find((r) => r.key === expense.type);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        {
-          backgroundColor: colors.card,
-          shadowColor: colors.shadowColor,
-          opacity: pressed ? 0.85 : 1,
-        },
-      ]}
-    >
-      <PhotoThumb uri={expense.photo} />
-      <View style={styles.cardContent}>
-        <View style={styles.cardRow}>
-          <Text
-            style={[styles.cardType, { color: colors.foreground }]}
-            numberOfLines={1}
-          >
-            {typeInfo?.label ?? expense.type}
-          </Text>
-          <AmountBadge amount={expense.amount} currency={expense.currency} size="sm" />
-        </View>
-        <View style={styles.cardRow}>
-          <Text style={[styles.cardDate, { color: colors.mutedForeground }]}>
-            {expense.date}
-          </Text>
-          {expense.selfDeclaration && (
-            <View style={[styles.selfDeclBadge, { backgroundColor: colors.warning + "28" }]}>
-              <Text style={[styles.selfDeclText, { color: colors.warning }]}>Self Decl.</Text>
-            </View>
-          )}
-          {!expense.photo && (
-            <View style={[styles.noPhotoBadge, { backgroundColor: colors.muted }]}>
-              <Feather name="image" size={10} color={colors.mutedForeground} />
-              <Text style={[styles.noPhotoText, { color: colors.mutedForeground }]}>No photo</Text>
-            </View>
-          )}
-        </View>
-        {expense.note ? (
-          <Text style={[styles.cardNote, { color: colors.mutedForeground }]} numberOfLines={1}>
-            {expense.note}
-          </Text>
-        ) : null}
-      </View>
-      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-    </Pressable>
-  );
-}
-
-function SummaryStatCard({
-  icon,
-  label,
-  value,
-  subValue,
-  color,
-  onPress,
-}: {
-  icon: keyof typeof Feather.glyphMap;
-  label: string;
-  value: string;
-  subValue?: string;
-  color: string;
-  onPress?: () => void;
-}) {
-  const colors = useColors();
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={onPress ? 0.75 : 1}
-      style={[styles.statCard, { backgroundColor: colors.card, shadowColor: colors.shadowColor }]}
-    >
-      <View style={[styles.statCardIcon, { backgroundColor: color + "18" }]}>
-        <Feather name={icon} size={18} color={color} />
-      </View>
-      <Text style={[styles.statCardLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <Text style={[styles.statCardValue, { color: colors.foreground }]} numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </Text>
-      {subValue ? (
-        <Text style={[styles.statCardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-          {subValue}
-        </Text>
-      ) : null}
-    </TouchableOpacity>
-  );
-}
-
-function ActiveTripCard({ legs }: { legs: import("@/db/types").Leg[] }) {
-  const colors = useColors();
-  const activeLeg = useMemo(() => {
-    return legs.find((l) => !l.deleted_at) ?? null;
-  }, [legs]);
-
-  if (!activeLeg) return null;
-
-  const tripId = activeLeg.id;
-  const from = activeLeg.departureCity || activeLeg.departureCountry || "—";
-  const to = activeLeg.arrivalCity || activeLeg.arrivalCountry || "—";
-  const dateRange = activeLeg.departureDate && activeLeg.arrivalDate
-    ? `${activeLeg.departureDate} – ${activeLeg.arrivalDate}`
-    : activeLeg.departureDate || activeLeg.arrivalDate || "";
-
-  return (
-    <View style={[styles.tripCard, { backgroundColor: colors.card, borderColor: colors.primary + "30", shadowColor: colors.shadowColor }]}>
-      <View style={styles.tripCardHeader}>
-        <View style={[styles.tripCardIconWrap, { backgroundColor: colors.primary + "18" }]}>
-          <Feather name="map-pin" size={16} color={colors.primary} />
-        </View>
-        <Text style={[styles.tripCardTitle, { color: colors.mutedForeground }]}>ACTIVE TRIP</Text>
-      </View>
-      <View style={styles.tripRoute}>
-        <Text style={[styles.tripCity, { color: colors.foreground }]}>{from}</Text>
-        <Feather name="arrow-right" size={14} color={colors.mutedForeground} style={{ marginHorizontal: 6 }} />
-        <Text style={[styles.tripCity, { color: colors.foreground }]}>{to}</Text>
-      </View>
-      {dateRange ? (
-        <Text style={[styles.tripDates, { color: colors.mutedForeground }]}>{dateRange}</Text>
-      ) : null}
-      <TouchableOpacity
-        onPress={() => router.push({ pathname: "/trip/[id]/summary", params: { id: String(tripId) } })}
-        style={[styles.tripSummaryBtn, { backgroundColor: colors.primary + "12" }]}
-        activeOpacity={0.75}
-      >
-        <Text style={[styles.tripSummaryBtnText, { color: colors.primary }]}>View Trip Summary →</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  return inner;
 }
 
 export default function OverviewScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const topInset = Platform.OS === "web" ? 67 : insets.top;
+
   const {
-    receipts, exchanges, atmWithdrawals, cashWalletEntries, legs, isDbReady,
+    receipts,
+    exchanges,
+    atmWithdrawals,
+    travels,
+    moneyTransfers,
+    clientTransfers,
+    cashWalletEntries,
+    legs,
   } = useAppContext();
-  const params = useLocalSearchParams<{
-    filterCategory?: string;
-    filterDateStart?: string;
-    filterDateEnd?: string;
-  }>();
 
-  const now = new Date();
+  const activeLeg = useMemo(() => {
+    return legs.find((l) => !l.deleted_at) ?? null;
+  }, [legs]);
 
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-  const [selectedDay, setSelectedDay] = useState(dateToStr(now));
-  const [selectedWeekStart, setSelectedWeekStart] = useState(dateToStr(getWeekStart(now)));
-  const [rangeStart, setRangeStart] = useState<string | null>(null);
-  const [rangeEnd, setRangeEnd] = useState<string | null>(null);
-  const [activeFilters, setActiveFilters] = useState<Set<ReceiptType>>(new Set());
-  const [showFilter, setShowFilter] = useState(false);
+  const dateStart = activeLeg?.departureDate ?? "";
+  const dateEnd = activeLeg?.arrivalDate ?? "";
 
-  useFocusEffect(
-    useCallback(() => {
-      if (params.filterCategory) {
-        const found = RECEIPT_TYPES.find((rt) => rt.key === params.filterCategory);
-        if (found) {
-          setActiveFilters(new Set<ReceiptType>([found.key]));
-        }
-      }
-      if (params.filterDateStart && params.filterDateEnd) {
-        setRangeStart(params.filterDateStart);
-        setRangeEnd(params.filterDateEnd);
-        setViewMode("range");
-      } else if (params.filterDateStart) {
-        setRangeStart(null);
-        setRangeEnd(null);
-        const parts = params.filterDateStart.split("-");
-        const y = parseInt(parts[0] ?? "0", 10);
-        const m = parseInt(parts[1] ?? "1", 10);
-        if (!isNaN(y) && y > 0) setSelectedYear(y);
-        if (!isNaN(m)) setSelectedMonth(m);
-        setViewMode("month");
-      }
-    }, [params.filterCategory, params.filterDateStart, params.filterDateEnd])
+  function isInRange(date: string): boolean {
+    if (!dateStart || !dateEnd) return true;
+    return date >= dateStart && date <= dateEnd;
+  }
+
+  const tripReceipts = useMemo(
+    () => activeLeg ? receipts.filter((r) => isInRange(r.date)) : receipts,
+    [receipts, dateStart, dateEnd, activeLeg]
   );
 
-  function prevMonth() {
-    if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear((y) => y - 1); }
-    else { setSelectedMonth((m) => m - 1); }
-  }
-  function nextMonth() {
-    if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear((y) => y + 1); }
-    else { setSelectedMonth((m) => m + 1); }
-  }
+  const tripExchanges = useMemo(
+    () => activeLeg ? exchanges.filter((e) => isInRange(e.date)) : exchanges,
+    [exchanges, dateStart, dateEnd, activeLeg]
+  );
 
-  function prevDay() {
-    const d = strToDate(selectedDay);
-    setSelectedDay(dateToStr(addDays(d, -1)));
-  }
-  function nextDay() {
-    const d = strToDate(selectedDay);
-    setSelectedDay(dateToStr(addDays(d, 1)));
-  }
+  const tripAtmWithdrawals = useMemo(
+    () => activeLeg ? atmWithdrawals.filter((a) => isInRange(a.date)) : atmWithdrawals,
+    [atmWithdrawals, dateStart, dateEnd, activeLeg]
+  );
 
-  function prevWeek() {
-    const d = strToDate(selectedWeekStart);
-    setSelectedWeekStart(dateToStr(addDays(d, -7)));
-  }
-  function nextWeek() {
-    const d = strToDate(selectedWeekStart);
-    setSelectedWeekStart(dateToStr(addDays(d, 7)));
-  }
+  const tripTravels = useMemo(
+    () => activeLeg
+      ? travels.filter((t) => {
+          const tStart = t.departureDate || "";
+          const tEnd = t.returnDate || "";
+          return (tStart && isInRange(tStart)) || (tEnd && isInRange(tEnd));
+        })
+      : travels,
+    [travels, dateStart, dateEnd, activeLeg]
+  );
 
-  const periodLabel = useMemo(() => {
-    if (viewMode === "day") return formatDayLabel(selectedDay);
-    if (viewMode === "week") return formatWeekLabel(strToDate(selectedWeekStart));
-    if (viewMode === "range" && rangeStart && rangeEnd) {
-      const fmt = (s: string) => {
-        const parts = s.split("-");
-        if (parts.length !== 3) return s;
-        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-        return `${parts[2]} ${months[parseInt(parts[1]!, 10) - 1] ?? ""} ${parts[0]}`;
-      };
-      return `${fmt(rangeStart)} – ${fmt(rangeEnd)}`;
-    }
-    return `${MONTHS[selectedMonth - 1]} ${selectedYear}`;
-  }, [viewMode, selectedDay, selectedWeekStart, selectedMonth, selectedYear, rangeStart, rangeEnd]);
+  const tripMoneyTransfers = useMemo(
+    () => activeLeg ? moneyTransfers.filter((m) => isInRange(m.date)) : moneyTransfers,
+    [moneyTransfers, dateStart, dateEnd, activeLeg]
+  );
 
-  const byPeriod = useMemo(() => {
-    if (viewMode === "day") {
-      return receipts.filter((e) => e.date === selectedDay);
-    }
-    if (viewMode === "week") {
-      const ws = selectedWeekStart;
-      const we = dateToStr(addDays(strToDate(ws), 6));
-      return receipts.filter((e) => e.date >= ws && e.date <= we);
-    }
-    if (viewMode === "range" && rangeStart && rangeEnd) {
-      return receipts.filter((e) => e.date >= rangeStart && e.date <= rangeEnd);
-    }
-    const monthStr = String(selectedYear) + "-" + String(selectedMonth).padStart(2, "0");
-    return receipts.filter((e) => e.date.startsWith(monthStr));
-  }, [receipts, viewMode, selectedDay, selectedWeekStart, selectedMonth, selectedYear, rangeStart, rangeEnd]);
+  const tripClientTransfers = useMemo(
+    () => activeLeg ? clientTransfers.filter((c) => isInRange(c.date)) : clientTransfers,
+    [clientTransfers, dateStart, dateEnd, activeLeg]
+  );
 
-  const filtered = useMemo(() => {
-    if (activeFilters.size === 0) return byPeriod;
-    return byPeriod.filter((e) => activeFilters.has(e.type));
-  }, [byPeriod, activeFilters]);
+  const receiptTotals = useMemo(
+    () => sumByCurrency(tripReceipts.map((r) => ({ amount: r.amount, currency: r.currency }))),
+    [tripReceipts]
+  );
 
-  const total = useMemo(() => {
-    const byCurrency: Record<string, number> = {};
-    for (const e of filtered) {
-      byCurrency[e.currency] = (byCurrency[e.currency] ?? 0) + e.amount;
-    }
-    return byCurrency;
-  }, [filtered]);
+  const atmTotals = useMemo(
+    () => sumByCurrency(tripAtmWithdrawals.map((a) => ({ amount: a.amount, currency: a.currency }))),
+    [tripAtmWithdrawals]
+  );
 
-  const exchangesPeriod = useMemo(() => {
-    if (viewMode === "day") return exchanges.filter((e) => e.date === selectedDay);
-    if (viewMode === "week") {
-      const ws = selectedWeekStart;
-      const we = dateToStr(addDays(strToDate(ws), 6));
-      return exchanges.filter((e) => e.date >= ws && e.date <= we);
-    }
-    if (viewMode === "range" && rangeStart && rangeEnd) {
-      return exchanges.filter((e) => e.date >= rangeStart && e.date <= rangeEnd);
-    }
-    const monthStr = String(selectedYear) + "-" + String(selectedMonth).padStart(2, "0");
-    return exchanges.filter((e) => e.date.startsWith(monthStr));
-  }, [exchanges, viewMode, selectedDay, selectedWeekStart, selectedMonth, selectedYear, rangeStart, rangeEnd]);
+  const exchangeSpentTotals = useMemo(
+    () => sumByCurrency(tripExchanges.map((e) => ({ amount: e.amountSpent, currency: e.spentCurrency }))),
+    [tripExchanges]
+  );
 
-  const atmPeriod = useMemo(() => {
-    if (viewMode === "day") return atmWithdrawals.filter((a) => a.date === selectedDay);
-    if (viewMode === "week") {
-      const ws = selectedWeekStart;
-      const we = dateToStr(addDays(strToDate(ws), 6));
-      return atmWithdrawals.filter((a) => a.date >= ws && a.date <= we);
-    }
-    if (viewMode === "range" && rangeStart && rangeEnd) {
-      return atmWithdrawals.filter((a) => a.date >= rangeStart && a.date <= rangeEnd);
-    }
-    const monthStr = String(selectedYear) + "-" + String(selectedMonth).padStart(2, "0");
-    return atmWithdrawals.filter((a) => a.date.startsWith(monthStr));
-  }, [atmWithdrawals, viewMode, selectedDay, selectedWeekStart, selectedMonth, selectedYear, rangeStart, rangeEnd]);
+  const exchangeReceivedTotals = useMemo(
+    () => sumByCurrency(tripExchanges.map((e) => ({ amount: e.amountReceived, currency: e.receivedCurrency }))),
+    [tripExchanges]
+  );
 
-  const atmTotalByCurrency = useMemo(() => {
-    const byCurrency: Record<string, number> = {};
-    for (const a of atmPeriod) {
-      byCurrency[a.currency] = (byCurrency[a.currency] ?? 0) + a.amount;
-    }
-    return byCurrency;
-  }, [atmPeriod]);
+  const totalNights = useMemo(
+    () => tripTravels.reduce((acc, t) => acc + (t.nights ?? 0), 0),
+    [tripTravels]
+  );
 
-  const expensesSummaryValue = useMemo(() => {
-    const entries = Object.entries(total);
-    if (entries.length === 0) return `${byPeriod.length} receipts`;
-    if (entries.length === 1) {
-      const [cur, amt] = entries[0]!;
-      return `${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
+  const hotelTotals = useMemo(() => {
+    const raw: { amount: number; currency: string }[] = [];
+    for (const t of tripTravels) {
+      if (t.ratePerNight > 0 && t.nights > 0) {
+        raw.push({ amount: t.ratePerNight * t.nights, currency: t.currencyPN });
+      }
     }
-    return entries.map(([cur, amt]) => `${amt.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${cur}`).join(" · ");
-  }, [total, byPeriod.length]);
+    return sumByCurrency(raw);
+  }, [tripTravels]);
 
-  const cashSummaryValue = useMemo(() => {
+  const moneyTransferTotals = useMemo(
+    () => sumByCurrency(tripMoneyTransfers.map((m) => ({ amount: m.amount, currency: m.currency }))),
+    [tripMoneyTransfers]
+  );
+
+  const clientTransferTotals = useMemo(
+    () => sumByCurrency(tripClientTransfers.map((c) => ({ amount: c.amount, currency: c.currency }))),
+    [tripClientTransfers]
+  );
+
+  const cashBalances = useMemo(() => {
     const byCurrency: Record<string, number> = {};
     for (const e of cashWalletEntries) {
       byCurrency[e.currency] = (byCurrency[e.currency] ?? 0) + e.amount;
     }
-    const entries = Object.entries(byCurrency).slice(0, 2);
-    if (entries.length === 0) return "No cash";
-    return entries.map(([cur, amt]) => `${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`).join("\n");
+    const result: Record<string, number> = {};
+    for (const [cur, amt] of Object.entries(byCurrency)) {
+      if (Math.abs(amt) > 0.001) result[cur] = amt;
+    }
+    return result;
   }, [cashWalletEntries]);
 
-  const atmSummaryValue = useMemo(() => {
-    const entries = Object.entries(atmTotalByCurrency);
-    if (entries.length === 0) return "0";
-    if (entries.length === 1) {
-      const [cur, amt] = entries[0]!;
-      return `${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
-    }
-    return entries.map(([cur, amt]) => `${amt.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${cur}`).join(" · ");
-  }, [atmTotalByCurrency]);
+  const grandTotal = useMemo(() => {
+    const all = [
+      ...tripReceipts.map((r) => ({ amount: r.amount, currency: r.currency })),
+      ...tripAtmWithdrawals.map((a) => ({ amount: a.amount, currency: a.currency })),
+      ...tripTravels.filter((t) => t.ratePerNight > 0 && t.nights > 0).map((t) => ({
+        amount: t.ratePerNight * t.nights,
+        currency: t.currencyPN,
+      })),
+    ];
+    return sumByCurrency(all);
+  }, [tripReceipts, tripAtmWithdrawals, tripTravels]);
 
-  function toggleFilter(t: ReceiptType) {
-    setActiveFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(t)) next.delete(t);
-      else next.add(t);
-      return next;
-    });
-  }
-
-  function handlePrev() {
-    if (viewMode === "day") prevDay();
-    else if (viewMode === "week") prevWeek();
-    else if (viewMode === "month") prevMonth();
-  }
-
-  function handleNext() {
-    if (viewMode === "day") nextDay();
-    else if (viewMode === "week") nextWeek();
-    else if (viewMode === "month") nextMonth();
-  }
-
-  const topInset = Platform.OS === "web" ? 67 : insets.top;
-  const hasFilters = activeFilters.size > 0;
-
-  const emptySubtitle = useMemo(() => {
-    if (hasFilters) return "Try changing your filters or adding a new receipt";
-    if (viewMode === "day") return `No expenses recorded for ${periodLabel}`;
-    if (viewMode === "week") return `No expenses recorded for this week`;
-    if (viewMode === "range") return `No expenses in this date range`;
-    return `No expenses recorded for ${MONTHS[selectedMonth - 1]} ${selectedYear}`;
-  }, [hasFilters, viewMode, periodLabel, selectedMonth, selectedYear]);
-
-  const ListHeader = useMemo(() => (
-    <View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.summaryStrip}
-      >
-        <SummaryStatCard
-          icon="file-text"
-          label="Expenses"
-          value={expensesSummaryValue}
-          subValue={`${byPeriod.length} receipt${byPeriod.length !== 1 ? "s" : ""}`}
-          color={colors.primary}
-          onPress={() => router.push("/(tabs)/expenses")}
-        />
-        <SummaryStatCard
-          icon="dollar-sign"
-          label="Cash"
-          value={cashSummaryValue}
-          color={colors.success}
-          onPress={() => router.push("/cash-wallet")}
-        />
-        <SummaryStatCard
-          icon="refresh-cw"
-          label="Exchanges"
-          value={String(exchangesPeriod.length)}
-          subValue={`this ${viewMode}`}
-          color={colors.purple}
-          onPress={() => router.push("/(tabs)/exchanges")}
-        />
-        <SummaryStatCard
-          icon="credit-card"
-          label="ATM"
-          value={atmSummaryValue}
-          subValue={`${atmPeriod.length} withdrawal${atmPeriod.length !== 1 ? "s" : ""}`}
-          color={colors.warning}
-          onPress={() => router.push("/(tabs)/exchanges")}
-        />
-      </ScrollView>
-
-      <ActiveTripCard legs={legs} />
-
-      <View
-        style={[
-          styles.viewToggleBar,
-          { backgroundColor: colors.card, borderBottomColor: colors.border },
-        ]}
-      >
-        {(["day", "week", "month"] as const).map((mode) => (
-          <Pressable
-            key={mode}
-            onPress={() => {
-              setRangeStart(null);
-              setRangeEnd(null);
-              setViewMode(mode);
-            }}
-            style={[
-              styles.viewToggleBtn,
-              viewMode === mode && { backgroundColor: colors.primary },
-            ]}
-          >
-            <Text
-              style={[
-                styles.viewToggleBtnText,
-                { color: viewMode === mode ? "#fff" : colors.mutedForeground },
-              ]}
-            >
-              {mode.charAt(0).toUpperCase() + mode.slice(1)}
-            </Text>
-          </Pressable>
-        ))}
-        {viewMode === "range" && (
-          <Pressable
-            style={[styles.viewToggleBtn, { backgroundColor: colors.warning, flex: 1.5 }]}
-            onPress={() => {
-              setRangeStart(null);
-              setRangeEnd(null);
-              setViewMode("month");
-            }}
-          >
-            <Text style={[styles.viewToggleBtnText, { color: "#fff" }]}>Trip</Text>
-          </Pressable>
-        )}
-      </View>
-
-      <View
-        style={[
-          styles.monthNav,
-          {
-            backgroundColor: colors.card,
-            shadowColor: colors.shadowColor,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={handlePrev}
-          hitSlop={12}
-          disabled={viewMode === "range"}
-          style={[styles.navBtn, { backgroundColor: colors.secondary, opacity: viewMode === "range" ? 0.3 : 1 }]}
-        >
-          <Feather name="chevron-left" size={18} color={colors.foreground} />
-        </TouchableOpacity>
-        <Text
-          style={[styles.monthLabel, { color: colors.foreground }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-        >
-          {periodLabel}
-        </Text>
-        <TouchableOpacity
-          onPress={handleNext}
-          hitSlop={12}
-          disabled={viewMode === "range"}
-          style={[styles.navBtn, { backgroundColor: colors.secondary, opacity: viewMode === "range" ? 0.3 : 1 }]}
-        >
-          <Feather name="chevron-right" size={18} color={colors.foreground} />
-        </TouchableOpacity>
-      </View>
-
-      {showFilter && (
-        <View style={[styles.filterBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-          <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>
-            Filter by type:
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChips}>
-            <Pressable
-              onPress={() => setActiveFilters(new Set())}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: !hasFilters ? colors.primary : colors.secondary,
-                  borderColor: !hasFilters ? colors.primary : "transparent",
-                },
-              ]}
-            >
-              <Text style={[styles.chipText, { color: !hasFilters ? "#fff" : colors.foreground }]}>
-                All
-              </Text>
-            </Pressable>
-            {RECEIPT_TYPES.map((rt) => {
-              const active = activeFilters.has(rt.key);
-              return (
-                <Pressable
-                  key={rt.key}
-                  onPress={() => toggleFilter(rt.key)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: active ? colors.primary : colors.secondary,
-                      borderColor: active ? colors.primary : "transparent",
-                    },
-                  ]}
-                >
-                  <Text style={[styles.chipText, { color: active ? "#fff" : colors.foreground }]}>
-                    {rt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
-      {Object.keys(total).length > 0 && (
-        <View style={[styles.summary, { backgroundColor: colors.background }]}>
-          {Object.entries(total).map(([cur, amt]) => (
-            <AmountBadge key={cur} amount={amt} currency={cur} size="lg" />
-          ))}
-          <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
-            {filtered.length} expense{filtered.length !== 1 ? "s" : ""}
-            {hasFilters ? " (filtered)" : ""}
-          </Text>
-        </View>
-      )}
-    </View>
-  ), [
-    expensesSummaryValue, byPeriod.length, cashSummaryValue,
-    exchangesPeriod.length, atmSummaryValue, atmPeriod.length,
-    legs, viewMode, periodLabel, showFilter, hasFilters,
-    activeFilters, filtered.length, total, colors,
-    rangeStart, rangeEnd, selectedDay, selectedWeekStart,
-  ]);
+  const depCity = activeLeg
+    ? resolveCityName(activeLeg.departureCountry ?? "", activeLeg.departureCity ?? "")
+    : null;
+  const depCountry = activeLeg
+    ? resolveCountryName(activeLeg.departureCountry ?? "")
+    : null;
+  const arrCity = activeLeg
+    ? resolveCityName(activeLeg.arrivalCountry ?? "", activeLeg.arrivalCity ?? "")
+    : null;
+  const arrCountry = activeLeg
+    ? resolveCountryName(activeLeg.arrivalCountry ?? "")
+    : null;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={{ paddingTop: topInset }}>
-        <AppHeader
-          title="Overview"
-          right={
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                onPress={() => setShowFilter((v) => !v)}
-                hitSlop={8}
-                style={[
-                  styles.filterBtn,
-                  {
-                    backgroundColor: hasFilters ? colors.primary + "18" : colors.secondary,
-                    borderColor: hasFilters ? colors.primary : "transparent",
-                  },
-                ]}
-              >
-                <Feather
-                  name="filter"
-                  size={16}
-                  color={hasFilters ? colors.primary : colors.mutedForeground}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push("/add-expense")}
-                hitSlop={8}
-                style={[styles.addButton, { backgroundColor: colors.primary }]}
-              >
-                <Feather name="plus" size={18} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          }
-        />
+        <AppHeader title="Overview" />
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
-        scrollEnabled
-        ListHeaderComponent={ListHeader}
-        ListEmptyComponent={
-          isDbReady ? (
-            <EmptyState
-              icon="file-text"
-              title={hasFilters ? "No matching expenses" : "No expenses"}
-              subtitle={emptySubtitle}
-              actionLabel={!hasFilters ? "Add Receipt" : undefined}
-              onAction={!hasFilters ? () => router.push("/add-expense") : undefined}
-            />
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <ExpenseCard expense={item} onPress={() => router.push(`/edit-expense/${item.id}`)} />
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {activeLeg ? (
+          <View style={[styles.tripHeader, { backgroundColor: colors.card, shadowColor: colors.shadowColor }]}>
+            <View style={styles.tripRouteRow}>
+              <View style={styles.tripLocation}>
+                <Text style={[styles.tripCity, { color: colors.foreground }]}>{depCity}</Text>
+                <Text style={[styles.tripCountry, { color: colors.mutedForeground }]}>{depCountry}</Text>
+              </View>
+              <View style={styles.tripArrowBox}>
+                <Feather name="arrow-right" size={18} color={colors.primary} />
+              </View>
+              <View style={[styles.tripLocation, { alignItems: "flex-end" }]}>
+                <Text style={[styles.tripCity, { color: colors.foreground }]}>{arrCity}</Text>
+                <Text style={[styles.tripCountry, { color: colors.mutedForeground }]}>{arrCountry}</Text>
+              </View>
+            </View>
+            <View style={styles.tripMeta}>
+              {dateStart ? (
+                <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
+                  <Feather name="calendar" size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.metaPillText, { color: colors.foreground }]}>
+                    {formatDate(dateStart)}
+                  </Text>
+                </View>
+              ) : null}
+              {dateStart && dateEnd ? (
+                <Text style={[styles.metaDash, { color: colors.mutedForeground }]}>→</Text>
+              ) : null}
+              {dateEnd ? (
+                <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
+                  <Feather name="calendar" size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.metaPillText, { color: colors.foreground }]}>
+                    {formatDate(dateEnd)}
+                  </Text>
+                </View>
+              ) : null}
+              {dateStart && dateEnd && (
+                <View style={[styles.metaPill, { backgroundColor: colors.accent }]}>
+                  <Feather name="moon" size={13} color={colors.primary} />
+                  <Text style={[styles.metaPillText, { color: colors.primary }]}>
+                    {nightsBetween(dateStart, dateEnd)} nights
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.noTripCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="map-pin" size={20} color={colors.mutedForeground} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.noTripTitle, { color: colors.foreground }]}>No Active Trip</Text>
+              <Text style={[styles.noTripSub, { color: colors.mutedForeground }]}>
+                Showing all records. Set up a trip in the Trip tab.
+              </Text>
+            </View>
+          </View>
         )}
-      />
+
+        <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>CATEGORIES</Text>
+
+        <SectionCard
+          title="General Expense"
+          icon="file-text"
+          iconColor={colors.primary}
+          iconBg={colors.accent}
+          count={tripReceipts.length}
+          countLabel="receipt(s)"
+          totals={receiptTotals}
+        />
+
+        <SectionCard
+          title="ATM Withdrawal"
+          icon="credit-card"
+          iconColor={colors.warning}
+          iconBg={colors.warning + "22"}
+          count={tripAtmWithdrawals.length}
+          countLabel="withdrawal(s)"
+          totals={atmTotals}
+          onPress={() => router.push("/(tabs)/exchanges")}
+        />
+
+        <SectionCard
+          title="Currency Exchange"
+          icon="refresh-cw"
+          iconColor={colors.success}
+          iconBg={colors.success + "22"}
+          count={tripExchanges.length}
+          countLabel="exchange(s)"
+          onPress={tripExchanges.length > 0 ? () => router.push("/(tabs)/exchanges") : undefined}
+        >
+          {Object.keys(exchangeSpentTotals).length > 0 && (
+            <View style={styles.exchangeBlock}>
+              <Text style={[styles.exchangeDir, { color: colors.mutedForeground }]}>Spent</Text>
+              <CurrencyList totals={exchangeSpentTotals} />
+            </View>
+          )}
+          {Object.keys(exchangeReceivedTotals).length > 0 && (
+            <View style={styles.exchangeBlock}>
+              <Text style={[styles.exchangeDir, { color: colors.mutedForeground }]}>Received</Text>
+              <CurrencyList totals={exchangeReceivedTotals} />
+            </View>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Hotel Nights"
+          icon="moon"
+          iconColor={colors.purple}
+          iconBg={colors.purple + "22"}
+          count={totalNights}
+          countLabel="night(s)"
+          totals={hotelTotals}
+          onPress={() => router.push("/(tabs)/trip")}
+        />
+
+        <SectionCard
+          title="Teammate Transfer"
+          icon="send"
+          iconColor={colors.primary}
+          iconBg={colors.primary + "18"}
+          count={tripMoneyTransfers.length}
+          countLabel="transfer(s)"
+          totals={moneyTransferTotals}
+          onPress={() => router.push("/(tabs)/money-transfers")}
+        />
+
+        <SectionCard
+          title="Client Transfer"
+          icon="users"
+          iconColor={colors.warning}
+          iconBg={colors.warning + "18"}
+          count={tripClientTransfers.length}
+          countLabel="transfer(s)"
+          totals={clientTransferTotals}
+          onPress={() => router.push("/(tabs)/client-transfers")}
+        />
+
+        <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>GRAND TOTAL</Text>
+
+        <View style={[styles.grandTotalCard, { backgroundColor: colors.card, shadowColor: colors.shadowColor }]}>
+          <View style={styles.grandTotalHeader}>
+            <View style={[styles.sectionIcon, { backgroundColor: colors.primary + "22" }]}>
+              <Feather name="dollar-sign" size={16} color={colors.primary} />
+            </View>
+            <Text style={[styles.grandTotalTitle, { color: colors.foreground }]}>
+              Total Spending
+            </Text>
+          </View>
+          {Object.keys(grandTotal).length > 0 ? (
+            <CurrencyList totals={grandTotal} />
+          ) : (
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              No recorded spending
+            </Text>
+          )}
+
+          {Object.keys(cashBalances).length > 0 && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <TouchableOpacity
+                onPress={() => router.push("/cash-wallet")}
+                style={styles.cashRow}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.cashIconWrap, { backgroundColor: colors.success + "22" }]}>
+                  <Feather name="dollar-sign" size={14} color={colors.success} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.cashLabel, { color: colors.foreground }]}>Cash on Hand</Text>
+                  <View style={styles.cashAmounts}>
+                    {Object.entries(cashBalances).map(([cur, amt]) => (
+                      <Text key={cur} style={[styles.cashAmount, { color: colors.success }]}>
+                        {amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {cur}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </>
+          )}
+
+          {Object.keys(cashBalances).length === 0 && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <TouchableOpacity
+                onPress={() => router.push("/cash-wallet")}
+                style={styles.cashRow}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.cashIconWrap, { backgroundColor: colors.success + "22" }]}>
+                  <Feather name="dollar-sign" size={14} color={colors.success} />
+                </View>
+                <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>No cash on hand — tap to manage</Text>
+                <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </>
+          )}
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={styles.grandTotalRow}>
+            <Text style={[styles.grandTotalMeta, { color: colors.mutedForeground }]}>
+              {tripReceipts.length} expense{tripReceipts.length !== 1 ? "s" : ""}
+            </Text>
+            <Text style={[styles.grandTotalMeta, { color: colors.mutedForeground }]}>·</Text>
+            <Text style={[styles.grandTotalMeta, { color: colors.mutedForeground }]}>
+              {totalNights} night{totalNights !== 1 ? "s" : ""}
+            </Text>
+            <Text style={[styles.grandTotalMeta, { color: colors.mutedForeground }]}>·</Text>
+            <Text style={[styles.grandTotalMeta, { color: colors.mutedForeground }]}>
+              {tripExchanges.length} exchange{tripExchanges.length !== 1 ? "s" : ""}
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 10 },
-  filterBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  summaryStrip: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
-    flexDirection: "row",
-  },
-  statCard: {
-    width: 130,
-    borderRadius: 16,
-    padding: 14,
-    gap: 6,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statCardIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 2,
-  },
-  statCardLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  statCardValue: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.2,
-  },
-  statCardSub: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
-  tripCard: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 16,
-    borderWidth: 1,
+  content: {
     padding: 16,
-    gap: 8,
+    gap: 10,
+  },
+  tripHeader: {
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 8,
     elevation: 2,
   },
-  tripCardHeader: {
+  tripRouteRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
-  tripCardIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tripCardTitle: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  tripRoute: {
-    flexDirection: "row",
-    alignItems: "center",
+  tripLocation: {
+    flex: 1,
+    gap: 2,
   },
   tripCity: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.3,
   },
-  tripDates: {
-    fontSize: 12,
+  tripCountry: {
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
-  tripSummaryBtn: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  tripArrowBox: {
+    width: 32,
+    height: 32,
     borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tripMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  metaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  metaPillText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  metaDash: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  noTripCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  noTripTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  noTripSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
-  tripSummaryBtnText: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
-  filterBar: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingTop: 10,
-    paddingBottom: 12,
-    gap: 8,
-  },
-  filterLabel: {
+  groupLabel: {
     fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    paddingHorizontal: 20,
-  },
-  filterChips: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  viewToggleBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  viewToggleBtn: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  viewToggleBtnText: {
-    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1,
+    paddingHorizontal: 4,
+    marginTop: 4,
   },
-  monthNav: {
+  sectionCard: {
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sectionCardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    gap: 10,
   },
-  navBtn: {
+  sectionIcon: {
     width: 34,
     height: 34,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  monthLabel: {
+  sectionTitle: {
     flex: 1,
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
-    letterSpacing: -0.2,
-    textAlign: "center",
+  },
+  countBadge: {
     paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
-  summary: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    gap: 10,
-    flexWrap: "wrap",
-  },
-  summaryLabel: {
+  countText: {
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginLeft: "auto",
+    fontFamily: "Inter_500Medium",
   },
-  list: {
-    padding: 16,
-    gap: 10,
-    flexGrow: 1,
+  currencyList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
   },
-  card: {
+  currencyBadge: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  currencyCode: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
+  currencyAmt: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  currencyTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  currencyTagText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  exchangeBlock: {
+    gap: 4,
+  },
+  exchangeDir: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  grandTotalCard: {
     borderRadius: 16,
     padding: 14,
-    gap: 12,
+    gap: 10,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 8,
     elevation: 2,
   },
-  thumb: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+  grandTotalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
-  thumbPlaceholder: {
+  grandTotalTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    flex: 1,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+  },
+  cashRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  cashIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  cardContent: {
+  cashLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
     flex: 1,
+  },
+  cashAmounts: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 4,
+    marginTop: 2,
   },
-  cardRow: {
+  cashAmount: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  grandTotalRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
+    gap: 6,
+    flexWrap: "wrap",
   },
-  cardType: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
-  },
-  cardDate: {
+  grandTotalMeta: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
-  cardNote: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  selfDeclBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  selfDeclText: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-  },
-  noPhotoBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  noPhotoText: {
-    fontSize: 10,
+  emptyText: {
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
 });
