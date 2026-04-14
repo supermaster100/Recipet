@@ -3,10 +3,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const RATES_KEY = "@exchange_rates_v1";
 const TS_KEY = "@exchange_rates_ts_v1";
 const BASE = "EUR";
-const API_URL = `https://open.er-api.com/v6/latest/${BASE}`;
 const TTL_MS = 24 * 60 * 60 * 1000;
 
 export type ExchangeRates = Record<string, number>;
+
+function buildApiUrl(): string | null {
+  const key = process.env.EXCHANGE_RATE_API_KEY;
+  if (!key) return null;
+  return `https://v6.exchangerate-api.com/v6/${key}/latest/${BASE}`;
+}
 
 export async function loadCachedRates(): Promise<ExchangeRates | null> {
   try {
@@ -35,12 +40,23 @@ export async function isRatesStale(): Promise<boolean> {
 }
 
 export async function fetchAndCacheRates(): Promise<ExchangeRates | null> {
+  const apiUrl = buildApiUrl();
+  if (!apiUrl) {
+    console.warn(
+      "[exchangeRates] EXCHANGE_RATE_API_KEY is not set. Falling back to cached rates."
+    );
+    return null;
+  }
+
   try {
-    const res = await fetch(API_URL, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
-    const json = (await res.json()) as { result?: string; rates?: ExchangeRates };
-    if (json.result !== "success" || !json.rates) return null;
-    const rates = json.rates;
+    const json = (await res.json()) as {
+      result?: string;
+      conversion_rates?: ExchangeRates;
+    };
+    if (json.result !== "success" || !json.conversion_rates) return null;
+    const rates = json.conversion_rates;
     await AsyncStorage.setItem(RATES_KEY, JSON.stringify(rates));
     await AsyncStorage.setItem(TS_KEY, String(Date.now()));
     return rates;
