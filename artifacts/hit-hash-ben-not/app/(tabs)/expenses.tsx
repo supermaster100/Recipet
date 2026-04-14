@@ -248,6 +248,11 @@ export default function OverviewScreen() {
     return result;
   }, [cashWalletEntries]);
 
+  const cashFromHomeCount = useMemo(
+    () => cashWalletEntries.filter((e) => e.entryType === "initial").length,
+    [cashWalletEntries]
+  );
+
   const grandTotal = useMemo(() => {
     const all = [
       ...tripReceipts.map((r) => ({ amount: r.amount, currency: r.currency })),
@@ -339,6 +344,25 @@ export default function OverviewScreen() {
             </View>
           </View>
         )}
+
+        <TouchableOpacity
+          onPress={() => router.push("/cash-wallet")}
+          style={[styles.cashFromHomeCard, { backgroundColor: colors.success + "12", borderColor: colors.success + "40" }]}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.cashFromHomeIcon, { backgroundColor: colors.success + "22" }]}>
+            <Feather name="home" size={20} color={colors.success} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cashFromHomeTitle, { color: colors.foreground }]}>Cash from Home</Text>
+            <Text style={[styles.cashFromHomeSub, { color: colors.mutedForeground }]}>
+              {cashFromHomeCount > 0
+                ? `${cashFromHomeCount} entr${cashFromHomeCount !== 1 ? "ies" : "y"} logged — tap to add more`
+                : "Log starting cash in any currency"}
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={colors.success} />
+        </TouchableOpacity>
 
         <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>CATEGORIES</Text>
 
@@ -586,6 +610,30 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     paddingHorizontal: 4,
     marginTop: 4,
+  },
+  cashFromHomeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+  },
+  cashFromHomeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cashFromHomeTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  cashFromHomeSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
   },
   sectionCard: {
     borderRadius: 16,

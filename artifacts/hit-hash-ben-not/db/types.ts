@@ -100,7 +100,9 @@ export type CashWalletEntryType =
   | "atm_withdrawal"
   | "money_transfer_in"
   | "client_transfer_out"
-  | "manual_adjustment";
+  | "manual_adjustment"
+  | "exchange_in"
+  | "exchange_out";
 
 export interface CashWalletEntry {
   id: number;

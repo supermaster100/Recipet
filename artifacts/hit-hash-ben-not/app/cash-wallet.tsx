@@ -29,15 +29,19 @@ type EntryTypeLabel = {
   money_transfer_in: string;
   client_transfer_out: string;
   manual_adjustment: string;
+  exchange_in: string;
+  exchange_out: string;
 };
 
 const ENTRY_TYPE_LABELS: EntryTypeLabel = {
-  initial: "Initial Cash",
+  initial: "Cash from Home",
   expense_cash: "Cash Expense",
   atm_withdrawal: "ATM Withdrawal",
   money_transfer_in: "Money Received",
   client_transfer_out: "Client Transfer Out",
   manual_adjustment: "Manual Adjustment",
+  exchange_in: "Exchange Received",
+  exchange_out: "Exchange Spent",
 };
 
 function formatAmount(amount: number, currency: string): string {
@@ -45,37 +49,33 @@ function formatAmount(amount: number, currency: string): string {
   return `${sign}${amount.toFixed(2)} ${currency}`;
 }
 
+interface PendingCashEntry {
+  currency: Currency;
+  amount: number;
+  note: string;
+}
+
 interface AddInitialCashModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (currency: Currency, amount: number, note: string) => Promise<void>;
+  onSaveAll: (entries: PendingCashEntry[]) => Promise<void>;
 }
 
-function AddInitialCashModal({ visible, onClose, onSave }: AddInitialCashModalProps) {
+function CurrencyPickerModal({
+  visible,
+  current,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  current: Currency;
+  onSelect: (c: Currency) => void;
+  onClose: () => void;
+}) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [currency, setCurrency] = useState<Currency>("ILS");
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [currencySearch, setCurrencySearch] = useState("");
   const { favourites, isFavourite } = useFavouriteCurrencies();
-
-  const isValid = amount.trim().length > 0 && Number(amount) > 0;
-
-  async function handleSave() {
-    if (!isValid) return;
-    setSaving(true);
-    try {
-      await onSave(currency, parseFloat(Number(amount).toFixed(2)), note.trim() || `Initial cash (${currency})`);
-      setAmount("");
-      setNote("");
-      onClose();
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="formSheet" onRequestClose={onClose}>
@@ -87,132 +87,288 @@ function AddInitialCashModal({ visible, onClose, onSave }: AddInitialCashModalPr
           <TouchableOpacity onPress={onClose} hitSlop={8}>
             <Text style={[addStyles.cancel, { color: colors.mutedForeground }]}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={[addStyles.title, { color: colors.foreground }]}>Log Initial Cash</Text>
-          <TouchableOpacity onPress={handleSave} disabled={!isValid || saving} hitSlop={8}>
-            <Text style={[addStyles.save, { color: isValid && !saving ? colors.primary : colors.mutedForeground }]}>
-              {saving ? "Saving…" : "Save"}
+          <Text style={[addStyles.title, { color: colors.foreground }]}>Select Currency</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <View style={[addStyles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <Feather name="search" size={15} color={colors.mutedForeground} />
+          <TextInput
+            style={[addStyles.searchInput, { color: colors.foreground }]}
+            value={currencySearch}
+            onChangeText={setCurrencySearch}
+            placeholder="Search currencies…"
+            placeholderTextColor={colors.mutedForeground}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {currencySearch.length > 0 && (
+            <TouchableOpacity onPress={() => setCurrencySearch("")} hitSlop={8}>
+              <Feather name="x" size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
+          {(() => {
+            const q = currencySearch.trim().toLowerCase();
+            const filtered = sortWithFavourites([...EXCHANGE_CURRENCIES], favourites).filter((c) => {
+              if (!q) return true;
+              if (c.toLowerCase().includes(q)) return true;
+              return (CURRENCY_NAMES[c] ?? "").toLowerCase().includes(q);
+            });
+            const favItems = filtered.filter((c) => isFavourite(c));
+            const restItems = filtered.filter((c) => !isFavourite(c));
+            return (
+              <>
+                {favItems.length > 0 && (
+                  <Text style={[addStyles.sectionLabel, { color: colors.mutedForeground }]}>FAVOURITES</Text>
+                )}
+                {favItems.map((c) => (
+                  <TouchableOpacity
+                    key={`fav-${c}`}
+                    onPress={() => { onSelect(c as Currency); setCurrencySearch(""); }}
+                    style={[addStyles.currencyOption, { borderBottomColor: colors.border, backgroundColor: c === current ? colors.primary + "18" : "transparent" }]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[addStyles.currencyOptionText, { color: c === current ? colors.primary : colors.foreground }]}>{c}</Text>
+                      <Text style={[addStyles.currencyOptionSub, { color: colors.mutedForeground }]}>{CURRENCY_NAMES[c] ?? ""}</Text>
+                    </View>
+                    {c === current && <Feather name="check" size={18} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
+                {favItems.length > 0 && restItems.length > 0 && (
+                  <Text style={[addStyles.sectionLabel, { color: colors.mutedForeground }]}>ALL CURRENCIES</Text>
+                )}
+                {restItems.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => { onSelect(c as Currency); setCurrencySearch(""); }}
+                    style={[addStyles.currencyOption, { borderBottomColor: colors.border, backgroundColor: c === current ? colors.primary + "18" : "transparent" }]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[addStyles.currencyOptionText, { color: c === current ? colors.primary : colors.foreground }]}>{c}</Text>
+                      <Text style={[addStyles.currencyOptionSub, { color: colors.mutedForeground }]}>{CURRENCY_NAMES[c] ?? ""}</Text>
+                    </View>
+                    {c === current && <Feather name="check" size={18} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
+                {filtered.length === 0 && (
+                  <Text style={[addStyles.emptyText, { color: colors.mutedForeground }]}>No currencies match your search.</Text>
+                )}
+              </>
+            );
+          })()}
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+function AddInitialCashModal({ visible, onClose, onSaveAll }: AddInitialCashModalProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [currency, setCurrency] = useState<Currency>("ILS");
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [showInlinePicker, setShowInlinePicker] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState("");
+  const [pendingEntries, setPendingEntries] = useState<PendingCashEntry[]>([]);
+  const { favourites, isFavourite } = useFavouriteCurrencies();
+
+  const isEntryValid = amount.trim().length > 0 && Number(amount) > 0;
+  const canSaveAll = pendingEntries.length > 0;
+
+  function handleAddEntry() {
+    if (!isEntryValid) return;
+    const newEntry: PendingCashEntry = {
+      currency,
+      amount: parseFloat(Number(amount).toFixed(2)),
+      note: note.trim() || `Cash from Home (${currency})`,
+    };
+    setPendingEntries((prev) => [...prev, newEntry]);
+    setAmount("");
+    setNote("");
+    setShowInlinePicker(false);
+  }
+
+  function handleRemoveEntry(idx: number) {
+    setPendingEntries((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  async function handleSaveAll() {
+    const toSave = [...pendingEntries];
+    if (isEntryValid) {
+      toSave.push({
+        currency,
+        amount: parseFloat(Number(amount).toFixed(2)),
+        note: note.trim() || `Cash from Home (${currency})`,
+      });
+    }
+    if (toSave.length === 0) return;
+    setSaving(true);
+    try {
+      await onSaveAll(toSave);
+      setPendingEntries([]);
+      setAmount("");
+      setNote("");
+      setCurrencySearch("");
+      setShowInlinePicker(false);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleClose() {
+    setPendingEntries([]);
+    setAmount("");
+    setNote("");
+    setCurrencySearch("");
+    setShowInlinePicker(false);
+    onClose();
+  }
+
+  const filteredCurrencies = (() => {
+    const q = currencySearch.trim().toLowerCase();
+    return sortWithFavourites([...EXCHANGE_CURRENCIES], favourites).filter((c) => {
+      if (!q) return true;
+      if (c.toLowerCase().includes(q)) return true;
+      return (CURRENCY_NAMES[c] ?? "").toLowerCase().includes(q);
+    });
+  })();
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="formSheet" onRequestClose={handleClose}>
+      <View style={[addStyles.container, { backgroundColor: colors.background }]}>
+        <View style={addStyles.handle}>
+          <View style={[addStyles.handleBar, { backgroundColor: colors.border }]} />
+        </View>
+        <View style={[addStyles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={handleClose} hitSlop={8}>
+            <Text style={[addStyles.cancel, { color: colors.mutedForeground }]}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={[addStyles.title, { color: colors.foreground }]}>Cash from Home</Text>
+          <TouchableOpacity
+            onPress={handleSaveAll}
+            disabled={(!canSaveAll && !isEntryValid) || saving}
+            hitSlop={8}
+          >
+            <Text style={[addStyles.save, { color: (canSaveAll || isEntryValid) && !saving ? colors.primary : colors.mutedForeground }]}>
+              {saving ? "Saving…" : "Save All"}
             </Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={[addStyles.form, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={addStyles.field}>
-            <Text style={[addStyles.label, { color: colors.mutedForeground }]}>CURRENCY</Text>
-            <TouchableOpacity
-              onPress={() => setShowCurrencyPicker(true)}
-              style={[addStyles.picker, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <Text style={[addStyles.pickerText, { color: colors.foreground }]}>{currency}</Text>
-              <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={addStyles.field}>
-            <Text style={[addStyles.label, { color: colors.mutedForeground }]}>AMOUNT *</Text>
-            <TextInput
-              style={[addStyles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
-              value={amount}
-              onChangeText={setAmount}
-              placeholder="0.00"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="decimal-pad"
-            />
-          </View>
-
-          <View style={addStyles.field}>
-            <Text style={[addStyles.label, { color: colors.mutedForeground }]}>NOTE (optional)</Text>
-            <TextInput
-              style={[addStyles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
-              value={note}
-              onChangeText={setNote}
-              placeholder="e.g. Cash from office advance"
-              placeholderTextColor={colors.mutedForeground}
-            />
-          </View>
-        </ScrollView>
-
-        <Modal visible={showCurrencyPicker} animationType="slide" presentationStyle="formSheet" onRequestClose={() => setShowCurrencyPicker(false)}>
-          <View style={[addStyles.container, { backgroundColor: colors.background }]}>
-            <View style={addStyles.handle}>
-              <View style={[addStyles.handleBar, { backgroundColor: colors.border }]} />
+        <ScrollView contentContainerStyle={[addStyles.form, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
+          {pendingEntries.length > 0 && (
+            <View style={[addStyles.pendingList, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[addStyles.pendingTitle, { color: colors.mutedForeground }]}>ENTRIES TO SAVE</Text>
+              {pendingEntries.map((entry, idx) => (
+                <View key={idx} style={[addStyles.pendingRow, { borderTopColor: colors.border }]}>
+                  <View style={[addStyles.pendingBadge, { backgroundColor: colors.primary + "18" }]}>
+                    <Text style={[addStyles.pendingCurrency, { color: colors.primary }]}>{entry.currency}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[addStyles.pendingAmount, { color: colors.foreground }]}>
+                      {entry.amount.toFixed(2)} {entry.currency}
+                    </Text>
+                    {entry.note ? (
+                      <Text style={[addStyles.pendingNote, { color: colors.mutedForeground }]} numberOfLines={1}>{entry.note}</Text>
+                    ) : null}
+                  </View>
+                  <TouchableOpacity onPress={() => handleRemoveEntry(idx)} hitSlop={8}>
+                    <Feather name="x" size={16} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
-            <View style={[addStyles.header, { borderBottomColor: colors.border }]}>
-              <TouchableOpacity onPress={() => setShowCurrencyPicker(false)} hitSlop={8}>
-                <Text style={[addStyles.cancel, { color: colors.mutedForeground }]}>Cancel</Text>
+          )}
+
+          <View style={[addStyles.entryForm, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[addStyles.entryFormTitle, { color: colors.foreground }]}>
+              {pendingEntries.length === 0 ? "Log your starting cash" : "Add another currency"}
+            </Text>
+
+            <View style={addStyles.field}>
+              <Text style={[addStyles.label, { color: colors.mutedForeground }]}>CURRENCY</Text>
+              <TouchableOpacity
+                onPress={() => { setShowInlinePicker((v) => !v); setCurrencySearch(""); }}
+                style={[addStyles.picker, { backgroundColor: colors.background, borderColor: showInlinePicker ? colors.primary : colors.border }]}
+              >
+                <Text style={[addStyles.pickerText, { color: colors.foreground }]}>{currency}</Text>
+                <Feather name={showInlinePicker ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
               </TouchableOpacity>
-              <Text style={[addStyles.title, { color: colors.foreground }]}>Currency</Text>
-              <View style={{ width: 60 }} />
-            </View>
-            <View style={[addStyles.searchBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Feather name="search" size={15} color={colors.mutedForeground} />
-              <TextInput
-                style={[addStyles.searchInput, { color: colors.foreground }]}
-                value={currencySearch}
-                onChangeText={setCurrencySearch}
-                placeholder="Search currencies…"
-                placeholderTextColor={colors.mutedForeground}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {currencySearch.length > 0 && (
-                <TouchableOpacity onPress={() => setCurrencySearch("")} hitSlop={8}>
-                  <Feather name="x" size={15} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              )}
-            </View>
-            <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
-              {(() => {
-                const q = currencySearch.trim().toLowerCase();
-                const filtered = sortWithFavourites([...EXCHANGE_CURRENCIES], favourites).filter((c) => {
-                  if (!q) return true;
-                  if (c.toLowerCase().includes(q)) return true;
-                  return (CURRENCY_NAMES[c] ?? "").toLowerCase().includes(q);
-                });
-                const favItems = filtered.filter((c) => isFavourite(c));
-                const restItems = filtered.filter((c) => !isFavourite(c));
-                return (
-                  <>
-                    {favItems.length > 0 && (
-                      <Text style={[addStyles.sectionLabel, { color: colors.mutedForeground }]}>FAVOURITES</Text>
-                    )}
-                    {favItems.map((c) => (
-                      <TouchableOpacity
-                        key={`fav-${c}`}
-                        onPress={() => { setCurrency(c as Currency); setCurrencySearch(""); setShowCurrencyPicker(false); }}
-                        style={[addStyles.currencyOption, { borderBottomColor: colors.border, backgroundColor: c === currency ? colors.primary + "18" : "transparent" }]}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[addStyles.currencyOptionText, { color: c === currency ? colors.primary : colors.foreground }]}>{c}</Text>
-                          <Text style={[addStyles.currencyOptionSub, { color: colors.mutedForeground }]}>{CURRENCY_NAMES[c] ?? ""}</Text>
-                        </View>
-                        {c === currency && <Feather name="check" size={18} color={colors.primary} />}
+              {showInlinePicker && (
+                <View style={[addStyles.inlinePicker, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <View style={[addStyles.searchBox, { backgroundColor: colors.card, borderColor: colors.border, marginHorizontal: 0, marginVertical: 8 }]}>
+                    <Feather name="search" size={14} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[addStyles.searchInput, { color: colors.foreground }]}
+                      value={currencySearch}
+                      onChangeText={setCurrencySearch}
+                      placeholder="Search…"
+                      placeholderTextColor={colors.mutedForeground}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    {currencySearch.length > 0 && (
+                      <TouchableOpacity onPress={() => setCurrencySearch("")} hitSlop={8}>
+                        <Feather name="x" size={14} color={colors.mutedForeground} />
                       </TouchableOpacity>
-                    ))}
-                    {favItems.length > 0 && restItems.length > 0 && (
-                      <Text style={[addStyles.sectionLabel, { color: colors.mutedForeground }]}>ALL CURRENCIES</Text>
                     )}
-                    {restItems.map((c) => (
+                  </View>
+                  <ScrollView style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+                    {filteredCurrencies.map((c) => (
                       <TouchableOpacity
                         key={c}
-                        onPress={() => { setCurrency(c as Currency); setCurrencySearch(""); setShowCurrencyPicker(false); }}
-                        style={[addStyles.currencyOption, { borderBottomColor: colors.border, backgroundColor: c === currency ? colors.primary + "18" : "transparent" }]}
+                        onPress={() => { setCurrency(c as Currency); setShowInlinePicker(false); setCurrencySearch(""); }}
+                        style={[addStyles.inlinePickerOption, { borderBottomColor: colors.border, backgroundColor: c === currency ? colors.primary + "18" : "transparent" }]}
                       >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[addStyles.currencyOptionText, { color: c === currency ? colors.primary : colors.foreground }]}>{c}</Text>
-                          <Text style={[addStyles.currencyOptionSub, { color: colors.mutedForeground }]}>{CURRENCY_NAMES[c] ?? ""}</Text>
-                        </View>
-                        {c === currency && <Feather name="check" size={18} color={colors.primary} />}
+                        <Text style={[addStyles.currencyOptionText, { color: c === currency ? colors.primary : colors.foreground }]}>{c}</Text>
+                        <Text style={[addStyles.currencyOptionSub, { color: colors.mutedForeground }]}>{CURRENCY_NAMES[c] ?? ""}</Text>
+                        {c === currency && <Feather name="check" size={16} color={colors.primary} />}
                       </TouchableOpacity>
                     ))}
-                    {filtered.length === 0 && (
-                      <Text style={[addStyles.emptyText, { color: colors.mutedForeground }]}>No currencies match your search.</Text>
-                    )}
-                  </>
-                );
-              })()}
-            </ScrollView>
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            <View style={addStyles.field}>
+              <Text style={[addStyles.label, { color: colors.mutedForeground }]}>AMOUNT *</Text>
+              <TextInput
+                style={[addStyles.input, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="0.00"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            <View style={addStyles.field}>
+              <Text style={[addStyles.label, { color: colors.mutedForeground }]}>NOTE (optional)</Text>
+              <TextInput
+                style={[addStyles.input, { color: colors.foreground, backgroundColor: colors.background, borderColor: colors.border }]}
+                value={note}
+                onChangeText={setNote}
+                placeholder="e.g. Office advance"
+                placeholderTextColor={colors.mutedForeground}
+              />
+            </View>
+
+            <TouchableOpacity
+              onPress={handleAddEntry}
+              disabled={!isEntryValid}
+              style={[addStyles.addEntryBtn, { backgroundColor: isEntryValid ? colors.primary + "18" : colors.secondary, borderColor: isEntryValid ? colors.primary : colors.border }]}
+            >
+              <Feather name="plus" size={16} color={isEntryValid ? colors.primary : colors.mutedForeground} />
+              <Text style={[addStyles.addEntryBtnText, { color: isEntryValid ? colors.primary : colors.mutedForeground }]}>
+                Add Another Currency
+              </Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -434,16 +590,19 @@ export default function CashWalletScreen() {
 
   const currencies = Object.keys(balances).filter((c) => Math.abs(balances[c] ?? 0) > 0.001);
 
-  async function handleAddInitial(currency: Currency, amount: number, note: string) {
-    await CashWalletDB.insert({
-      currency,
-      amount,
-      entryType: "initial",
-      refId: null,
-      refTable: null,
-      note,
-      createdAt: new Date().toISOString(),
-    });
+  async function handleAddInitialAll(entries: PendingCashEntry[]) {
+    const now = new Date().toISOString();
+    for (const entry of entries) {
+      await CashWalletDB.insert({
+        currency: entry.currency,
+        amount: entry.amount,
+        entryType: "initial",
+        refId: null,
+        refTable: null,
+        note: entry.note,
+        createdAt: now,
+      });
+    }
     await refreshCashWallet();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
@@ -593,7 +752,7 @@ export default function CashWalletScreen() {
       <AddInitialCashModal
         visible={showInitialModal}
         onClose={() => setShowInitialModal(false)}
-        onSave={handleAddInitial}
+        onSaveAll={handleAddInitialAll}
       />
       <AddAdjustmentModal
         visible={showAdjustmentModal}
@@ -793,4 +952,68 @@ const addStyles = StyleSheet.create({
     paddingVertical: 12,
   },
   typeOptionText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  pendingList: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  pendingTitle: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.8,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  pendingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  pendingBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  pendingCurrency: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  pendingAmount: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  pendingNote: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  entryForm: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    gap: 14,
+  },
+  entryFormTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  addEntryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginTop: 2,
+  },
+  addEntryBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  inlinePicker: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    marginTop: 6,
+    overflow: "hidden",
+  },
+  inlinePickerOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
 });

@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DateField } from "@/components/ui/DateField";
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
-import { ExchangeDB } from "@/db/database";
+import { ExchangeDB, CashWalletDB } from "@/db/database";
 import { EXCHANGE_CURRENCIES } from "@/db/types";
 import { CURRENCY_NAMES } from "@/db/currencyNames";
 import { useFavouriteCurrencies, sortWithFavourites } from "@/hooks/useFavouriteCurrencies";
@@ -50,7 +50,7 @@ function today(): string {
 export default function AddExchangeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refreshExchanges, exchangeRates } = useAppContext();
+  const { refreshExchanges, refreshCashWallet, exchangeRates } = useAppContext();
   const params = useLocalSearchParams<{ photo?: string }>();
   const { favourites, isFavourite } = useFavouriteCurrencies();
 
@@ -147,7 +147,7 @@ export default function AddExchangeScreen() {
           finalPhotoPath = organized;
         }
       }
-      await ExchangeDB.insert({
+      const exchangeId = await ExchangeDB.insert({
         date,
         amountSpent: Number(amountSpent),
         spentCurrency,
@@ -160,8 +160,28 @@ export default function AddExchangeScreen() {
         export: false,
         deleted_at: null,
       });
+      const now = new Date().toISOString();
+      await CashWalletDB.insert({
+        currency: spentCurrency,
+        amount: -Number(amountSpent),
+        entryType: "exchange_out",
+        refId: exchangeId,
+        refTable: "Exchanges",
+        note: `Exchange: sold ${amountSpent} ${spentCurrency}`,
+        createdAt: now,
+      });
+      await CashWalletDB.insert({
+        currency: receivedCurrency,
+        amount: Number(amountReceived),
+        entryType: "exchange_in",
+        refId: exchangeId,
+        refTable: "Exchanges",
+        note: `Exchange: received ${amountReceived} ${receivedCurrency}`,
+        createdAt: now,
+      });
       await clearDraft(DRAFT_KEY);
       await refreshExchanges();
+      await refreshCashWallet();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSaved(true);
     } catch (e) {
