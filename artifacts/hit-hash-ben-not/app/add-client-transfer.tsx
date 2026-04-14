@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DateField } from "@/components/ui/DateField";
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
 import { CashWalletDB, ClientTransferDB } from "@/db/database";
@@ -231,22 +232,12 @@ export default function AddClientTransferScreen() {
           />
         </View>
 
-        <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            DATE <Text style={{ color: colors.destructive }}>*</Text>
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-            value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.mutedForeground}
-            autoCapitalize="none"
-          />
-        </View>
+        <DateField
+          label="Date"
+          value={date}
+          onChange={setDate}
+          required
+        />
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>

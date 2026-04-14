@@ -64,6 +64,12 @@
           "savePhotosPermission": "Allow Hit-hash-Ben-not to save receipt photos.",
           "granularPermissions": ["photo"]
         }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow Hit-hash-Ben-not to read your calendar to suggest event dates when filling in forms."
+        }
       ]
     ],
     "experiments": {

@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DateField } from "@/components/ui/DateField";
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
 import { ExchangeDB } from "@/db/database";
@@ -249,16 +250,18 @@ export default function AddExchangeScreen() {
         contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>DATE *</Text>
-          <TextInput
-            style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
-            value={date}
-            onChangeText={(v) => { setDate(v); markDirty(); }}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.mutedForeground}
-          />
-        </View>
+        <DateField
+          label="Date"
+          value={date}
+          onChange={(v) => { setDate(v); markDirty(); }}
+          onEventSelect={(ev) => {
+            if (!note.trim() && (ev.location || ev.title)) {
+              setNote(ev.location?.trim() || ev.title);
+              markDirty();
+            }
+          }}
+          required
+        />
 
         <View style={styles.amountRow}>
           <View style={styles.amountField}>

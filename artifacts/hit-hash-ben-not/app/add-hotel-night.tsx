@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DateField } from "@/components/ui/DateField";
 import { ImageField, ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
 import { TravelDB } from "@/db/database";
@@ -38,6 +39,7 @@ export default function AddHotelNightScreen() {
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const imageRef = useRef<ImageFieldHandle>(null);
 
+  const [checkInDate, setCheckInDate] = useState(today());
   const [nights, setNights] = useState("1");
   const [arbitraryLocation, setArbitraryLocation] = useState(false);
   const [ratePerNight, setRatePerNight] = useState("");
@@ -70,12 +72,12 @@ export default function AddHotelNightScreen() {
         lId: Number(legId),
         num: 1,
         departure: "",
-        departureDate: today(),
+        departureDate: checkInDate || today(),
         departureHour: "",
         departureCountry: "",
         departureCity: "",
         arrival: "",
-        returnDate: today(),
+        returnDate: checkInDate || today(),
         arrivalHour: "",
         arrivalCountry: "",
         arrivalCity: "",
@@ -161,6 +163,18 @@ export default function AddHotelNightScreen() {
         contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
       >
+        <DateField
+          label="Check-In Date"
+          value={checkInDate}
+          onChange={setCheckInDate}
+          onEventSelect={(ev) => {
+            if (!note.trim() && (ev.location || ev.title)) {
+              setNote(ev.location?.trim() || ev.title);
+            }
+          }}
+          required
+        />
+
         <FormField label="Nights *">
           <TextInput
             style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}

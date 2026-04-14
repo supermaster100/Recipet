@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DateField } from "@/components/ui/DateField";
 import { useAppContext } from "@/context/AppContext";
 import { CashWalletDB, ReceiptDB } from "@/db/database";
 import { CURRENCIES, RECEIPT_TYPES, migrateReceiptType, formatCostCenter, type Currency, type PaymentMethod, type ReceiptType } from "@/db/types";
@@ -757,28 +758,23 @@ export default function AddExpenseScreen() {
 
         <View style={styles.field}>
           <View style={styles.labelRow}>
-            <FieldLabel text="Date" required />
             {autoFilledFields.has("date") && (
               <AutoFilledBadge colors={colors} />
             )}
           </View>
-          <TextInput
+          <DateField
+            label="Date"
             value={date}
-            onChangeText={(v) => { setDate(v); markDirty(); if (errors.date) setErrors((e) => ({ ...e, date: undefined })); autoFilledFields.delete("date"); }}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.mutedForeground}
-            autoCapitalize="none"
-            style={[
-              formStyles.input,
-              {
-                flex: 1,
-                color: colors.foreground,
-                backgroundColor: autoFilledFields.has("date") ? colors.primary + "10" : colors.card,
-                borderColor: errors.date ? colors.destructive : autoFilledFields.has("date") ? colors.primary + "60" : colors.border,
-              },
-            ]}
+            onChange={(v) => { setDate(v); markDirty(); if (errors.date) setErrors((e) => ({ ...e, date: undefined })); autoFilledFields.delete("date"); }}
+            onEventSelect={(ev) => {
+              if (!note.trim() && (ev.location || ev.title)) {
+                setNote(ev.location?.trim() || ev.title);
+                markDirty();
+              }
+            }}
+            required
+            error={errors.date}
           />
-          <FieldError msg={errors.date} />
         </View>
 
         <View style={styles.field}>

@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DateField } from "@/components/ui/DateField";
 import { ImageField, type ImageFieldHandle } from "@/components/ui/ImageField";
 import { useAppContext } from "@/context/AppContext";
 import { ATMDB, CashWalletDB } from "@/db/database";
@@ -146,16 +147,12 @@ export default function AddATMScreen() {
         contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.field}>
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>DATE *</Text>
-          <TextInput
-            style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
-            value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.mutedForeground}
-          />
-        </View>
+        <DateField
+          label="Date"
+          value={date}
+          onChange={setDate}
+          required
+        />
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>LAST 4 DIGITS OF CARD *</Text>
