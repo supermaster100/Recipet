@@ -1,0 +1,52 @@
+Test Script for Developer – Full Trip Scenario (Expo Preview Version)
+Tester Profile / Trip Overview
+•  Traveler starts with 5000 USD cash from home.
+•  Trip duration: 1 week
+	•  Vienna (Austria): Monday to Wednesday (3 nights)
+	•  Zurich (Switzerland): Monday to Friday (5 nights)
+•  Goal: Test all 6 money movement categories, currency handling, cash tracking, grand total calculation, and Overview screen behavior. (Photo/receipt and export features will be tested in a later phase.)
+Step-by-Step Test Flow
+1.  Start New Trip
+	•  Create a new trip in the app.
+	•  Set trip dates covering Monday–Wednesday in Vienna and Monday–Friday in Zurich.
+	•  Add initial cash: Bring from home → 5000 USD.
+2.  Vienna Portion (Monday – Wednesday)
+	•  Add Currency Exchange: Exchange 3000 USD to Euro (use realistic rate, e.g., ~2550 EUR). → Verify the app adds the received EUR to cash holdings and deducts the spent USD.
+	•  Add at least 5 general expenses (taxi, hosting/hotel, meals, transport, etc.). Use categories such as “Trip” or “General expense”.
+3.  Teammate Transfers
+	•  Give money: Perform a Teammate Transfer – Give 900 Swiss Francs (CHF) to Teammate A. Fill both sections clearly:
+		•  Giver: Your name + worker number
+		•  Receiver: Teammate A’s name + worker number
+	•  Receive money: Perform a Teammate Transfer – Receive 500 Euros (EUR) from Teammate B. Fill both sections clearly:
+		•  Giver: Teammate B’s name + worker number
+		•  Receiver: Your name + worker number
+4.  Zurich Portion (Monday – Friday)
+	•  Add Currency Exchange: Exchange remaining Euros to Swiss Francs (e.g., exchange 2000 EUR to approx. 1840 CHF using realistic rate). → Verify the app adds the received CHF and deducts the spent EUR.
+	•  Add ATM Withdrawal: Withdraw 1000 CHF.
+	•  Add at least 5 more general expenses (taxi, hosting/hotel, meals, etc.) so the trip has a total of at least 10 general expenses.
+5.  Check Overview Screen
+	•  Go to the main Overview screen. (Note: This screen should now be identical to the previous “View Trip Overview” / Trip Summary view, with no separate Trip Summary menu.)
+	•  Verify the following:
+		•  All 6 money movement categories are displayed with clear headlines, icons, and subtotals:
+			•  Teammate transfer
+			•  Client transfer (can be 0 for this test)
+			•  Currency exchange
+			•  Trip / General expense
+			•  ATM withdrawal
+		•  Grand total correctly includes all inflows and outflows:
+			•  Cash brought from home (5000 USD)
+			•  Currency exchanges (USD → EUR and EUR → CHF)
+			•  Teammate transfers (both giving 900 CHF and receiving 500 EUR)
+			•  ATM withdrawal (1000 CHF)
+			•  All general expenses (including any hotel/hosting paid by cash)
+		•  Cash holdings balance updates correctly after every exchange, transfer, ATM withdrawal, and expense.
+		•  Cash inflows (from home, teammate, exchange, ATM) increase the balance.
+		•  Cash outflows (expenses, transfer given) decrease the balance.
+	•  Tap each category headline → it should open the detailed list of items for that category.
+Key Points to Verify in This Preview
+•  All 6 money movement options work: Teammate transfer, Client transfer, Currency exchange, Trip/General expense, ATM withdrawal.
+•  Teammate transfer screen clearly separates Giver and Receiver, each with Name + Worker Number fields.
+•  Currency exchanges properly adjust cash holdings (add received currency/amount, deduct spent currency/amount).
+•  Grand total and cash balance reflect everything correctly (no missing teammate transfers, exchanges, ATM, or cash-paid hotel/general expenses).
+•  Overview screen shows the full detailed summary (no duplicate or missing menus).
+•  ATM Withdrawal appears as its own separate category (not hidden inside Currency Exchange).
