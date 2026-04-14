@@ -136,7 +136,6 @@ async function getFileSize(uri: string): Promise<number> {
 export async function runExport(
   data: ExportData,
   recipientEmail: string,
-  clearAfter: boolean,
   includePhotos: boolean,
   onProgress: (msg: string) => void,
 ): Promise<"sent" | "cancelled" | "error"> {
@@ -223,16 +222,17 @@ export async function runExport(
       await FileSystem.deleteAsync(entry.attachmentUri, { idempotent: true }).catch(() => {});
     }
 
-    const wasSent = result.status === MailComposer.MailComposerStatus.SENT;
+    const wasSuccessful =
+      result.status === MailComposer.MailComposerStatus.SENT ||
+      result.status === MailComposer.MailComposerStatus.SAVED;
 
-    if (wasSent) {
-      if (clearAfter) {
-        onProgress("Clearing trip data…");
-        await clearAllData(data);
-      }
+    if (wasSuccessful) {
+      onProgress("Clearing trip data…");
+      await clearAllData(data);
     }
 
     if (result.status === MailComposer.MailComposerStatus.SENT) return "sent";
+    if (result.status === MailComposer.MailComposerStatus.SAVED) return "sent";
     if (result.status === MailComposer.MailComposerStatus.CANCELLED) return "cancelled";
     return "error";
   } catch (err) {
@@ -243,6 +243,13 @@ export async function runExport(
 }
 
 async function clearAllData(snapshot: ExportData): Promise<void> {
+  // Preserved data (not touched here):
+  //   - General Data (stored in SQLite general table, not soft-deleted)
+  //   - Cost Center list (stored in AsyncStorage "hhbn_cost_centers")
+  //   - Currency Favourites (stored in AsyncStorage "@currency_favourites")
+  //   - Theme, recipient email, and other settings (AsyncStorage)
+  // This function only deletes trip-specific records and their associated photos.
+
   const photoUris: string[] = [
     ...snapshot.receipts.map((r) => r.photo).filter(Boolean),
     ...snapshot.travels.map((t) => t.photo).filter(Boolean),

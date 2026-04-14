@@ -73,7 +73,6 @@ export default function ExportTabScreen() {
 
   const [recipientEmail, setRecipientEmail] = useState("");
   const [exportAll, setExportAll] = useState(false);
-  const [clearAfter, setClearAfter] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
 
@@ -114,14 +113,16 @@ export default function ExportTabScreen() {
     setRunning(true);
     setProgress("Preparing…");
     try {
-      const result = await runExport(data, recipientEmail, clearAfter, true, setProgress);
+      const result = await runExport(data, recipientEmail, true, setProgress);
       if (result === "sent") {
-        if (clearAfter) await refreshAll();
-        Alert.alert("Export Complete", "Your expense report was sent successfully.");
+        await refreshAll();
         setExportAll(false);
-        setClearAfter(false);
+        Alert.alert(
+          "Export Complete",
+          "Your expense report was exported successfully.\n\nYour trip data has been cleared. General data, cost centers, and currency favourites have been preserved."
+        );
       } else if (result === "error") {
-        Alert.alert("Not Sent", "The email was not sent. No data was changed.");
+        Alert.alert("Not Exported", "The export did not complete. No data was changed.");
       }
     } finally {
       setRunning(false);
@@ -181,13 +182,12 @@ export default function ExportTabScreen() {
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <CheckRow
-            label="Clear all trip data after export"
-            subtitle="Receipts, hotels, exchanges, ATM & transfers are soft-deleted. General data and cost centers are kept."
-            checked={clearAfter}
-            onToggle={() => setClearAfter((v) => !v)}
-            disabled={!exportAll}
-          />
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+            <Feather name="trash-2" size={15} color={colors.mutedForeground} style={{ marginTop: 2 }} />
+            <Text style={[styles.clearNotice, { color: colors.mutedForeground }]}>
+              All trip data will be automatically cleared after a successful export. General data, cost centers, and currency favourites are preserved.
+            </Text>
+          </View>
         </View>
 
         {receipts.length === 0 && !running && (
@@ -209,7 +209,6 @@ export default function ExportTabScreen() {
             <TouchableOpacity
               onPress={() => {
                 setExportAll(false);
-                setClearAfter(false);
               }}
               style={[styles.cancelBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
               activeOpacity={0.8}
@@ -322,6 +321,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   yesBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  clearNotice: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+  },
   footerHint: {
     textAlign: "center",
     fontSize: 12,
