@@ -261,9 +261,13 @@ export default function OverviewScreen() {
         amount: t.ratePerNight * t.nights,
         currency: t.currencyPN,
       })),
+      ...tripExchanges.map((e) => ({ amount: e.amountSpent, currency: e.spentCurrency })),
+      ...tripExchanges.map((e) => ({ amount: e.amountReceived, currency: e.receivedCurrency })),
+      ...tripMoneyTransfers.map((m) => ({ amount: m.amount, currency: m.currency })),
+      ...tripClientTransfers.map((c) => ({ amount: c.amount, currency: c.currency })),
     ];
     return sumByCurrency(all);
-  }, [tripReceipts, tripAtmWithdrawals, tripTravels]);
+  }, [tripReceipts, tripAtmWithdrawals, tripTravels, tripExchanges, tripMoneyTransfers, tripClientTransfers]);
 
   const depCity = activeLeg
     ? resolveCityName(activeLeg.departureCountry ?? "", activeLeg.departureCity ?? "")
@@ -374,6 +378,7 @@ export default function OverviewScreen() {
           count={tripReceipts.length}
           countLabel="receipt(s)"
           totals={receiptTotals}
+          onPress={() => router.push("/(tabs)/export")}
         />
 
         <SectionCard
