@@ -6,9 +6,12 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as BackgroundFetch from "expo-background-fetch";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as TaskManager from "expo-task-manager";
 import React, { useEffect } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -16,6 +19,21 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/context/AppContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { SyncEngine } from "@/db/syncEngine";
+
+const BACKGROUND_SYNC_TASK = "BACKGROUND_SYNC";
+
+TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
+  const session: string | null = null; // TODO: read from expo-secure-store once auth is wired
+  if (!session) return BackgroundFetch.BackgroundFetchResult.NoData;
+  try {
+    const engine = new SyncEngine(session);
+    await engine.syncAll();
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch {
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
 
 SplashScreen.preventAutoHideAsync();
 
@@ -58,6 +76,17 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const session: string | null = null; // TODO: replace with real session check
+    if (!session) return;
+    BackgroundFetch.registerTaskAsync(BACKGROUND_SYNC_TASK, {
+      minimumInterval: 15 * 60,
+      stopOnTerminate: false,
+      startOnBoot: true,
+    }).catch(() => {});
+  }, []);
 
   if (!fontsLoaded && !fontError) return null;
 

@@ -1,4 +1,13 @@
 import * as SQLite from "expo-sqlite";
+
+function uuidv4(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 import type {
   ATMWithdrawal,
   CostCenter,
@@ -234,6 +243,20 @@ async function runSchemaMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
     await db.execAsync(`ALTER TABLE MoneyTransfers ADD COLUMN receiverWorkerNumber TEXT NOT NULL DEFAULT ''`).catch(() => {});
     await db.execAsync(`ALTER TABLE ClientTransfers ADD COLUMN deleted_at TEXT`).catch(() => {});
     await db.execAsync(`ALTER TABLE CostCenters ADD COLUMN number TEXT NOT NULL DEFAULT ''`).catch(() => {});
+    const SYNC_TABLES = [
+      "General", "Receipts", "Travels", "Legs", "Exchanges",
+      "ATMWithdrawals", "MoneyTransfers", "ClientTransfers",
+      "CashWalletLedger", "CostCenters",
+    ];
+    for (const table of SYNC_TABLES) {
+      await db.execAsync(`ALTER TABLE "${table}" ADD COLUMN local_id TEXT`).catch(() => {});
+      await db.execAsync(`ALTER TABLE "${table}" ADD COLUMN updated_at INTEGER`).catch(() => {});
+      await db.execAsync(`ALTER TABLE "${table}" ADD COLUMN synced_at INTEGER`).catch(() => {});
+      await db.execAsync(`ALTER TABLE "${table}" ADD COLUMN user_id TEXT`).catch(() => {});
+    }
+    for (const table of ["General", "CostCenters", "CashWalletLedger"]) {
+      await db.execAsync(`ALTER TABLE "${table}" ADD COLUMN deleted_at TEXT`).catch(() => {});
+    }
   });
 }
 
@@ -356,13 +379,13 @@ export const GeneralDB = {
       const existing = await GeneralDB.get();
       if (existing) {
         await db.runAsync(
-          "UPDATE General SET workerNumber=?, month=?, year=? WHERE id=?",
-          [data.workerNumber, data.month, data.year, existing.id]
+          "UPDATE General SET workerNumber=?, month=?, year=?, updated_at=? WHERE id=?",
+          [data.workerNumber, data.month, data.year, Date.now(), existing.id]
         );
       } else {
         await db.runAsync(
-          "INSERT INTO General (workerNumber, month, year) VALUES (?, ?, ?)",
-          [data.workerNumber, data.month, data.year]
+          "INSERT INTO General (workerNumber, month, year, local_id, updated_at) VALUES (?, ?, ?, ?, ?)",
+          [data.workerNumber, data.month, data.year, uuidv4(), Date.now()]
         );
       }
     });
@@ -389,11 +412,11 @@ export const ReceiptDB = {
     let lastId = 0;
     await db.withTransactionAsync(async () => {
       const res = await db.runAsync(
-        `INSERT INTO Receipts (type, amount, currency, date, numberOfPeople, costCenter, selfDeclaration, note, photo, photo_checksum, budget, status, export, deleted_at, paymentMethod)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+        `INSERT INTO Receipts (type, amount, currency, date, numberOfPeople, costCenter, selfDeclaration, note, photo, photo_checksum, budget, status, export, deleted_at, paymentMethod, local_id, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
         [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.costCenter,
          r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.photo_checksum ?? null,
-         r.budget ?? "", r.status, r.export ? 1 : 0, r.paymentMethod ?? "cash"]
+         r.budget ?? "", r.status, r.export ? 1 : 0, r.paymentMethod ?? "cash", uuidv4(), Date.now()]
       );
       lastId = res.lastInsertRowId;
     });
@@ -403,10 +426,10 @@ export const ReceiptDB = {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        `UPDATE Receipts SET type=?, amount=?, currency=?, date=?, numberOfPeople=?, costCenter=?, selfDeclaration=?, note=?, photo=?, photo_checksum=?, budget=?, status=?, export=?, paymentMethod=? WHERE id=?`,
+        `UPDATE Receipts SET type=?, amount=?, currency=?, date=?, numberOfPeople=?, costCenter=?, selfDeclaration=?, note=?, photo=?, photo_checksum=?, budget=?, status=?, export=?, paymentMethod=?, updated_at=? WHERE id=?`,
         [r.type, r.amount, r.currency, r.date, r.numberOfPeople, r.costCenter,
          r.selfDeclaration ? 1 : 0, r.note, r.photo ?? null, r.photo_checksum ?? null,
-         r.budget ?? "", r.status, r.export ? 1 : 0, r.paymentMethod ?? "cash", r.id]
+         r.budget ?? "", r.status, r.export ? 1 : 0, r.paymentMethod ?? "cash", Date.now(), r.id]
       );
     });
   },
@@ -414,15 +437,15 @@ export const ReceiptDB = {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        "UPDATE Receipts SET deleted_at=? WHERE id=?",
-        [new Date().toISOString(), id]
+        "UPDATE Receipts SET deleted_at=?, updated_at=? WHERE id=?",
+        [new Date().toISOString(), Date.now(), id]
       );
     });
   },
   async restore(id: number): Promise<void> {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
-      await db.runAsync("UPDATE Receipts SET deleted_at=NULL WHERE id=?", [id]);
+      await db.runAsync("UPDATE Receipts SET deleted_at=NULL, updated_at=? WHERE id=?", [Date.now(), id]);
     });
   },
   async hardDelete(id: number): Promise<void> {
@@ -473,10 +496,10 @@ export const ExchangeDB = {
     let lastId = 0;
     await db.withTransactionAsync(async () => {
       const res = await db.runAsync(
-        `INSERT INTO Exchanges (date, amountSpent, spentCurrency, amountReceived, receivedCurrency, note, photo, photo_checksum, status, export, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+        `INSERT INTO Exchanges (date, amountSpent, spentCurrency, amountReceived, receivedCurrency, note, photo, photo_checksum, status, export, deleted_at, local_id, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
         [e.date, e.amountSpent, e.spentCurrency, e.amountReceived, e.receivedCurrency,
-         e.note, e.photo ?? null, e.photo_checksum ?? null, e.status, e.export ? 1 : 0]
+         e.note, e.photo ?? null, e.photo_checksum ?? null, e.status, e.export ? 1 : 0, uuidv4(), Date.now()]
       );
       lastId = res.lastInsertRowId;
     });
@@ -486,22 +509,22 @@ export const ExchangeDB = {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        `UPDATE Exchanges SET date=?, amountSpent=?, spentCurrency=?, amountReceived=?, receivedCurrency=?, note=?, photo=?, photo_checksum=?, status=?, export=? WHERE id=?`,
+        `UPDATE Exchanges SET date=?, amountSpent=?, spentCurrency=?, amountReceived=?, receivedCurrency=?, note=?, photo=?, photo_checksum=?, status=?, export=?, updated_at=? WHERE id=?`,
         [e.date, e.amountSpent, e.spentCurrency, e.amountReceived, e.receivedCurrency,
-         e.note, e.photo ?? null, e.photo_checksum ?? null, e.status, e.export ? 1 : 0, e.id]
+         e.note, e.photo ?? null, e.photo_checksum ?? null, e.status, e.export ? 1 : 0, Date.now(), e.id]
       );
     });
   },
   async softDelete(id: number): Promise<void> {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
-      await db.runAsync("UPDATE Exchanges SET deleted_at=? WHERE id=?", [new Date().toISOString(), id]);
+      await db.runAsync("UPDATE Exchanges SET deleted_at=?, updated_at=? WHERE id=?", [new Date().toISOString(), Date.now(), id]);
     });
   },
   async restore(id: number): Promise<void> {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
-      await db.runAsync("UPDATE Exchanges SET deleted_at=NULL WHERE id=?", [id]);
+      await db.runAsync("UPDATE Exchanges SET deleted_at=NULL, updated_at=? WHERE id=?", [Date.now(), id]);
     });
   },
   async hardDelete(id: number): Promise<void> {
@@ -552,16 +575,16 @@ export const LegDB = {
     await db.withTransactionAsync(async () => {
       if (existing) {
         await db.runAsync(
-          `UPDATE Legs SET type=?, status=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrivalDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=? WHERE id=?`,
+          `UPDATE Legs SET type=?, status=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrivalDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=?, updated_at=? WHERE id=?`,
           [l.type, l.status, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
-           l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity, existing.id]
+           l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity, Date.now(), existing.id]
         );
         result = { ...l, id: existing.id };
       } else {
         const res = await db.runAsync(
-          `INSERT INTO Legs (type, status, departureDate, departureHour, departureCountry, departureCity, arrivalDate, arrivalHour, arrivalCountry, arrivalCity, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+          `INSERT INTO Legs (type, status, departureDate, departureHour, departureCountry, departureCity, arrivalDate, arrivalHour, arrivalCountry, arrivalCity, deleted_at, local_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
           [l.type, l.status, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
-           l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity]
+           l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity, uuidv4(), Date.now()]
         );
         result = { ...l, id: res.lastInsertRowId };
       }
@@ -573,9 +596,9 @@ export const LegDB = {
     let lastId = 0;
     await db.withTransactionAsync(async () => {
       const res = await db.runAsync(
-        `INSERT INTO Legs (type, status, departureDate, departureHour, departureCountry, departureCity, arrivalDate, arrivalHour, arrivalCountry, arrivalCity, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+        `INSERT INTO Legs (type, status, departureDate, departureHour, departureCountry, departureCity, arrivalDate, arrivalHour, arrivalCountry, arrivalCity, deleted_at, local_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
         [l.type, l.status, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
-         l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity]
+         l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity, uuidv4(), Date.now()]
       );
       lastId = res.lastInsertRowId;
     });
@@ -585,16 +608,16 @@ export const LegDB = {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        `UPDATE Legs SET type=?, status=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrivalDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=? WHERE id=?`,
+        `UPDATE Legs SET type=?, status=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrivalDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=?, updated_at=? WHERE id=?`,
         [l.type, l.status, l.departureDate, l.departureHour, l.departureCountry, l.departureCity,
-         l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity, l.id]
+         l.arrivalDate, l.arrivalHour, l.arrivalCountry, l.arrivalCity, Date.now(), l.id]
       );
     });
   },
   async softDelete(id: number): Promise<void> {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
-      await db.runAsync("UPDATE Legs SET deleted_at=? WHERE id=?", [new Date().toISOString(), id]);
+      await db.runAsync("UPDATE Legs SET deleted_at=?, updated_at=? WHERE id=?", [new Date().toISOString(), Date.now(), id]);
     });
   },
   async delete(id: number): Promise<void> {
@@ -629,12 +652,12 @@ export const TravelDB = {
     let lastId = 0;
     await db.withTransactionAsync(async () => {
       const res = await db.runAsync(
-        `INSERT INTO Travels (lId, num, departure, departureDate, departureHour, departureCountry, departureCity, arrival, returnDate, arrivalHour, arrivalCountry, arrivalCity, budget, placeOfStaying, nights, arbitraryLocation, ratePerNight, currencyPN, breakfast, paymentMethod, hotelExtraFees, currencyHEF, description, photo, photo_checksum, export, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+        `INSERT INTO Travels (lId, num, departure, departureDate, departureHour, departureCountry, departureCity, arrival, returnDate, arrivalHour, arrivalCountry, arrivalCity, budget, placeOfStaying, nights, arbitraryLocation, ratePerNight, currencyPN, breakfast, paymentMethod, hotelExtraFees, currencyHEF, description, photo, photo_checksum, export, deleted_at, local_id, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
         [t.lId, t.num, t.departure, t.departureDate, t.departureHour, t.departureCountry, t.departureCity,
          t.arrival, t.returnDate, t.arrivalHour, t.arrivalCountry, t.arrivalCity, t.budget, t.placeOfStaying,
          t.nights, t.arbitraryLocation, t.ratePerNight, t.currencyPN, t.breakfast ? 1 : 0, t.paymentMethod,
-         t.hotelExtraFees, t.currencyHEF, t.description, t.photo ?? null, t.photo_checksum ?? null, t.export ? 1 : 0]
+         t.hotelExtraFees, t.currencyHEF, t.description, t.photo ?? null, t.photo_checksum ?? null, t.export ? 1 : 0, uuidv4(), Date.now()]
       );
       lastId = res.lastInsertRowId;
     });
@@ -644,18 +667,18 @@ export const TravelDB = {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        `UPDATE Travels SET lId=?, num=?, departure=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrival=?, returnDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=?, budget=?, placeOfStaying=?, nights=?, arbitraryLocation=?, ratePerNight=?, currencyPN=?, breakfast=?, paymentMethod=?, hotelExtraFees=?, currencyHEF=?, description=?, photo=?, photo_checksum=?, export=? WHERE id=?`,
+        `UPDATE Travels SET lId=?, num=?, departure=?, departureDate=?, departureHour=?, departureCountry=?, departureCity=?, arrival=?, returnDate=?, arrivalHour=?, arrivalCountry=?, arrivalCity=?, budget=?, placeOfStaying=?, nights=?, arbitraryLocation=?, ratePerNight=?, currencyPN=?, breakfast=?, paymentMethod=?, hotelExtraFees=?, currencyHEF=?, description=?, photo=?, photo_checksum=?, export=?, updated_at=? WHERE id=?`,
         [t.lId, t.num, t.departure, t.departureDate, t.departureHour, t.departureCountry, t.departureCity,
          t.arrival, t.returnDate, t.arrivalHour, t.arrivalCountry, t.arrivalCity, t.budget, t.placeOfStaying,
          t.nights, t.arbitraryLocation, t.ratePerNight, t.currencyPN, t.breakfast ? 1 : 0, t.paymentMethod,
-         t.hotelExtraFees, t.currencyHEF, t.description, t.photo ?? null, t.photo_checksum ?? null, t.export ? 1 : 0, t.id]
+         t.hotelExtraFees, t.currencyHEF, t.description, t.photo ?? null, t.photo_checksum ?? null, t.export ? 1 : 0, Date.now(), t.id]
       );
     });
   },
   async softDelete(id: number): Promise<void> {
     const db = await getDatabase();
     await db.withTransactionAsync(async () => {
-      await db.runAsync("UPDATE Travels SET deleted_at=? WHERE id=?", [new Date().toISOString(), id]);
+      await db.runAsync("UPDATE Travels SET deleted_at=?, updated_at=? WHERE id=?", [new Date().toISOString(), Date.now(), id]);
     });
   },
   async delete(id: number): Promise<void> {
@@ -674,8 +697,8 @@ export const CostCenterDB = {
     let lastId = 0;
     await db.withTransactionAsync(async () => {
       const res = await db.runAsync(
-        "INSERT INTO CostCenters (number, name) VALUES (?, ?)",
-        [c.number ?? "", c.name]
+        "INSERT INTO CostCenters (number, name, local_id, updated_at) VALUES (?, ?, ?, ?)",
+        [c.number ?? "", c.name, uuidv4(), Date.now()]
       );
       lastId = res.lastInsertRowId;
     });
@@ -731,15 +754,15 @@ export const MoneyTransferDB = {
   async insert(m: Omit<MoneyTransfer, "id" | "deleted_at">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
-      `INSERT INTO MoneyTransfers (receiptName, giverName, workerNumber, receiverName, receiverWorkerNumber, date, amount, currency, photo, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [m.receiptName, m.giverName, m.workerNumber, m.receiverName, m.receiverWorkerNumber, m.date, m.amount, m.currency, m.photo ?? null, m.createdAt]
+      `INSERT INTO MoneyTransfers (receiptName, giverName, workerNumber, receiverName, receiverWorkerNumber, date, amount, currency, photo, createdAt, local_id, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [m.receiptName, m.giverName, m.workerNumber, m.receiverName, m.receiverWorkerNumber, m.date, m.amount, m.currency, m.photo ?? null, m.createdAt, uuidv4(), Date.now()]
     );
     return res.lastInsertRowId;
   },
   async softDelete(id: number): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync("UPDATE MoneyTransfers SET deleted_at=? WHERE id=?", [new Date().toISOString(), id]);
+    await db.runAsync("UPDATE MoneyTransfers SET deleted_at=?, updated_at=? WHERE id=?", [new Date().toISOString(), Date.now(), id]);
   },
   async delete(id: number): Promise<void> {
     return MoneyTransferDB.softDelete(id);
@@ -757,15 +780,15 @@ export const ClientTransferDB = {
   async insert(c: Omit<ClientTransfer, "id" | "deleted_at">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
-      `INSERT INTO ClientTransfers (clientName, giverName, date, amount, currency, photo, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [c.clientName, c.giverName, c.date, c.amount, c.currency, c.photo ?? null, c.createdAt]
+      `INSERT INTO ClientTransfers (clientName, giverName, date, amount, currency, photo, createdAt, local_id, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [c.clientName, c.giverName, c.date, c.amount, c.currency, c.photo ?? null, c.createdAt, uuidv4(), Date.now()]
     );
     return res.lastInsertRowId;
   },
   async softDelete(id: number): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync("UPDATE ClientTransfers SET deleted_at=? WHERE id=?", [new Date().toISOString(), id]);
+    await db.runAsync("UPDATE ClientTransfers SET deleted_at=?, updated_at=? WHERE id=?", [new Date().toISOString(), Date.now(), id]);
   },
   async delete(id: number): Promise<void> {
     return ClientTransferDB.softDelete(id);
@@ -804,22 +827,22 @@ export const ATMDB = {
   async insert(a: Omit<ATMWithdrawal, "id" | "deleted_at">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
-      `INSERT INTO ATMWithdrawals (date, cardLastFour, amount, currency, photo, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [a.date, a.cardLastFour, a.amount, a.currency, a.photo ?? null, a.createdAt]
+      `INSERT INTO ATMWithdrawals (date, cardLastFour, amount, currency, photo, createdAt, local_id, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [a.date, a.cardLastFour, a.amount, a.currency, a.photo ?? null, a.createdAt, uuidv4(), Date.now()]
     );
     return res.lastInsertRowId;
   },
   async update(a: ATMWithdrawal): Promise<void> {
     const db = await getDatabase();
     await db.runAsync(
-      `UPDATE ATMWithdrawals SET date=?, cardLastFour=?, amount=?, currency=?, photo=?, createdAt=? WHERE id=?`,
-      [a.date, a.cardLastFour, a.amount, a.currency, a.photo ?? null, a.createdAt, a.id]
+      `UPDATE ATMWithdrawals SET date=?, cardLastFour=?, amount=?, currency=?, photo=?, createdAt=?, updated_at=? WHERE id=?`,
+      [a.date, a.cardLastFour, a.amount, a.currency, a.photo ?? null, a.createdAt, Date.now(), a.id]
     );
   },
   async softDelete(id: number): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync("UPDATE ATMWithdrawals SET deleted_at=? WHERE id=?", [new Date().toISOString(), id]);
+    await db.runAsync("UPDATE ATMWithdrawals SET deleted_at=?, updated_at=? WHERE id=?", [new Date().toISOString(), Date.now(), id]);
   },
   async delete(id: number): Promise<void> {
     return ATMDB.softDelete(id);
@@ -850,9 +873,9 @@ export const CashWalletDB = {
   async insert(entry: Omit<CashWalletEntry, "id">): Promise<number> {
     const db = await getDatabase();
     const res = await db.runAsync(
-      `INSERT INTO CashWalletLedger (currency, amount, entryType, refId, refTable, note, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [entry.currency, entry.amount, entry.entryType, entry.refId ?? null, entry.refTable ?? null, entry.note, entry.createdAt]
+      `INSERT INTO CashWalletLedger (currency, amount, entryType, refId, refTable, note, createdAt, local_id, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [entry.currency, entry.amount, entry.entryType, entry.refId ?? null, entry.refTable ?? null, entry.note, entry.createdAt, uuidv4(), Date.now()]
     );
     return res.lastInsertRowId;
   },

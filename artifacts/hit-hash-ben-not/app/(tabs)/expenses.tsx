@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,7 +14,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppHeader } from "@/components/ui/AppHeader";
+import { SyncStatusBar } from "@/components/sync/SyncStatusBar";
 import { useAppContext } from "@/context/AppContext";
+import { SyncProvider, useSyncContext } from "@/context/SyncContext";
 import { useColors } from "@/hooks/useColors";
 import { getCities, getCountries } from "@/utils/countriesData";
 
@@ -127,10 +130,22 @@ function SectionCard({
   return inner;
 }
 
-export default function OverviewScreen() {
+function OverviewContent() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
+  const { triggerSync } = useSyncContext();
+  const { refreshAll } = useAppContext();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshAll(), triggerSync()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshAll, triggerSync]);
 
   const {
     receipts,
@@ -283,10 +298,18 @@ export default function OverviewScreen() {
       <View style={{ paddingTop: topInset }}>
         <AppHeader title="Overview" />
       </View>
+      <SyncStatusBar />
 
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
         {activeLeg ? (
           <View style={[styles.tripHeader, { backgroundColor: colors.card, shadowColor: colors.shadowColor }]}>
@@ -778,3 +801,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
 });
+
+export default function OverviewScreen() {
+  return (
+    <SyncProvider userId={null}>
+      <OverviewContent />
+    </SyncProvider>
+  );
+}
